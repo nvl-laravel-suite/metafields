@@ -1,0 +1,4 @@
+interface:
+  display_name: "NVL Metafields"
+  short_description: "Build typed authorized custom fields"
+  default_prompt: "Use $nvl-metafields to implement or review definitions, values, owner/reference registries, translations, validation, and concurrency."
