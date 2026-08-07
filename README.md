@@ -28,7 +28,7 @@ stable application keys.
 ## Installation
 
 ```bash
-composer require nvl/metafields
+composer require nvl/laravel-suite:^1.0
 php artisan migrate
 php artisan vendor:publish --tag=metafields-config
 php artisan vendor:publish --tag=metafields-migrations
