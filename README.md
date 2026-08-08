@@ -2,6 +2,16 @@
 
 [← NVL Laravel Suite](../../../README.md)
 
+## Quick reference
+
+| Item | Value |
+|---|---|
+| Installed through | `composer require nvl/laravel-suite:^1.0` |
+| Module identifier | `nvl/metafields` |
+| PHP namespace | `Nvl\Metafields` |
+| Service provider | `Nvl\Metafields\Providers\MetafieldsServiceProvider` |
+| Configuration | `config/metafields.php` |
+
 Typed, validated, queryable, and optionally localized custom fields for
 registered Eloquent owners.
 
