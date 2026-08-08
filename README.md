@@ -1,4 +1,6 @@
-# NVL Metafields
+# NVL Metafields — API and usage
+
+[← NVL Laravel Suite](../../../README.md)
 
 Typed, validated, queryable, and optionally localized custom fields for
 registered Eloquent owners.
