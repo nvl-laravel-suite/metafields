@@ -23,6 +23,7 @@ use Nvl\Metafields\Actions\Metafields\SyncOwnerMetafieldsAction;
 use Nvl\Metafields\Contracts\MetafieldReferenceAuthorization;
 use Nvl\Metafields\Data\ArchiveMetafieldDefinitionPayload;
 use Nvl\Metafields\Data\CreateMetafieldDefinitionPayload;
+use Nvl\Metafields\Data\OwnerMetafieldField;
 use Nvl\Metafields\Data\OwnerMetafieldValue;
 use Nvl\Metafields\Data\SyncOwnerMetafieldsPayload;
 use Nvl\Metafields\Data\UpdateMetafieldDefinitionPayload;
@@ -247,6 +248,47 @@ it('keeps owner reads lock-free while allowing mutation lookups to request row l
 
     expect(collect($readQueries)->pluck('query')->implode(' '))->not->toContain('for update')
         ->and(collect($mutationQueries)->pluck('query')->implode(' '))->toContain('for update');
+});
+
+it('keeps owner field projection queries independent of assigned field count', function (): void {
+    $owner = metafieldTestOwner();
+    $create = static function (int $index) use ($owner): void {
+        $definition = MetafieldDefinition::factory()->create([
+            'namespace' => 'query',
+            'key' => "field-{$index}",
+        ]);
+        assignMetafieldTestDefinition($definition);
+        Metafield::factory()
+            ->forDefinition($definition)
+            ->forOwner($owner)
+            ->withValue("value-{$index}")
+            ->create();
+    };
+    $measure = static function () use ($owner): int {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $fields = app(ListOwnerMetafieldsAction::class)->execute($owner, 'en');
+        $queryCount = count(DB::getQueryLog());
+        $fields->each(static fn (OwnerMetafieldField $field): mixed => $field->value);
+
+        expect(DB::getQueryLog())->toHaveCount($queryCount);
+        DB::disableQueryLog();
+
+        return $queryCount;
+    };
+
+    $create(1);
+    $singleQueryCount = $measure();
+
+    foreach (range(2, 25) as $index) {
+        $create($index);
+    }
+
+    $populatedQueryCount = $measure();
+
+    expect($singleQueryCount)->toBeLessThanOrEqual(7)
+        ->and($populatedQueryCount)->toBe($singleQueryCount);
 });
 
 it('supports patch and replace semantics for localized owner values', function (): void {
