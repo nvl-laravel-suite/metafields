@@ -43,7 +43,6 @@ stable application keys.
 composer require nvl/laravel-suite:^1.0
 php artisan migrate
 php artisan vendor:publish --tag=metafields-config
-php artisan vendor:publish --tag=metafields-migrations
 ```
 
 Package discovery registers `MetafieldsServiceProvider`. Migrations load
@@ -54,6 +53,15 @@ resources are published with:
 php artisan vendor:publish --tag=metafields-translations
 php artisan vendor:publish --tag=metafields-skills
 ```
+
+Choose exactly one migration owner. For automatic vendor loading, leave
+`metafields.migrations.enabled=true` and do not publish
+`metafields-migrations`. For host-owned migrations, publish
+`metafields-migrations` with
+`php artisan vendor:publish --tag=metafields-migrations`, set
+`metafields.migrations.enabled=false` before the first migration, and maintain
+the copied files as application migrations.
+Never run both sources; Laravel retimestamps published migrations.
 
 English and Bulgarian validation copy ships with the package.
 
