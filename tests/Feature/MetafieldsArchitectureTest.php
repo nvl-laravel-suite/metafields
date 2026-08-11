@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Nvl\Metafields\Data\MetafieldDefinitionAssignmentPayload;
 use Nvl\Metafields\Data\MetafieldDefinitionSettings;
+use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
@@ -67,9 +68,9 @@ test('metafield values and definitions resolve through the shared translation co
         'bg' => ['value' => 'червено'],
     ]);
 
-    expect(Schema::hasColumn('metafields_definitions', 'title'))->toBeFalse()
-        ->and(Schema::hasColumn('metafields_definitions', 'description'))->toBeFalse()
-        ->and(Schema::hasColumn('metafields_definitions', 'hint'))->toBeFalse()
+    expect(Schema::hasColumn(MetafieldsTables::Definitions, 'title'))->toBeFalse()
+        ->and(Schema::hasColumn(MetafieldsTables::Definitions, 'description'))->toBeFalse()
+        ->and(Schema::hasColumn(MetafieldsTables::Definitions, 'hint'))->toBeFalse()
         ->and($definition->displayTitle('bg'))->toBe('Цвят')
         ->and($metafield->getValue('bg'))->toBe('червено')
         ->and($metafield->getValue('en'))->toBe('red');

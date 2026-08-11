@@ -24,7 +24,7 @@ class MetafieldTranslation extends Model
 {
     use HasUuids;
 
-    public const string TABLE = MetafieldsTables::METAFIELDS_I18N;
+    public const string TABLE = MetafieldsTables::I18n;
 
     protected $table = self::TABLE;
 

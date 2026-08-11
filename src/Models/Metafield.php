@@ -44,7 +44,7 @@ class Metafield extends Model implements TranslatableModel
     use SoftDeletes;
     use Translatable;
 
-    public const string TABLE = MetafieldsTables::METAFIELDS;
+    public const string TABLE = MetafieldsTables::Metafields;
 
     protected $table = self::TABLE;
 

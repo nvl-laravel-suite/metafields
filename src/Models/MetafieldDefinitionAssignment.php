@@ -31,7 +31,7 @@ class MetafieldDefinitionAssignment extends Model
     use HasUuids;
     use SoftDeletes;
 
-    public const string TABLE = MetafieldsTables::METAFIELD_DEFINITION_ASSIGNMENTS;
+    public const string TABLE = MetafieldsTables::DefinitionAssignments;
 
     protected $table = self::TABLE;
 

@@ -14,7 +14,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create(MetafieldsTables::METAFIELDS, function (Blueprint $table) {
+        Schema::create(MetafieldsTables::Metafields, function (Blueprint $table) {
             $table->uuid('id')->primary();
 
             // Relations
@@ -49,7 +49,7 @@ return new class extends Migration
             // Constraints
             $table->foreign('definition_id')
                 ->references('id')
-                ->on(MetafieldsTables::METAFIELDS_DEFINITIONS)
+                ->on(MetafieldsTables::Definitions)
                 ->onDelete('cascade');
         });
     }
@@ -59,6 +59,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists(MetafieldsTables::METAFIELDS);
+        Schema::dropIfExists(MetafieldsTables::Metafields);
     }
 };

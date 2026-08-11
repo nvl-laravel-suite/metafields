@@ -11,7 +11,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create(MetafieldsTables::METAFIELD_DEFINITION_ASSIGNMENTS, function (Blueprint $table) {
+        Schema::create(MetafieldsTables::DefinitionAssignments, function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('definition_id');
             $table->string('owner_type');
@@ -33,13 +33,13 @@ return new class extends Migration
             );
             $table->foreign('definition_id')
                 ->references('id')
-                ->on(MetafieldsTables::METAFIELDS_DEFINITIONS)
+                ->on(MetafieldsTables::Definitions)
                 ->onDelete('cascade');
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists(MetafieldsTables::METAFIELD_DEFINITION_ASSIGNMENTS);
+        Schema::dropIfExists(MetafieldsTables::DefinitionAssignments);
     }
 };

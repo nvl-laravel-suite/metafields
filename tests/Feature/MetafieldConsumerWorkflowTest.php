@@ -25,6 +25,7 @@ use Nvl\Metafields\Data\OwnerMetafieldField;
 use Nvl\Metafields\Data\OwnerMetafieldValue;
 use Nvl\Metafields\Data\SyncOwnerMetafieldsPayload;
 use Nvl\Metafields\Data\UpdateMetafieldDefinitionPayload;
+use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Events\MetafieldsSyncedEvent;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
@@ -194,7 +195,7 @@ it('locks owner values inside the action-owned transaction', function (): void {
     $transactionLevels = [];
 
     DB::listen(function (QueryExecuted $query) use (&$transactionLevels): void {
-        if (str_contains($query->sql, 'metafields')) {
+        if (str_contains($query->sql, MetafieldsTables::Metafields)) {
             $transactionLevels[] = $query->connection->transactionLevel();
         }
     });
@@ -1209,7 +1210,7 @@ it('filters owners only through definitions explicitly marked filterable', funct
 
     $unfiltered = OwnerMetafieldBooleanFilter::apply(
         TestMetafieldOwner::query(),
-        'metafields',
+        MetafieldsTables::Metafields,
         $definition->handle,
         true,
     )->pluck('id');
@@ -1219,7 +1220,7 @@ it('filters owners only through definitions explicitly marked filterable', funct
 
     $filtered = OwnerMetafieldBooleanFilter::apply(
         TestMetafieldOwner::query(),
-        'metafields',
+        MetafieldsTables::Metafields,
         $definition->handle,
         true,
     )->pluck('id');

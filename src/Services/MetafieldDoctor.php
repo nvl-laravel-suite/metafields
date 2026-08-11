@@ -46,21 +46,21 @@ final readonly class MetafieldDoctor
     private function schemaChecks(): array
     {
         $tables = [
-            MetafieldsTables::METAFIELDS_DEFINITIONS => [
+            MetafieldsTables::Definitions => [
                 'id', 'namespace', 'key', 'handle', 'active_handle', 'type',
                 'revision', 'archived_at', 'deleted_at',
             ],
-            MetafieldsTables::METAFIELDS => [
+            MetafieldsTables::Metafields => [
                 'id', 'definition_id', 'metafieldable_type', 'metafieldable_id',
                 'value', 'referenced_id', 'revision', 'deleted_at',
             ],
-            MetafieldsTables::METAFIELDS_I18N => [
+            MetafieldsTables::I18n => [
                 'id', 'metafield_id', 'locale', 'value',
             ],
-            MetafieldsTables::METAFIELDS_DEFINITIONS_I18N => [
+            MetafieldsTables::DefinitionsI18n => [
                 'id', 'metafield_definition_id', 'locale', 'title',
             ],
-            MetafieldsTables::METAFIELD_DEFINITION_ASSIGNMENTS => [
+            MetafieldsTables::DefinitionAssignments => [
                 'id', 'definition_id', 'owner_type', 'section', 'is_active',
             ],
         ];
@@ -96,25 +96,25 @@ final readonly class MetafieldDoctor
 
         $indexes = [
             [
-                MetafieldsTables::METAFIELDS_DEFINITIONS,
+                MetafieldsTables::Definitions,
                 'metafields_definitions_active_handle_unique',
                 ['active_handle'],
                 true,
             ],
             [
-                MetafieldsTables::METAFIELDS,
+                MetafieldsTables::Metafields,
                 'metafields_owner_definition_unique',
                 ['metafieldable_type', 'metafieldable_id', 'definition_id'],
                 true,
             ],
             [
-                MetafieldsTables::METAFIELD_DEFINITION_ASSIGNMENTS,
+                MetafieldsTables::DefinitionAssignments,
                 'metafield_definition_assignments_unique',
                 ['definition_id', 'owner_type'],
                 true,
             ],
             [
-                MetafieldsTables::METAFIELD_DEFINITION_ASSIGNMENTS,
+                MetafieldsTables::DefinitionAssignments,
                 'metafield_assignment_owner_active_section_idx',
                 ['owner_type', 'is_active', 'section'],
                 false,

@@ -14,7 +14,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create(MetafieldsTables::METAFIELDS_DEFINITIONS_I18N, function (Blueprint $table): void {
+        Schema::create(MetafieldsTables::DefinitionsI18n, function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->uuid('metafield_definition_id');
             $table->string('locale', 35);
@@ -31,7 +31,7 @@ return new class extends Migration
             );
             $table->foreign('metafield_definition_id')
                 ->references('id')
-                ->on(MetafieldsTables::METAFIELDS_DEFINITIONS)
+                ->on(MetafieldsTables::Definitions)
                 ->cascadeOnDelete();
         });
     }
@@ -41,6 +41,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists(MetafieldsTables::METAFIELDS_DEFINITIONS_I18N);
+        Schema::dropIfExists(MetafieldsTables::DefinitionsI18n);
     }
 };

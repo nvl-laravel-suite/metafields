@@ -14,7 +14,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create(MetafieldsTables::METAFIELDS_DEFINITIONS, function (Blueprint $table) {
+        Schema::create(MetafieldsTables::Definitions, function (Blueprint $table) {
             $table->uuid('id')->primary();
 
             // Identifier fields
@@ -90,6 +90,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists(MetafieldsTables::METAFIELDS_DEFINITIONS);
+        Schema::dropIfExists(MetafieldsTables::Definitions);
     }
 };

@@ -26,7 +26,7 @@ final class MetafieldDefinitionTranslation extends Model
 {
     use HasUuids;
 
-    public const string TABLE = MetafieldsTables::METAFIELDS_DEFINITIONS_I18N;
+    public const string TABLE = MetafieldsTables::DefinitionsI18n;
 
     protected $table = self::TABLE;
 

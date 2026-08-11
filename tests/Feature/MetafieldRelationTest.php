@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
 use Nvl\Metafields\Traits\HasMetafields;
@@ -24,11 +25,11 @@ it('supports integer owner keys across relation reads writes and existence queri
         ->and($metafield->metafieldable_type)->toBe($owner->getMorphClass())
         ->and($metafield->referenced_id)->toBe('pending-reference')
         ->and($owner->fresh()?->metafields)->toHaveCount(1)
-        ->and(TestMetafieldOwner::query()->with('metafields')->findOrFail($owner->getKey())->metafields)
+        ->and(TestMetafieldOwner::query()->with(MetafieldsTables::Metafields)->findOrFail($owner->getKey())->metafields)
         ->toHaveCount(1)
-        ->and(TestMetafieldOwner::query()->with('metafields')->findOrFail($emptyOwner->getKey())->metafields)
+        ->and(TestMetafieldOwner::query()->with(MetafieldsTables::Metafields)->findOrFail($emptyOwner->getKey())->metafields)
         ->toBeEmpty()
-        ->and(TestMetafieldOwner::query()->whereHas('metafields')->pluck('id')->all())
+        ->and(TestMetafieldOwner::query()->whereHas(MetafieldsTables::Metafields)->pluck('id')->all())
         ->toBe([$owner->getKey()]);
 });
 
