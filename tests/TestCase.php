@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Tests;
 
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Nvl\Data\Providers\DataServiceProvider;
 use Nvl\Metafields\Providers\MetafieldsServiceProvider;
 use Nvl\Support\Providers\SupportServiceProvider;
@@ -29,5 +31,14 @@ abstract class TestCase extends Orchestra
             TranslatableServiceProvider::class,
             MetafieldsServiceProvider::class,
         ];
+    }
+
+    protected function defineDatabaseMigrationsAfterDatabaseRefreshed(): void
+    {
+        Schema::create('test_metafield_owners', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
     }
 }

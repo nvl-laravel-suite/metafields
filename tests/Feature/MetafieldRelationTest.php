@@ -4,19 +4,9 @@ declare(strict_types=1);
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
 use Nvl\Metafields\Traits\HasMetafields;
-
-beforeEach(function (): void {
-    Schema::create('test_metafield_owners', function (Blueprint $table): void {
-        $table->id();
-        $table->string('name');
-        $table->timestamps();
-    });
-});
 
 it('supports integer owner keys across relation reads writes and existence queries', function (): void {
     $owner = TestMetafieldOwner::query()->create(['name' => 'Primary owner']);

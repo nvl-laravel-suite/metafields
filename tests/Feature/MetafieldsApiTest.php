@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Auth\User;
-use Illuminate\Support\Facades\Schema;
 use Nvl\Metafields\Contracts\MetafieldAuthorization;
 use Nvl\Metafields\Contracts\MetafieldReferenceAuthorization;
 use Nvl\Metafields\Enums\MetafieldAbility;
@@ -74,12 +72,6 @@ beforeEach(function (): void {
             ): void {}
         },
     );
-
-    Schema::create('test_metafield_owners', function (Blueprint $table): void {
-        $table->id();
-        $table->string('name');
-        $table->timestamps();
-    });
 
     TestMetafieldOwner::query()->create(['name' => 'API owner']);
     (new RouteServiceProvider(app()))->map();
