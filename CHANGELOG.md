@@ -4,6 +4,8 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-08-12
+
 - Consolidated the final definition/value schema into create migrations and removed obsolete base-copy columns.
 - Standardized localized definition and value tables as `metafields_definitions_i18n` and `metafields_i18n`.
 - Added the documented `metafields-migrations` publish tag.
@@ -16,7 +18,7 @@ All notable changes to `nvl/metafields` are documented here.
 - Kept owner field reads lock-free while retaining explicit row locks inside mutation transactions.
 - Bounded bulk synchronization and structured definition metadata, and removed test/build files from release archives.
 
-## [1.0.0] - Unreleased
+## [1.0.0] - 2026-08-08
 
 - Added registered owners and references with string-compatible identifiers.
 - Added typed definition and value Actions, optimistic concurrency, and patch/replace synchronization.
