@@ -4,6 +4,12 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-08-12
+
+### Changed
+
+- Released unchanged under the suite's shared version.
+
 ## [1.0.2] - 2026-08-12
 
 - Consolidated the final definition/value schema into create migrations and removed obsolete base-copy columns.
