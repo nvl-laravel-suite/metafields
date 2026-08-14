@@ -27,7 +27,7 @@ settings engine, or secret store.
 
 ## Requirements and dependencies
 
-- PHP 8.3 or 8.4
+- PHP 8.4 or newer
 - Laravel 12 or 13
 - `nvl/data`
 - `nvl/support`
