@@ -29,7 +29,11 @@ Use definitions as the schema and metafield rows as owner-specific values. Route
 
 ## Read and operate
 
-- Eager-load definition and value translations for lists.
+- Use `ListAuthorizedOwnerMetafieldsAction` for consumer-facing owner reads. It
+  authorizes the owner-view ability before querying and returns the bounded
+  `OwnerMetafieldField` projection with localized definitions and values.
+- Treat `ListOwnerMetafieldsAction` as a storage-focused composition primitive;
+  do not call it directly from new consumer management code.
 - Query only registered scalar comparisons; do not expose arbitrary JSON paths.
 - Keep management routes disabled and authorize every owner and definition.
 - Run `nvl:metafields:doctor --strict --format=json` before adoption.

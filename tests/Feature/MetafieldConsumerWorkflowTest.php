@@ -15,9 +15,11 @@ use Nvl\Metafields\Actions\MetafieldDefinitions\ArchiveMetafieldDefinitionAction
 use Nvl\Metafields\Actions\MetafieldDefinitions\CreateMetafieldDefinitionAction;
 use Nvl\Metafields\Actions\MetafieldDefinitions\DeleteMetafieldDefinitionAction;
 use Nvl\Metafields\Actions\MetafieldDefinitions\UpdateMetafieldDefinitionAction;
+use Nvl\Metafields\Actions\Metafields\ListAuthorizedOwnerMetafieldsAction;
 use Nvl\Metafields\Actions\Metafields\ListOwnerMetafieldsAction;
 use Nvl\Metafields\Actions\Metafields\SetMetafieldAction;
 use Nvl\Metafields\Actions\Metafields\SyncOwnerMetafieldsAction;
+use Nvl\Metafields\Contracts\MetafieldAuthorization;
 use Nvl\Metafields\Contracts\MetafieldReferenceAuthorization;
 use Nvl\Metafields\Data\ArchiveMetafieldDefinitionPayload;
 use Nvl\Metafields\Data\CreateMetafieldDefinitionPayload;
@@ -26,6 +28,7 @@ use Nvl\Metafields\Data\OwnerMetafieldValue;
 use Nvl\Metafields\Data\SyncOwnerMetafieldsPayload;
 use Nvl\Metafields\Data\UpdateMetafieldDefinitionPayload;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
+use Nvl\Metafields\Enums\MetafieldAbility;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Events\MetafieldsSyncedEvent;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
@@ -282,6 +285,79 @@ it('keeps owner field projection queries independent of assigned field count', f
 
     expect($singleQueryCount)->toBeLessThanOrEqual(7)
         ->and($populatedQueryCount)->toBe($singleQueryCount);
+});
+
+it('authorizes owner field projections before querying storage', function (): void {
+    $owner = metafieldTestOwner();
+    $authorization = new class implements MetafieldAuthorization
+    {
+        public ?MetafieldAbility $ability = null;
+
+        public ?Model $owner = null;
+
+        public int $queryCount = -1;
+
+        public function authorizeDefinition(
+            MetafieldAbility $ability,
+            ?MetafieldDefinition $definition = null,
+        ): void {}
+
+        public function authorizeOwner(
+            MetafieldAbility $ability,
+            ?Model $owner = null,
+            ?MetafieldDefinition $definition = null,
+        ): void {
+            $this->ability = $ability;
+            $this->owner = $owner;
+            $this->queryCount = count(DB::getQueryLog());
+        }
+    };
+    app()->instance(MetafieldAuthorization::class, $authorization);
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    try {
+        $fields = app(ListAuthorizedOwnerMetafieldsAction::class)->execute($owner, 'en');
+
+        expect($fields)->toBeEmpty()
+            ->and($authorization->ability)->toBe(MetafieldAbility::ViewOwner)
+            ->and($authorization->owner?->is($owner))->toBeTrue()
+            ->and($authorization->queryCount)->toBe(0)
+            ->and(DB::getQueryLog())->not->toBe([]);
+    } finally {
+        DB::disableQueryLog();
+    }
+});
+
+it('does not query owner fields after authorization denial', function (): void {
+    $owner = metafieldTestOwner();
+    app()->instance(MetafieldAuthorization::class, new class implements MetafieldAuthorization
+    {
+        public function authorizeDefinition(
+            MetafieldAbility $ability,
+            ?MetafieldDefinition $definition = null,
+        ): void {}
+
+        public function authorizeOwner(
+            MetafieldAbility $ability,
+            ?Model $owner = null,
+            ?MetafieldDefinition $definition = null,
+        ): void {
+            throw new AuthorizationException;
+        }
+    });
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    try {
+        expect(fn () => app(ListAuthorizedOwnerMetafieldsAction::class)->execute(
+            $owner,
+            'en',
+        ))->toThrow(AuthorizationException::class)
+            ->and(DB::getQueryLog())->toBe([]);
+    } finally {
+        DB::disableQueryLog();
+    }
 });
 
 it('supports patch and replace semantics for localized owner values', function (): void {

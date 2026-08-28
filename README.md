@@ -239,8 +239,34 @@ assignment. Values are indexed by definition and polymorphic owner. Query
 helpers operate on registered definitions and supported scalar values; raw
 request columns, relations, and arbitrary JSON paths are never accepted.
 
-Load definition and translation relationships before serializing collections
-to avoid N+1 queries.
+Use `ListAuthorizedOwnerMetafieldsAction` for application-facing owner reads:
+
+```php
+use Nvl\Metafields\Actions\Metafields\ListAuthorizedOwnerMetafieldsAction;
+
+final readonly class ShowArticleEditor
+{
+    public function __construct(
+        private ListAuthorizedOwnerMetafieldsAction $metafields,
+    ) {}
+
+    public function __invoke(Article $article, string $locale): array
+    {
+        return $this->metafields->execute($article, $locale)->all();
+    }
+}
+```
+
+The Action authorizes `MetafieldAbility::ViewOwner` before any storage query,
+then returns the existing `OwnerMetafieldField` projection with assignments,
+definitions, localized copy, typed values, and reference metadata. Its populated
+projection uses at most seven queries whether one or 25 fields are returned.
+The result is deliberately uncached because values, definitions, locale, and
+authorization are mutation- and request-sensitive.
+
+`ListOwnerMetafieldsAction` remains the storage-focused composition primitive
+used by package adapters. New consumer management reads should use the
+authorized Action instead of reproducing authorization or eager loading.
 
 ## Authorization
 
@@ -266,8 +292,9 @@ $app->bind(
 );
 ```
 
-Programmatic callers are responsible for invoking the same authorization
-boundary before accepting untrusted input.
+Package-provided application Actions invoke the authorization boundary. Custom
+programmatic compositions are responsible for doing the same before accepting
+untrusted input.
 
 ## Optional management API
 
