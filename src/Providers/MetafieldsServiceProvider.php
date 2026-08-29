@@ -34,10 +34,13 @@ use Nvl\Metafields\Services\ConfiguredMetafieldAuthorization;
 use Nvl\Metafields\Services\ConfiguredMetafieldReferenceAuthorization;
 use Nvl\Metafields\Support\MetafieldConfiguration;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
+use Nvl\Support\Traits\MergesPackageConfiguration;
 use Nvl\Translatable\Services\TranslationResourceRegistry;
 
 final class MetafieldsServiceProvider extends ServiceProvider
 {
+    use MergesPackageConfiguration;
+
     /**
      * Boot the application events.
      */
@@ -90,7 +93,7 @@ final class MetafieldsServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->replaceConfigRecursivelyFrom(__DIR__.'/../../config/metafields.php', 'metafields');
+        $this->mergePackageConfiguration(__DIR__.'/../../config/metafields.php', 'metafields');
 
         $this->app->register(RouteServiceProvider::class);
 
