@@ -6,7 +6,7 @@
 
 | Item | Value |
 |---|---|
-| Installed through | `composer require nvl/laravel-suite:^1.0` |
+| Installed through | `composer require nvl/laravel-suite:^2.0` |
 | Module identifier | `nvl/metafields` |
 | PHP namespace | `Nvl\Metafields` |
 | Service provider | `Nvl\Metafields\Providers\MetafieldsServiceProvider` |
@@ -28,7 +28,7 @@ settings engine, or secret store.
 ## Requirements and dependencies
 
 - PHP 8.4 or newer
-- Laravel 12 or 13
+- Laravel 13
 - `nvl/data`
 - `nvl/support`
 - `nvl/translatable`
@@ -40,7 +40,7 @@ stable application keys.
 ## Installation
 
 ```bash
-composer require nvl/laravel-suite:^1.0
+composer require nvl/laravel-suite:^2.0
 php artisan migrate
 php artisan vendor:publish --tag=metafields-config
 ```

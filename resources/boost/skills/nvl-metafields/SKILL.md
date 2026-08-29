@@ -1,6 +1,6 @@
 ---
 name: nvl-metafields
-description: Implement, integrate, test, or review nvl/metafields in Laravel 12–13. Use for typed custom-field definitions, owner and reference registries, localized definitions or values, validation limits, optimistic concurrency, bulk synchronization, query helpers, deletion policy, or authorization.
+description: Implement, integrate, test, or review nvl/metafields in Laravel 13. Use for typed custom-field definitions, owner and reference registries, localized definitions or values, validation limits, optimistic concurrency, bulk synchronization, query helpers, deletion policy, or authorization.
 ---
 
 # NVL Metafields
