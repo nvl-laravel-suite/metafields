@@ -4,6 +4,14 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-08-29
+
+### Changed
+
+- Established authorized definition/value Actions and `HasMetafields` owner
+  relations as the 2.0 consumer boundary; direct consumer Metafields-model
+  queries and relation aggregates now fail Suite audit.
+
 ## [1.0.7] - 2026-08-22
 
 ### Changed
