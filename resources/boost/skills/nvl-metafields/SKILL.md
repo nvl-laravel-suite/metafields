@@ -18,6 +18,16 @@ Use definitions as the schema and metafield rows as owner-specific values. Route
 
 ## Define and mutate fields
 
+- Direct mutation Actions are trusted operations. In user-driven compositions,
+  call `MetafieldAuthorization` before the Action; optional HTTP controllers
+  already do this. Use `authorizeDefinition(MetafieldAbility::CreateDefinition)`
+  for creation and `authorizeOwner(MetafieldAbility::MutateOwner, $owner)` for
+  owner synchronization. Use `MetafieldAbility::UpdateDefinition` for updates,
+  archiving, and assignments, `MetafieldAbility::DeleteDefinition` for definition
+  deletion, and `MetafieldAbility::DeleteOwnerValue` with the owner and definition
+  for clearing a value.
+- Value validation separately invokes `MetafieldReferenceAuthorization` for
+  each referenced record. Reference permission does not grant owner mutation.
 - Use `CreateMetafieldDefinitionAction`, `UpdateMetafieldDefinitionAction`, and `ArchiveMetafieldDefinitionAction`.
 - Require expected versions on editable definitions and values.
 - Use `SetMetafieldAction`, `SyncOwnerMetafieldsAction`, and `DeleteOwnerMetafieldAction`.

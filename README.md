@@ -292,9 +292,29 @@ $app->bind(
 );
 ```
 
-Package-provided application Actions invoke the authorization boundary. Custom
-programmatic compositions are responsible for doing the same before accepting
-untrusted input.
+The optional HTTP controllers invoke `MetafieldAuthorization` before delegating
+to mutation Actions. Direct mutation Actions are trusted application-service
+operations: they validate definitions, assignments, values, and revisions, but
+do not invoke owner or definition authorization. Consumer controllers and other
+user-driven compositions must authorize before calling them.
+
+For example, with constructor-injected authorization and Actions:
+
+```php
+$this->authorization->authorizeDefinition(MetafieldAbility::CreateDefinition);
+$definition = $this->createDefinition->execute($definitionPayload);
+
+$this->authorization->authorizeOwner(MetafieldAbility::MutateOwner, $owner);
+$values = $this->syncOwnerMetafields->execute($owner, $valuesPayload);
+```
+
+`MetafieldAbility` is `Nvl\Metafields\Enums\MetafieldAbility`. Use
+`UpdateDefinition` for definition updates, archiving, and assignment changes;
+`DeleteDefinition` for definition deletion; and `DeleteOwnerValue` with the
+owner and definition for clearing one owner value. `ListAuthorizedOwnerMetafieldsAction`
+performs its own `ViewOwner` authorization. Reference values independently pass
+through `MetafieldReferenceAuthorization` inside value validation; permission
+to reference a record does not authorize mutation of its owner.
 
 ## Optional management API
 
