@@ -337,6 +337,28 @@ Every operation is authorized. No UI is included.
 
 ## Database and adoption
 
+### Optional tenant ownership and definition catalogs
+
+Installing Metafields also installs inert `nvl/tenancy`; the feature remains
+disabled until the host explicitly adopts it. Definitions, assignments, and
+definition translations share one partition. Values and localized values always
+inherit the canonical owner's tenant. A configured class is not authority:
+owners and every reference target must resolve through a registered tenant
+resource, and unknown classifications fail closed.
+
+With `tenancy.sharing.metafields=copy`, a platform grant exposes only an exact
+scalar definition snapshot. Import requires exact grant/source revisions, an
+idempotency fingerprint, an explicit collision-free target handle, and a total
+reference map. It creates an ordinary independent tenant definition with copied
+locale/default/type/schema data and immutable provenance. Revocation and source
+deletion block future imports without changing committed copies or values.
+
+Adopt in maintenance through prepare → bounded backfill → verify → activate.
+Only source/schema repair consistent with the immutable reviewed mapping may
+resume. A changed mapping requires the pre-cutover restore or a new reviewed
+prepare; dropping tenant columns is not a rollback after duplicate handles
+exist.
+
 The package owns:
 
 - `metafields_definitions`

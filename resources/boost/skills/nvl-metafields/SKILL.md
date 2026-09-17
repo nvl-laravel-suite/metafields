@@ -39,6 +39,15 @@ Use definitions as the schema and metafield rows as owner-specific values. Route
 
 ## Read and operate
 
+- Keep tenancy opt-in and register every owner/reference model as a Foundation
+  resource. A configured model alias alone is never authorization.
+- Definitions may include a platform catalog partition, but values always
+  inherit the canonical tenant owner and never retain live platform references.
+- Import only a granted scalar snapshot. Require exact revisions, idempotency,
+  an explicit target handle, a total reference map, and immutable provenance.
+- Resume adoption only for repair consistent with the immutable mapping; changed
+  mappings require a pre-cutover restore and new reviewed prepare.
+
 - Use `ListAuthorizedOwnerMetafieldsAction` for consumer-facing owner reads. It
   authorizes the owner-view ability before querying and returns the bounded
   `OwnerMetafieldField` projection with localized definitions and values.

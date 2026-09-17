@@ -4,6 +4,15 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- Added opt-in tenant ownership for the complete definition/value graph,
+  reviewed split adoption, canonical owner/reference enforcement, and Doctor
+  readiness checks while preserving disabled standalone installs.
+- Added concrete platform definition grants and independent tenant imports with
+  exact revision/idempotency checks, total reference remapping, copied locale and
+  schema data, immutable provenance, and revocation-safe committed copies.
+
 ## [2.0.0] - 2026-08-29
 
 ### Changed
