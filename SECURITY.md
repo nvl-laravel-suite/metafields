@@ -9,3 +9,6 @@ Keep APIs disabled by default. When enabled, retain authentication and the
 definition, and every referenced-record access, validate reference existence
 and reuse, require revisions for existing resource mutations, and never expose
 application model classes, model attributes, or arbitrary JSON-path querying.
+
+<!-- tenancy-program-p2 -->
+The configurable-tenancy implementation is present; its consolidated verification matrix remains pending and no release-readiness claim is made.

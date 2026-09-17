@@ -54,3 +54,6 @@ All notable changes to `nvl/metafields` are documented here.
 - Added typed definition and value Actions, optimistic concurrency, and patch/replace synchronization.
 - Added bounded structured validation and eligible localized definitions and values.
 - Removed commerce-specific enums, access classes, and model assumptions.
+
+<!-- tenancy-program-p2 -->
+Configurable-tenancy implementation and adoption documentation are present. The final consolidated verification matrix is pending; do not treat this package as release-ready until that gate passes.

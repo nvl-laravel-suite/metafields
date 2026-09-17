@@ -30,3 +30,6 @@ Version 1.0 replaces fixed owner enums and consumer access classes with explicit
 8. Replace the legacy owner-value index with `metafields_owner_definition_unique` ordered by owner type, owner identifier, and definition identifier.
 
 Validate row counts, handles, assignments, references, localized values, and rollback before enabling management routes.
+
+<!-- tenancy-program-p2 -->
+Configurable-tenancy implementation and adoption documentation are present. The final consolidated verification matrix is pending; do not treat this package as release-ready until that gate passes.
