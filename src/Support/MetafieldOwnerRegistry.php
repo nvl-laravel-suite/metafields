@@ -15,6 +15,23 @@ use Nvl\Metafields\Enums\MetafieldTypeEnum;
  */
 final class MetafieldOwnerRegistry
 {
+    /** @var array<string, array<string, mixed>> */
+    private array $registered = [];
+
+    /** Register one immutable code-owned owner declaration without changing global configuration. */
+    public function register(string $type, string $model, string $label, array $sections = ['general']): void
+    {
+        if (isset($this->registered[$type]) && ($this->registered[$type]['model'] ?? null) !== $model) {
+            throw new InvalidArgumentException("The metafield owner [{$type}] is already registered.");
+        }
+        $this->registered[$type] = [
+            'model' => $model,
+            'label' => $label,
+            'sections' => $sections,
+            'runtime_status' => 'live',
+        ];
+    }
+
     /**
      * Return every normalized owner registration keyed by stable alias.
      *
@@ -36,6 +53,7 @@ final class MetafieldOwnerRegistry
             throw new InvalidArgumentException('The [metafields.owners] configuration must be an array.');
         }
 
+        $owners = [...$owners, ...$this->registered];
         $normalized = [];
         $registeredModels = [];
         $existingMorphMap = Relation::morphMap();

@@ -116,6 +116,7 @@ final class MetafieldsServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergePackageConfiguration(__DIR__.'/../../config/metafields.php', 'metafields');
+        $this->app->singleton(MetafieldOwnerRegistry::class);
 
         $this->app->register(RouteServiceProvider::class);
 
