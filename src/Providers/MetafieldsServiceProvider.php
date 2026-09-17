@@ -37,6 +37,8 @@ use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
 use Nvl\Metafields\Models\MetafieldTranslation;
 use Nvl\Metafields\Services\ConfiguredMetafieldAuthorization;
 use Nvl\Metafields\Services\ConfiguredMetafieldReferenceAuthorization;
+use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionCatalogReader;
+use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionImporter;
 use Nvl\Metafields\Services\Metafields\MetafieldOwnerModelResolver;
 use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
 use Nvl\Metafields\Support\MetafieldConfiguration;
@@ -117,6 +119,8 @@ final class MetafieldsServiceProvider extends ServiceProvider
 
         $this->app->register(RouteServiceProvider::class);
 
+        $this->app->scoped(MetafieldDefinitionCatalogReader::class);
+        $this->app->scoped(MetafieldDefinitionImporter::class);
         $this->app->scoped(MetafieldOwnerModelResolver::class);
         $this->app->scoped(MetafieldReferenceRecordResolver::class);
 
