@@ -6,6 +6,7 @@ namespace Nvl\Metafields\Support;
 
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
+use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
 
 /**
  * Resolves and validates model classes that reference metafields may target.
@@ -126,21 +127,7 @@ final class MetafieldReferenceModelRegistry
      */
     public static function referencedRecordExists(mixed $modelClass, mixed $id): bool
     {
-        $modelClass = self::allowedModelClass($modelClass);
-
-        if ($modelClass === null) {
-            return false;
-        }
-
-        $id = self::normalizeIdentifier($id);
-
-        if ($id === null) {
-            return false;
-        }
-
-        return $modelClass::query()
-            ->whereKey($id)
-            ->exists();
+        return app(MetafieldReferenceRecordResolver::class)->exists($modelClass, $id);
     }
 
     /**
@@ -148,24 +135,7 @@ final class MetafieldReferenceModelRegistry
      */
     public static function findReferencedRecord(mixed $modelClass, mixed $id): ?Model
     {
-        $modelClass = self::allowedModelClass($modelClass);
-
-        if ($modelClass === null) {
-            return null;
-        }
-
-        $id = self::normalizeIdentifier($id);
-
-        if ($id === null) {
-            return null;
-        }
-
-        /** @var Model|null $model */
-        $model = $modelClass::query()
-            ->whereKey($id)
-            ->first();
-
-        return $model;
+        return app(MetafieldReferenceRecordResolver::class)->resolve($modelClass, $id);
     }
 
     /**
@@ -196,14 +166,4 @@ final class MetafieldReferenceModelRegistry
             && is_subclass_of($modelClass, Model::class);
     }
 
-    private static function normalizeIdentifier(mixed $identifier): ?string
-    {
-        if (! is_int($identifier) && ! is_string($identifier)) {
-            return null;
-        }
-
-        $identifier = trim((string) $identifier);
-
-        return $identifier !== '' ? $identifier : null;
-    }
 }

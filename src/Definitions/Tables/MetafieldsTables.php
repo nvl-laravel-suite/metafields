@@ -19,6 +19,12 @@ final class MetafieldsTables
 
     public const string I18n = 'metafields_i18n';
 
+    public const string TenantGrants = 'metafield_definition_tenant_grants';
+
+    public const string TenantGrantLocks = 'metafield_definition_tenant_grant_locks';
+
+    public const string TenantAdoptionCopies = 'metafield_definition_tenant_adoption_copies';
+
     public const string METAFIELDS = self::Metafields;
 
     public const string METAFIELDS_DEFINITIONS = self::Definitions;
@@ -28,6 +34,8 @@ final class MetafieldsTables
     public const string METAFIELD_DEFINITION_ASSIGNMENTS = self::DefinitionAssignments;
 
     public const string METAFIELDS_I18N = self::I18n;
+
+    public const string METAFIELD_DEFINITION_TENANT_GRANTS = self::TenantGrants;
 
     private function __construct() {}
 }

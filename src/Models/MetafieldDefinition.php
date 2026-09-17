@@ -14,7 +14,10 @@ use Illuminate\Support\Carbon;
 use Nvl\Metafields\Database\Factories\MetafieldDefinitionFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
+use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
+use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
+use Nvl\Tenancy\Services\TenantBoundary;
 use Nvl\Translatable\Contracts\TranslatableModel;
 use Nvl\Translatable\Enums\TranslationMutationPolicy;
 use Nvl\Translatable\RelatedTranslationDefinition;
@@ -26,6 +29,8 @@ use Nvl\Translatable\Translatable;
  * Defines the structure and type of metafields available in the system.
  *
  * @property string $id UUID primary key
+ * @property string|null $tenant_id Canonical tenant UUID when tenant-owned
+ * @property string|null $ownership_key Mixed catalog partition identity
  * @property string $namespace Namespace for grouping
  * @property string $key Specific key identifier
  * @property string $handle Unique namespace.key combination
@@ -43,9 +48,15 @@ use Nvl\Translatable\Translatable;
  * @property string|null $active_handle Unique handle for an active definition
  * @property Carbon|null $archived_at Archive timestamp
  * @property Carbon|null $deleted_at Soft-delete timestamp
+ * @property string|null $catalog_import_key Tenant-local import idempotency UUID
+ * @property string|null $catalog_source_id Immutable platform source UUID
+ * @property int|null $catalog_source_revision Immutable source revision
+ * @property string|null $catalog_source_hash Immutable source snapshot hash
+ * @property string|null $catalog_import_request_hash Immutable idempotency request hash
  */
 class MetafieldDefinition extends Model implements TranslatableModel
 {
+    use GuardsTenantOwnership;
     /** @use HasFactory<MetafieldDefinitionFactory> */
     use HasFactory;
 
@@ -104,6 +115,7 @@ class MetafieldDefinition extends Model implements TranslatableModel
                 'properties',
             ],
             mutationPolicy: TranslationMutationPolicy::DomainActionOnly,
+            ownershipResource: 'metafields.definitions',
         );
     }
 
@@ -124,6 +136,7 @@ class MetafieldDefinition extends Model implements TranslatableModel
             'default_referenced_id' => 'string',
             'display_order' => 'integer',
             'revision' => 'integer',
+            'catalog_source_revision' => 'integer',
             'archived_at' => 'datetime',
         ];
     }
@@ -170,6 +183,7 @@ class MetafieldDefinition extends Model implements TranslatableModel
 
     public function hasDefaultValue(?string $locale = null): bool
     {
+        $this->assertLoadedTranslationOwnership();
         if ($this->is_translatable) {
             return $this->translated('default_value', $locale) !== null;
         }
@@ -183,6 +197,7 @@ class MetafieldDefinition extends Model implements TranslatableModel
 
     public function getDefaultValue(?string $locale = null): mixed
     {
+        $this->assertLoadedTranslationOwnership();
         if (! $this->hasDefaultValue($locale)) {
             return null;
         }
@@ -222,6 +237,7 @@ class MetafieldDefinition extends Model implements TranslatableModel
      */
     public function displayTitle(?string $locale = null): string
     {
+        $this->assertLoadedTranslationOwnership();
         $title = $this->translated('title', $locale);
 
         return is_string($title) && $title !== '' ? $title : $this->handle;
@@ -232,6 +248,7 @@ class MetafieldDefinition extends Model implements TranslatableModel
      */
     public function displayDescription(?string $locale = null): ?string
     {
+        $this->assertLoadedTranslationOwnership();
         $description = $this->translated('description', $locale);
 
         return is_string($description) ? $description : null;
@@ -242,6 +259,7 @@ class MetafieldDefinition extends Model implements TranslatableModel
      */
     public function displayHint(?string $locale = null): ?string
     {
+        $this->assertLoadedTranslationOwnership();
         $hint = $this->translated('hint', $locale);
 
         return is_string($hint) ? $hint : null;
@@ -320,9 +338,32 @@ class MetafieldDefinition extends Model implements TranslatableModel
             return null;
         }
 
-        return MetafieldReferenceModelRegistry::findReferencedRecord(
+        $reference = MetafieldReferenceModelRegistry::findReferencedRecord(
             $this->referenced_model_type,
             $this->default_referenced_id,
         );
+        $tenant = $this->getAttribute('tenant_id');
+        if ($reference instanceof Model && is_string($tenant) && $reference->getAttribute('tenant_id') !== $tenant) {
+            throw new TenantBoundaryViolation('A Metafield default reference belongs to another tenant.');
+        }
+
+        return $reference;
+    }
+
+    /** Reject mismatched loaded localized definition rows. */
+    private function assertLoadedTranslationOwnership(): void
+    {
+        app(TenantBoundary::class)->assertRecord($this, 'metafields.definitions');
+        if (! $this->relationLoaded('translations')) {
+            return;
+        }
+        $tenant = $this->getAttribute('tenant_id');
+        $partition = $this->getAttribute('ownership_key');
+        foreach ($this->translations as $translation) {
+            if ((is_string($tenant) && $translation->getAttribute('tenant_id') !== $tenant)
+                || (is_string($partition) && $translation->getAttribute('ownership_key') !== $partition)) {
+                throw new TenantBoundaryViolation('A Metafield definition translation has mismatched ownership.');
+            }
+        }
     }
 }

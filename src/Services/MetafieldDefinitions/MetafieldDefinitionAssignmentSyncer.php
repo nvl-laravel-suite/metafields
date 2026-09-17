@@ -27,6 +27,10 @@ final class MetafieldDefinitionAssignmentSyncer
             'is_active' => $assignment->isActive,
             'ui_config' => $uiConfig,
         ]);
+        $definitionAssignment->forceFill(array_filter([
+            'tenant_id' => $definition->getAttribute('tenant_id'),
+            'ownership_key' => $definition->getAttribute('ownership_key'),
+        ], static fn (mixed $value): bool => $value !== null));
         $definitionAssignment->save();
 
         if ($definitionAssignment->trashed()) {

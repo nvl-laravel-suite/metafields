@@ -11,8 +11,12 @@ use Nvl\Metafields\Contracts\MetafieldAuthorization;
 use Nvl\Metafields\Contracts\MetafieldReferenceAuthorization;
 use Nvl\Metafields\Data\MetafieldDoctorCheckData;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
+use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
+use Nvl\Tenancy\Services\EffectiveTenantConnection;
+use Nvl\Tenancy\Services\TenantInstallationState;
+use Nvl\Tenancy\Services\TenantResourceRegistry;
 use Throwable;
 
 /**
@@ -23,6 +27,9 @@ final readonly class MetafieldDoctor
     public function __construct(
         private Container $container,
         private MetafieldOwnerRegistry $owners,
+        private TenantInstallationState $tenantInstallation,
+        private EffectiveTenantConnection $tenantConnections,
+        private TenantResourceRegistry $tenantResources,
     ) {}
 
     /**
@@ -32,6 +39,7 @@ final readonly class MetafieldDoctor
     {
         return [
             ...$this->schemaChecks(),
+            ...$this->tenancyChecks(),
             $this->authorizationCheck(),
             $this->referenceAuthorizationCheck(),
             $this->routeCheck(),
@@ -94,7 +102,20 @@ final readonly class MetafieldDoctor
             );
         }
 
-        $indexes = [
+        $indexes = config('tenancy.enabled') === true ? [
+            [
+                MetafieldsTables::Definitions,
+                'metafield_definitions_partition_handle_unique',
+                [config('tenancy.sharing.metafields') === 'copy' || config('tenancy.resources.metafields') === 'platform' ? 'ownership_key' : 'tenant_id', 'active_handle'],
+                true,
+            ],
+            [
+                MetafieldsTables::Metafields,
+                'metafields_tenant_owner_definition_unique',
+                ['tenant_id', 'metafieldable_type', 'metafieldable_id', 'definition_id'],
+                true,
+            ],
+        ] : [
             [
                 MetafieldsTables::Definitions,
                 'metafields_definitions_active_handle_unique',
@@ -124,6 +145,93 @@ final readonly class MetafieldDoctor
         foreach ($indexes as [$table, $name, $columns, $unique]) {
             $checks[] = $this->indexCheck($table, $name, $columns, $unique);
         }
+
+        return $checks;
+    }
+
+    /**
+     * Verify opt-in resource markers, canonical connection, and adopted structure.
+     *
+     * @return list<MetafieldDoctorCheckData>
+     */
+    private function tenancyChecks(): array
+    {
+        if (config('tenancy.enabled') !== true) {
+            return [];
+        }
+
+        $checks = [];
+        $registered = $this->tenantResources->all();
+        foreach ([
+            'metafields.definitions',
+            'metafields.definition-assignments',
+            'metafields.definition-translations',
+            'metafields.values',
+            'metafields.value-translations',
+            'metafields.catalog-grants',
+        ] as $resource) {
+            if (! isset($registered[$resource])) {
+                $checks[] = new MetafieldDoctorCheckData(
+                    key: 'tenancy.resource.'.$resource,
+                    severity: 'error',
+                    passed: false,
+                    message: "Tenant ownership resource [{$resource}] is not registered.",
+                );
+
+                continue;
+            }
+            try {
+                $this->tenantInstallation->assertUsable($resource);
+                $checks[] = new MetafieldDoctorCheckData(
+                    key: 'tenancy.marker.'.$resource,
+                    severity: 'error',
+                    passed: true,
+                    message: "Tenant ownership marker [{$resource}] is active and compatible.",
+                );
+            } catch (Throwable $exception) {
+                $checks[] = new MetafieldDoctorCheckData(
+                    key: 'tenancy.marker.'.$resource,
+                    severity: 'error',
+                    passed: false,
+                    message: 'Tenant ownership marker is unavailable or incompatible: '.mb_substr($exception->getMessage(), 0, 500),
+                );
+            }
+        }
+
+        $connectionMatches = (new MetafieldDefinition)->getConnection() === $this->tenantConnections->core();
+        $checks[] = new MetafieldDoctorCheckData(
+            key: 'tenancy.connection',
+            severity: 'error',
+            passed: $connectionMatches,
+            message: $connectionMatches
+                ? 'Metafield operations use the canonical tenant connection.'
+                : 'Metafield operations must use the canonical tenant connection.',
+        );
+        $partitioned = config('tenancy.sharing.metafields') === 'copy'
+            || config('tenancy.resources.metafields') === 'platform';
+        $ownershipReady = ! $partitioned || collect([
+            MetafieldsTables::Definitions,
+            MetafieldsTables::DefinitionAssignments,
+            MetafieldsTables::DefinitionsI18n,
+        ])->every(static fn (string $table): bool => Schema::hasColumn($table, 'ownership_key'));
+        $checks[] = new MetafieldDoctorCheckData(
+            key: 'tenancy.schema.partition',
+            severity: 'error',
+            passed: $ownershipReady,
+            message: $ownershipReady
+                ? 'Metafield ownership columns match the configured partition mode.'
+                : 'Metafield catalog sharing or platform mode requires the adopted mixed ownership schema.',
+        );
+        $grantReady = Schema::hasTable(MetafieldsTables::TenantGrants)
+            && Schema::hasTable(MetafieldsTables::TenantGrantLocks);
+        $checks[] = new MetafieldDoctorCheckData(
+            key: 'tenancy.schema.catalog_grants',
+            severity: 'error',
+            passed: $grantReady,
+            message: $grantReady
+                ? 'Metafield catalog grants and identity locks are installed.'
+                : 'Metafield catalog grants or identity locks are missing.',
+        );
 
         return $checks;
     }

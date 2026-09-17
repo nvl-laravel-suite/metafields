@@ -12,8 +12,8 @@ use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
+use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
 use Nvl\Metafields\Support\MetafieldJsonPropertySchemaValidator;
-use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
 use Nvl\Metafields\Support\MetafieldValidationRuleCompiler;
 use Spatie\LaravelData\Optional;
 
@@ -22,6 +22,9 @@ use Spatie\LaravelData\Optional;
  */
 final class MetafieldDefinitionMutationGuard
 {
+    /** Create the definition mutation guard. */
+    public function __construct(private readonly MetafieldReferenceRecordResolver $references) {}
+
     /**
      * Reject updates that would invalidate defaults, translations, or active owner values.
      */
@@ -372,7 +375,7 @@ final class MetafieldDefinitionMutationGuard
         }
 
         if ($type === MetafieldTypeEnum::Reference) {
-            return MetafieldReferenceModelRegistry::referencedRecordExists(
+            return $this->references->exists(
                 $referencedModelType,
                 $value,
             );
@@ -389,7 +392,7 @@ final class MetafieldDefinitionMutationGuard
         }
 
         return is_array($references) && collect($references)->doesntContain(
-            static fn (mixed $reference): bool => ! MetafieldReferenceModelRegistry::referencedRecordExists(
+            fn (mixed $reference): bool => ! $this->references->exists(
                 $referencedModelType,
                 $reference,
             ),

@@ -23,6 +23,7 @@ final readonly class OwnerMetafieldFieldCatalog
     public function __construct(
         private MetafieldOwnerRegistry $ownerRegistry,
         private OwnerMetafieldRecordFinder $recordFinder,
+        private MetafieldOwnerModelResolver $ownerResolver,
     ) {}
 
     /**
@@ -32,6 +33,7 @@ final readonly class OwnerMetafieldFieldCatalog
      */
     public function list(Model $owner, ?string $locale = null): Collection
     {
+        $owner = $this->ownerResolver->canonical($owner);
         $ownerType = $this->ownerRegistry->resolveOwnerType($owner);
 
         /** @var Collection<int, MetafieldDefinitionAssignment> $assignments */

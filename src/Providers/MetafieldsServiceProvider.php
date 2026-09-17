@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -30,13 +31,25 @@ use Nvl\Metafields\Contracts\SyncOwnerMetafieldsContract;
 use Nvl\Metafields\Contracts\UpdateMetafieldDefinitionContract;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
+use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
+use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
+use Nvl\Metafields\Models\MetafieldTranslation;
 use Nvl\Metafields\Services\ConfiguredMetafieldAuthorization;
 use Nvl\Metafields\Services\ConfiguredMetafieldReferenceAuthorization;
+use Nvl\Metafields\Services\Metafields\MetafieldOwnerModelResolver;
+use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
 use Nvl\Metafields\Support\MetafieldConfiguration;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
+use Nvl\Metafields\Tenancy\MetafieldAdoptionAdapter;
+use Nvl\Metafields\Tenancy\MetafieldTenancyResources;
 use Nvl\Support\Traits\MergesPackageConfiguration;
+use Nvl\Tenancy\Services\TenantAdoptionRegistry;
+use Nvl\Tenancy\Services\TenantBoundary;
+use Nvl\Tenancy\Services\TenantResourceRegistry;
 use Nvl\Translatable\Services\TranslationResourceRegistry;
 
+/** Registers Metafields' package services, ownership graph, and optional surfaces. */
 final class MetafieldsServiceProvider extends ServiceProvider
 {
     use MergesPackageConfiguration;
@@ -48,8 +61,15 @@ final class MetafieldsServiceProvider extends ServiceProvider
         TranslationResourceRegistry $translationResources,
         TypeScriptSourceRegistry $typeScriptSources,
         MetafieldOwnerRegistry $owners,
+        MetafieldTenancyResources $tenancyResources,
+        TenantResourceRegistry $tenantResources,
+        TenantAdoptionRegistry $tenantAdoptions,
+        TenantBoundary $tenantBoundary,
     ): void {
         $typeScriptSources->register(__DIR__.'/..', 'nvl/metafields');
+        $tenancyResources->register($tenantResources);
+        $tenantAdoptions->register('metafields', MetafieldAdoptionAdapter::class);
+        $this->registerTenantScopes($tenantBoundary);
 
         $this->publishes([
             __DIR__.'/../../resources/boost/skills' => base_path('.agents/skills'),
@@ -96,6 +116,9 @@ final class MetafieldsServiceProvider extends ServiceProvider
         $this->mergePackageConfiguration(__DIR__.'/../../config/metafields.php', 'metafields');
 
         $this->app->register(RouteServiceProvider::class);
+
+        $this->app->scoped(MetafieldOwnerModelResolver::class);
+        $this->app->scoped(MetafieldReferenceRecordResolver::class);
 
         $this->app->bind(SetMetafieldContract::class, SetMetafieldAction::class);
         $this->app->bind(SyncOwnerMetafieldsContract::class, SyncOwnerMetafieldsAction::class);
@@ -190,5 +213,22 @@ final class MetafieldsServiceProvider extends ServiceProvider
     public function provides(): array
     {
         return [];
+    }
+
+    /** Register package ownership scopes from the injected boundary. */
+    private function registerTenantScopes(TenantBoundary $boundary): void
+    {
+        foreach ([
+            MetafieldDefinition::class => 'metafields.definitions',
+            MetafieldDefinitionAssignment::class => 'metafields.definition-assignments',
+            MetafieldDefinitionTranslation::class => 'metafields.definition-translations',
+            Metafield::class => 'metafields.values',
+            MetafieldTranslation::class => 'metafields.value-translations',
+            MetafieldDefinitionTenantGrant::class => 'metafields.catalog-grants',
+        ] as $model => $resource) {
+            $model::addGlobalScope('tenant', static function (Builder $query) use ($boundary, $resource): void {
+                $boundary->query($query, $resource);
+            });
+        }
     }
 }

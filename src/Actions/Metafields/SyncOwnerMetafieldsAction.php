@@ -15,6 +15,7 @@ use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Services\Metafields\OwnerMetafieldAssignmentCatalog;
+use Nvl\Metafields\Services\Metafields\MetafieldOwnerModelResolver;
 use Nvl\Metafields\Services\Metafields\OwnerMetafieldRecordFinder;
 use Nvl\Metafields\Services\Metafields\OwnerMetafieldRecordWriter;
 use Nvl\Metafields\Services\Metafields\OwnerMetafieldSyncValidator;
@@ -37,6 +38,7 @@ final class SyncOwnerMetafieldsAction implements SyncOwnerMetafieldsContract
         private readonly OwnerMetafieldRecordFinder $recordFinder,
         private readonly OwnerMetafieldSyncValidator $syncValidator,
         private readonly OwnerMetafieldRecordWriter $recordWriter,
+        private readonly MetafieldOwnerModelResolver $ownerResolver,
     ) {}
 
     /**
@@ -48,6 +50,7 @@ final class SyncOwnerMetafieldsAction implements SyncOwnerMetafieldsContract
      */
     public function execute(Model $owner, SyncOwnerMetafieldsPayload $data): Collection
     {
+        $owner = $this->ownerResolver->canonical($owner);
         $ownerType = $this->ownerRegistry->resolveOwnerType($owner);
         $items = $data->items->toCollection()->values();
         /** @var list<string> $definitionIds */
@@ -64,6 +67,7 @@ final class SyncOwnerMetafieldsAction implements SyncOwnerMetafieldsContract
             $owner,
             $ownerType,
         ): Collection {
+            $owner = $this->ownerResolver->canonical($owner, lock: true);
             $ownerAssignments = $this->assignmentCatalog->activeForOwnerType($ownerType);
             $assignments = $ownerAssignments->filter(
                 static fn (MetafieldDefinitionAssignment $assignment): bool => in_array(

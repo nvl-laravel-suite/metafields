@@ -13,7 +13,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Nvl\Metafields\Database\Factories\MetafieldFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
+use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
+use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
+use Nvl\Tenancy\Services\TenantBoundary;
 use Nvl\Translatable\Contracts\TranslatableModel;
 use Nvl\Translatable\Enums\TranslationMutationPolicy;
 use Nvl\Translatable\RelatedTranslationDefinition;
@@ -26,6 +29,7 @@ use Nvl\Translatable\Translatable;
  * Supports translatable and non-translatable values, including references.
  *
  * @property string $id UUID primary key
+ * @property string $tenant_id Canonical tenant UUID inherited from the owner
  * @property string $definition_id Linked definition UUID
  * @property string $metafieldable_id Polymorphic owner ID
  * @property string $metafieldable_type Polymorphic owner type
@@ -37,6 +41,7 @@ use Nvl\Translatable\Translatable;
  */
 class Metafield extends Model implements TranslatableModel
 {
+    use GuardsTenantOwnership;
     /** @use HasFactory<MetafieldFactory> */
     use HasFactory;
 
@@ -79,6 +84,7 @@ class Metafield extends Model implements TranslatableModel
             foreignKey: 'metafield_id',
             fields: ['value'],
             mutationPolicy: TranslationMutationPolicy::DomainActionOnly,
+            ownershipResource: 'metafields.values',
         );
     }
 
@@ -127,6 +133,7 @@ class Metafield extends Model implements TranslatableModel
      */
     public function getValue(?string $locale = null): mixed
     {
+        $this->assertLoadedGraphOwnership();
         if ($this->definition->type === MetafieldTypeEnum::Reference) {
             return $this->resolveReference();
         }
@@ -134,10 +141,15 @@ class Metafield extends Model implements TranslatableModel
         if ($this->definition->type === MetafieldTypeEnum::ReferenceList) {
             return collect((array) $this->definition->type->cast($this->value))
                 ->map(
-                    fn (mixed $identifier): ?Model => MetafieldReferenceModelRegistry::findReferencedRecord(
+                    function (mixed $identifier): ?Model {
+                        $reference = MetafieldReferenceModelRegistry::findReferencedRecord(
                         $this->definition->referenced_model_type,
                         $identifier,
-                    ),
+                        );
+                        $this->assertReferenceOwnership($reference);
+
+                        return $reference;
+                    },
                 )
                 ->filter()
                 ->values();
@@ -161,9 +173,42 @@ class Metafield extends Model implements TranslatableModel
             return null;
         }
 
-        return MetafieldReferenceModelRegistry::findReferencedRecord(
+        $reference = MetafieldReferenceModelRegistry::findReferencedRecord(
             $this->definition->referenced_model_type,
             $this->referenced_id,
         );
+        $this->assertReferenceOwnership($reference);
+
+        return $reference;
+    }
+
+    /** Reject mismatched loaded parent and locale rows before exposing values. */
+    private function assertLoadedGraphOwnership(): void
+    {
+        app(TenantBoundary::class)->assertRecord($this, 'metafields.values');
+        $tenant = $this->getAttribute('tenant_id');
+        app(TenantBoundary::class)->assertRecord($this->definition, 'metafields.definitions');
+        if (is_string($tenant) && $this->definition->getAttribute('tenant_id') !== $tenant) {
+            throw new TenantBoundaryViolation('A Metafield definition belongs to another tenant.');
+        }
+        if ($this->relationLoaded('translations')) {
+            foreach ($this->translations as $translation) {
+                if (is_string($tenant) && $translation->getAttribute('tenant_id') !== $tenant) {
+                    throw new TenantBoundaryViolation('A Metafield translation belongs to another tenant.');
+                }
+            }
+        }
+    }
+
+    /** Reject platform and foreign-tenant reference targets. */
+    private function assertReferenceOwnership(?Model $reference): void
+    {
+        if (! $reference instanceof Model) {
+            return;
+        }
+        $tenant = $this->getAttribute('tenant_id');
+        if (is_string($tenant) && $reference->getAttribute('tenant_id') !== $tenant) {
+            throw new TenantBoundaryViolation('A Metafield reference belongs to another tenant.');
+        }
     }
 }

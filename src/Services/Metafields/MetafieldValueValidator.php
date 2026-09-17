@@ -10,7 +10,6 @@ use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Support\MetafieldJsonPropertySchemaValidator;
 use Nvl\Metafields\Support\MetafieldPayloadLimits;
-use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
 use Nvl\Metafields\Support\MetafieldValidationRuleCompiler;
 
 /**
@@ -23,6 +22,7 @@ final readonly class MetafieldValueValidator
      */
     public function __construct(
         private MetafieldReferenceAuthorization $referenceAuthorization,
+        private MetafieldReferenceRecordResolver $references,
     ) {}
 
     /**
@@ -110,7 +110,7 @@ final readonly class MetafieldValueValidator
             return false;
         }
 
-        $reference = MetafieldReferenceModelRegistry::findReferencedRecord(
+        $reference = $this->references->resolve(
             $definition->referenced_model_type,
             $value,
         );
@@ -144,7 +144,7 @@ final readonly class MetafieldValueValidator
         }
 
         foreach ($value as $reference) {
-            $referencedRecord = MetafieldReferenceModelRegistry::findReferencedRecord(
+            $referencedRecord = $this->references->resolve(
                 $definition->referenced_model_type,
                 $reference,
             );

@@ -11,9 +11,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Nvl\Metafields\Database\Factories\MetafieldDefinitionAssignmentFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
+use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
 
 /**
  * @property string $id
+ * @property string|null $tenant_id Canonical definition tenant UUID
+ * @property string|null $ownership_key Canonical definition partition identity
  * @property string $definition_id
  * @property string $owner_type
  * @property string|null $section
@@ -25,6 +28,7 @@ use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
  */
 class MetafieldDefinitionAssignment extends Model
 {
+    use GuardsTenantOwnership;
     /** @use HasFactory<MetafieldDefinitionAssignmentFactory> */
     use HasFactory;
 

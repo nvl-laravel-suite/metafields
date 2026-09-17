@@ -8,6 +8,7 @@ use Nvl\Metafields\Data\MetafieldDefinitionMutationPayload;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Translatable\Services\TranslationWriter;
+use Nvl\Tenancy\Services\TenantBoundary;
 use Spatie\LaravelData\Optional;
 
 /**
@@ -20,6 +21,7 @@ final readonly class MetafieldDefinitionWriter
      */
     public function __construct(
         private TranslationWriter $translations,
+        private TenantBoundary $boundary,
     ) {}
 
     /**
@@ -27,7 +29,21 @@ final readonly class MetafieldDefinitionWriter
      */
     public function create(MetafieldDefinitionMutationPayload $data): MetafieldDefinition
     {
+        return $this->createImported($data, []);
+    }
+
+    /**
+     * Create a definition with server-owned immutable provenance attributes.
+     *
+     * @param array<string, bool|int|string|null> $provenance
+     */
+    public function createImported(MetafieldDefinitionMutationPayload $data, array $provenance): MetafieldDefinition
+    {
         $definition = new MetafieldDefinition($this->payload($data, true));
+        $definition->forceFill([
+            ...$this->boundary->attributes('metafields.definitions'),
+            ...$provenance,
+        ]);
         $this->syncDefaultValue($definition, $data);
         $definition->save();
         $this->syncTranslations($definition, $data);

@@ -8,11 +8,14 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
+use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
 
 /**
  * Stores localized definition copy and defaults for one metafield locale.
  *
  * @property string $id
+ * @property string|null $tenant_id Canonical definition tenant UUID
+ * @property string|null $ownership_key Canonical definition partition identity
  * @property string $metafield_definition_id
  * @property string $locale
  * @property string $title
@@ -24,6 +27,7 @@ use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
  */
 final class MetafieldDefinitionTranslation extends Model
 {
+    use GuardsTenantOwnership;
     use HasUuids;
 
     public const string TABLE = MetafieldsTables::DefinitionsI18n;

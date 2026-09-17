@@ -113,6 +113,10 @@ final readonly class OwnerMetafieldRecordWriter
                 'metafieldable_id' => ModelIdentifier::required($owner),
                 'metafieldable_type' => $owner->getMorphClass(),
             ]);
+            $tenant = $owner->getAttribute('tenant_id');
+            if (is_string($tenant) && $tenant !== '') {
+                $metafield->forceFill(['tenant_id' => $tenant]);
+            }
             $metafield->save();
 
             return $metafield;

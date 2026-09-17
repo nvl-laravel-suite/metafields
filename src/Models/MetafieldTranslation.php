@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
+use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
 
 /**
  * MetafieldTranslation Model
@@ -15,6 +16,7 @@ use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
  * Stores translations for translatable metafield values.
  *
  * @property string $id UUID primary key
+ * @property string $tenant_id Canonical value tenant UUID
  * @property string $metafield_id Parent metafield UUID
  * @property string $locale Locale code (en, bg)
  * @property string|null $value Translated value string
@@ -22,6 +24,7 @@ use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
  */
 class MetafieldTranslation extends Model
 {
+    use GuardsTenantOwnership;
     use HasUuids;
 
     public const string TABLE = MetafieldsTables::I18n;
