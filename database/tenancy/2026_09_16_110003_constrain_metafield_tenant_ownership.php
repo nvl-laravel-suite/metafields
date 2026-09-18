@@ -67,13 +67,17 @@ return new class extends Migration
     public function down(): void
     {
         $schema = Schema::getFacadeRoot();
+        $partition = config('tenancy.sharing.metafields') === 'copy'
+            || config('tenancy.resources.metafields') === 'platform'
+            ? 'ownership_key'
+            : 'tenant_id';
         foreach ([
-            [MetafieldsTables::DefinitionAssignments, MetafieldsTables::DefinitionAssignments.'_definition_partition_foreign'],
-            [MetafieldsTables::DefinitionsI18n, MetafieldsTables::DefinitionsI18n.'_definition_partition_foreign'],
-            [MetafieldsTables::Metafields, 'metafields_tenant_definition_foreign'],
-            [MetafieldsTables::I18n, 'metafield_i18n_tenant_parent_foreign'],
-        ] as [$table, $name]) {
-            $this->dropForeign($schema, $table, $name);
+            [MetafieldsTables::DefinitionAssignments, [$partition, 'definition_id']],
+            [MetafieldsTables::DefinitionsI18n, [$partition, 'metafield_definition_id']],
+            [MetafieldsTables::Metafields, ['tenant_id', 'definition_id']],
+            [MetafieldsTables::I18n, ['tenant_id', 'metafield_id']],
+        ] as [$table, $columns]) {
+            $this->dropForeign($schema, $table, $columns);
         }
         foreach ([
             [MetafieldsTables::Definitions, 'metafield_definitions_partition_id_unique', true],
@@ -122,16 +126,23 @@ return new class extends Migration
     {
         foreach ($schema->getForeignKeys($table) as $foreign) {
             if (($foreign['foreign_table'] ?? null) === $parent) {
-                $this->dropForeign($schema, $table, $foreign['name']);
+                $name = $foreign['name'] ?? null;
+                $columns = $foreign['columns'] ?? [];
+                $this->dropForeign($schema, $table, is_string($name) ? $name : $columns);
             }
         }
     }
 
     /** Drop one named foreign key when present. */
-    private function dropForeign(Builder $schema, string $table, string $name): void
+    private function dropForeign(Builder $schema, string $table, string|array $identifier): void
     {
-        if ($schema->hasTable($table) && array_any($schema->getForeignKeys($table), static fn (array $foreign): bool => $foreign['name'] === $name)) {
-            $schema->table($table, static fn (Blueprint $blueprint) => $blueprint->dropForeign($name));
+        if ($schema->hasTable($table) && array_any(
+            $schema->getForeignKeys($table),
+            static fn (array $foreign): bool => is_string($identifier)
+                ? ($foreign['name'] ?? null) === $identifier
+                : ($foreign['columns'] ?? []) === $identifier,
+        )) {
+            $schema->table($table, static fn (Blueprint $blueprint) => $blueprint->dropForeign($identifier));
         }
     }
 
@@ -190,7 +201,7 @@ return new class extends Migration
 
             return;
         }
-        $expression = $driver === 'mysql'
+        $expression = in_array($driver, ['mysql', 'mariadb'], true)
             ? "((ownership_key = 'platform' AND tenant_id IS NULL) OR (tenant_id IS NOT NULL AND ownership_key = CONCAT('tenant:', tenant_id)))"
             : "((ownership_key = 'platform' AND tenant_id IS NULL) OR (tenant_id IS NOT NULL AND ownership_key = 'tenant:' || tenant_id))";
         try {

@@ -8,6 +8,7 @@ use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Migrations\Migrator;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Str;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\MetafieldDefinition;
@@ -109,7 +110,11 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
         return new TenantBackfillResult($last->recordId, count($batch));
     }
 
-    /** Verify mapping completeness, child inheritance, owner identity, and copy ledgers. */
+    /**
+     * Verify mapping completeness, child inheritance, owner identity, and copy ledgers.
+     *
+     * @phpstan-impure
+     */
     public function verify(TenantAdoptionPlan $plan): TenantVerification
     {
         $this->assertConnection($plan);
@@ -145,20 +150,23 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
         ] as $child => $foreign) {
             $rows = $connection->table($child.' as child')
                 ->leftJoin(MetafieldsTables::Definitions.' as root', 'root.id', '=', 'child.'.$foreign)
-                ->where(function ($query) use ($partitioned): void {
+                ->where(function (Builder $query) use ($partitioned): void {
                     $query->whereNull('root.id')->orWhereColumn('child.tenant_id', '!=', 'root.tenant_id');
                     if ($partitioned) {
                         $query->orWhereColumn('child.ownership_key', '!=', 'root.ownership_key');
                     }
                 })->limit(25)->pluck('child.id');
             foreach ($rows as $id) {
-                $errors[] = $child.'.ownership:'.$id;
+                $errors[] = $child.'.ownership:'.(is_string($id) || is_int($id) ? (string) $id : 'unknown');
             }
         }
         foreach ($connection->table(MetafieldsTables::Metafields)->get(['id', 'definition_id', 'metafieldable_type', 'metafieldable_id', 'tenant_id']) as $value) {
-            if (! is_string($value->tenant_id) || $this->ownerTenant($value) !== $value->tenant_id
+            $valueId = $value->id ?? null;
+            $definitionId = $value->definition_id ?? null;
+            if (! is_string($valueId) || ! is_string($definitionId) || ! is_string($value->tenant_id)
+                || $this->ownerTenant($value) !== $value->tenant_id
                 || ! $connection->table(MetafieldsTables::Definitions)->where('id', $value->definition_id)->where('tenant_id', $value->tenant_id)->exists()) {
-                $errors[] = 'metafields.values.ownership:'.$value->id;
+                $errors[] = 'metafields.values.ownership:'.(is_string($valueId) ? $valueId : 'unknown');
             }
         }
         if ($schema->hasTable(MetafieldsTables::TenantAdoptionCopies)
@@ -172,13 +180,17 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
     /** Apply final constraints only after complete verification. */
     public function activate(TenantAdoptionPlan $plan): void
     {
-        if (! $this->verify($plan)->passed()) {
-            throw new TenantBoundaryViolation('Metafield tenant schema did not verify before activation.');
-        }
+        $this->assertVerified($plan, 'Metafield tenant schema did not verify before activation.');
         $path = dirname(__DIR__, 2).'/database/tenancy/2026_09_16_110003_constrain_metafield_tenant_ownership.php';
         $this->migrator->usingConnection($plan->connection, fn () => $this->migrator->run([$path], ['force' => true]));
-        if (! $this->verify($plan)->passed()) {
-            throw new TenantBoundaryViolation('Metafield tenant schema did not verify after activation.');
+        $this->assertVerified($plan, 'Metafield tenant schema did not verify after activation.');
+    }
+
+    /** Require a fresh persisted verification at one activation checkpoint. */
+    private function assertVerified(TenantAdoptionPlan $plan, string $message): void
+    {
+        if ($this->verify($plan)->errors !== []) {
+            throw new TenantBoundaryViolation($message);
         }
     }
 
@@ -190,16 +202,19 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
         if (! $source instanceof stdClass) {
             throw new TenantBoundaryViolation('A reviewed Metafield definition is unavailable.');
         }
+        if (! is_string($source->id ?? null)) {
+            throw new TenantBoundaryViolation('A reviewed Metafield definition has no canonical identifier.');
+        }
         if ($this->platformOwned()) {
             $connection->transaction(fn () => $this->writeDefinitionOwnership($connection, $source->id, null, 'platform'));
 
             return;
         }
 
-        $destinations = [$assignment->tenantId->value => $assignment->recordId];
-        foreach (($assignment->metadata['splits'] ?? []) as $split) {
-            $destinations[$split['tenant_id']] = $split['destination_id'];
-        }
+        $destinations = [
+            $assignment->tenantId->value => $assignment->recordId,
+            ...$this->splitDestinations($assignment),
+        ];
         ksort($destinations);
         $valueTenants = [];
         foreach ($connection->table(MetafieldsTables::Metafields)->where('definition_id', $source->id)->get() as $value) {
@@ -266,6 +281,27 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
                 ]);
             }
         });
+    }
+
+    /** @return array<string, string> */
+    private function splitDestinations(TenantAssignment $assignment): array
+    {
+        $splits = $assignment->metadata['splits'] ?? [];
+        if (! is_array($splits)) {
+            throw new TenantConfigurationInvalid('Metafield definition split metadata is invalid.');
+        }
+
+        $destinations = [];
+        foreach ($splits as $split) {
+            if (! is_array($split)
+                || ! is_string($split['tenant_id'] ?? null)
+                || ! is_string($split['destination_id'] ?? null)) {
+                throw new TenantConfigurationInvalid('Metafield split identities must be canonical UUIDs.');
+            }
+            $destinations[$split['tenant_id']] = $split['destination_id'];
+        }
+
+        return $destinations;
     }
 
     /** Apply one definition partition to the root and all definition-owned children. */

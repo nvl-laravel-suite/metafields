@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\Metafields;
 
+use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
@@ -18,6 +19,7 @@ final readonly class MetafieldReferenceRecordResolver
     public function __construct(
         private TenantResourceRegistry $resources,
         private TenantBoundary $boundary,
+        private Repository $configuration,
     ) {}
 
     /** Resolve an exact reference alias and identifier or fail closed. */
@@ -30,9 +32,11 @@ final readonly class MetafieldReferenceRecordResolver
             return null;
         }
         $model = new $class;
-        $resource = $this->resources->forModel($model);
         $query = $model->newQueryWithoutScopes()->whereKey($id);
-        $this->boundary->query($query, $resource->key);
+        if ($this->configuration->get('tenancy.enabled') === true) {
+            $resource = $this->resources->forModel($model);
+            $this->boundary->query($query, $resource->key);
+        }
         if ($lock) {
             $query->lockForUpdate();
         }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Support;
 
+use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
@@ -127,7 +128,7 @@ final class MetafieldReferenceModelRegistry
      */
     public static function referencedRecordExists(mixed $modelClass, mixed $id): bool
     {
-        return app(MetafieldReferenceRecordResolver::class)->exists($modelClass, $id);
+        return Container::getInstance()->make(MetafieldReferenceRecordResolver::class)->exists($modelClass, $id);
     }
 
     /**
@@ -135,7 +136,7 @@ final class MetafieldReferenceModelRegistry
      */
     public static function findReferencedRecord(mixed $modelClass, mixed $id): ?Model
     {
-        return app(MetafieldReferenceRecordResolver::class)->resolve($modelClass, $id);
+        return Container::getInstance()->make(MetafieldReferenceRecordResolver::class)->resolve($modelClass, $id);
     }
 
     /**
@@ -165,5 +166,4 @@ final class MetafieldReferenceModelRegistry
         return class_exists($modelClass)
             && is_subclass_of($modelClass, Model::class);
     }
-
 }

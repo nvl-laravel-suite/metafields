@@ -29,6 +29,7 @@ use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
 class MetafieldDefinitionAssignment extends Model
 {
     use GuardsTenantOwnership;
+
     /** @use HasFactory<MetafieldDefinitionAssignmentFactory> */
     use HasFactory;
 

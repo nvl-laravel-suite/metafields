@@ -95,7 +95,10 @@ final readonly class MetafieldDefinitionCatalogReader
         );
     }
 
-    /** @param array<string, array<string, mixed>> $translations @return array{title: string, description: ?string, hint: ?string} */
+    /**
+     * @param  array<string, array<string, mixed>>  $translations
+     * @return array{title: string, description: ?string, hint: ?string}
+     */
     private function displayTranslation(array $translations): array
     {
         $chain = array_values(array_unique(array_filter([

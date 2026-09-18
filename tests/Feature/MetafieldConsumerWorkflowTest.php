@@ -43,6 +43,7 @@ use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Support\MetafieldValidationRuleCompiler;
 use Nvl\Metafields\Support\OwnerMetafieldBooleanFilter;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
+use Nvl\Tenancy\Services\TenantInstallationState;
 
 function metafieldTestOwner(): TestMetafieldOwner
 {
@@ -248,6 +249,7 @@ it('keeps owner reads lock-free while allowing mutation lookups to request row l
 
 it('keeps owner field projection queries independent of assigned field count', function (): void {
     $owner = metafieldTestOwner();
+    app(TenantInstallationState::class)->assertUsable('metafields.values');
     $create = static function (int $index) use ($owner): void {
         $definition = MetafieldDefinition::factory()->create([
             'namespace' => 'query',

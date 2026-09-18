@@ -144,7 +144,7 @@ final readonly class MetafieldDefinitionImporter
             MetafieldTypeEnum::ReferenceList => is_array($definition->defaultValue) ? array_values($definition->defaultValue) : [],
             default => [],
         };
-        $sourceIds = array_values(array_unique(array_map(static fn (mixed $id): string => (string) $id, $sourceIds)));
+        $sourceIds = array_values(array_unique(array_filter($sourceIds, is_string(...))));
         $map = $data->referenceMap;
         ksort($map);
         $expected = $sourceIds;
@@ -156,7 +156,10 @@ final readonly class MetafieldDefinitionImporter
         return [$sourceIds, $map];
     }
 
-    /** @param list<string> $sourceIds @param array<string, string> $map */
+    /**
+     * @param  list<string>  $sourceIds
+     * @param  array<string, string>  $map
+     */
     private function mappedDefault(MetafieldDefinitionCatalogSnapshot $source, array $sourceIds, array $map): mixed
     {
         $definition = $source->definition;
@@ -165,11 +168,15 @@ final readonly class MetafieldDefinitionImporter
             if (! $target instanceof Model) {
                 throw new TenantBoundaryViolation('A mapped Metafield reference target is unavailable.');
             }
-            $map[$sourceId] = (string) $target->getKey();
+            $targetId = $target->getAttribute($target->getKeyName());
+            if (! is_string($targetId) || $targetId === '') {
+                throw new TenantBoundaryViolation('A mapped Metafield reference target has no canonical identifier.');
+            }
+            $map[$sourceId] = $targetId;
         }
         $mapped = match ($definition->type) {
             MetafieldTypeEnum::Reference => $sourceIds === [] ? null : $map[$sourceIds[0]],
-            MetafieldTypeEnum::ReferenceList => array_map(static fn (mixed $id): string => $map[(string) $id], (array) $definition->defaultValue),
+            MetafieldTypeEnum::ReferenceList => array_map(static fn (string $id): string => $map[$id], $sourceIds),
             default => $definition->defaultValue,
         };
 

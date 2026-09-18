@@ -10,7 +10,7 @@ use Spatie\LaravelData\Data;
 final class ImportPlatformMetafieldDefinitionData extends Data
 {
     /**
-     * @param array<string, string> $referenceMap Source reference ID to target reference ID.
+     * @param  array<string, string>  $referenceMap  Source reference ID to target reference ID.
      */
     public function __construct(
         public readonly string $grantId,

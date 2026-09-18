@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\Metafields;
 
+use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
-use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Models\Metafield;
+use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
 use Nvl\Tenancy\Services\TenantBoundary;
 use Nvl\Tenancy\Services\TenantResourceRegistry;
@@ -26,6 +27,7 @@ final class MetafieldOwnerModelResolver
         private readonly MetafieldOwnerRegistry $ownerRegistry,
         private readonly TenantResourceRegistry $resources,
         private readonly TenantBoundary $boundary,
+        private readonly Repository $configuration,
     ) {}
 
     /**
@@ -55,15 +57,32 @@ final class MetafieldOwnerModelResolver
     /** Reload one programmatic owner through its registered tenant resource boundary. */
     public function canonical(Model $owner, bool $lock = false): Model
     {
-        $definition = $this->resources->forModel($owner);
+        if ($owner->getConnection() !== (new Metafield)->getConnection()) {
+            throw new TenantBoundaryViolation('Metafield owners must use the canonical tenant connection.');
+        }
+        if ($this->configuration->get('tenancy.enabled') !== true && ! $lock) {
+            return $owner;
+        }
+
         $query = $owner->newQueryWithoutScopes()->whereKey($owner->getKey());
-        $this->boundary->query($query, $definition->key);
+        if ($this->configuration->get('tenancy.enabled') === true) {
+            $definition = $this->resources->forModel($owner);
+            $this->boundary->query($query, $definition->key);
+        }
         if ($lock) {
             $query->lockForUpdate();
         }
-        $canonical = $query->firstOrFail();
-        if ($canonical->getConnection() !== (new Metafield)->getConnection()) {
-            throw new TenantBoundaryViolation('Metafield owners must use the canonical tenant connection.');
+        $canonical = $query->first();
+        if (! $canonical instanceof Model) {
+            if ($this->configuration->get('tenancy.enabled') === true) {
+                throw new TenantBoundaryViolation('The metafield owner is unavailable in the current tenant boundary.');
+            }
+
+            $fallback = $query->getModel()->newModelQuery()->findOrFail($owner->getKey());
+            if (! $fallback instanceof Model) {
+                throw new TenantBoundaryViolation('The metafield owner could not be resolved canonically.');
+            }
+            $canonical = $fallback;
         }
 
         return $canonical;

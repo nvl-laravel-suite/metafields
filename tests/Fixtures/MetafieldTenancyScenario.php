@@ -45,13 +45,27 @@ final readonly class MetafieldTenancyScenario
         return new self;
     }
 
-    /** Run one callback under an active tenant. */
+    /**
+     * Run one callback under an active tenant.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $callback
+     * @return T
+     */
     public function run(string $tenant, Closure $callback): mixed
     {
         return app(TenantRunner::class)->run(new TenantId($tenant), $callback);
     }
 
-    /** Run one explicit catalog operation. */
+    /**
+     * Run one explicit catalog operation.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $callback
+     * @return T
+     */
     public function platform(Closure $callback): mixed
     {
         return app(TenantRunner::class)->platform(new PlatformOperation('fixture.catalog', 'test', 'fixture'), $callback);

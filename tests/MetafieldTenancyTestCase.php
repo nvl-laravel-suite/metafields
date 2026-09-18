@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Tests;
 
 use Illuminate\Contracts\Foundation\MaintenanceMode;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Nvl\Data\Providers\DataServiceProvider;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
@@ -26,6 +27,20 @@ use ReflectionClass;
 abstract class MetafieldTenancyTestCase extends Orchestra
 {
     use DatabaseMigrations;
+
+    protected function setUp(): void
+    {
+        Relation::morphMap([], false);
+        Relation::requireMorphMap(false);
+        parent::setUp();
+    }
+
+    protected function tearDown(): void
+    {
+        Relation::morphMap([], false);
+        Relation::requireMorphMap(false);
+        parent::tearDown();
+    }
 
     /** @return list<class-string> */
     protected function getPackageProviders($app): array

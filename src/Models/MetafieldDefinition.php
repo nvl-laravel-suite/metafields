@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Models;
 
+use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -57,6 +58,7 @@ use Nvl\Translatable\Translatable;
 class MetafieldDefinition extends Model implements TranslatableModel
 {
     use GuardsTenantOwnership;
+
     /** @use HasFactory<MetafieldDefinitionFactory> */
     use HasFactory;
 
@@ -353,7 +355,7 @@ class MetafieldDefinition extends Model implements TranslatableModel
     /** Reject mismatched loaded localized definition rows. */
     private function assertLoadedTranslationOwnership(): void
     {
-        app(TenantBoundary::class)->assertRecord($this, 'metafields.definitions');
+        Container::getInstance()->make(TenantBoundary::class)->assertRecord($this, 'metafields.definitions');
         if (! $this->relationLoaded('translations')) {
             return;
         }

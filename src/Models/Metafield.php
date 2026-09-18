@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Models;
 
+use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -42,6 +43,7 @@ use Nvl\Translatable\Translatable;
 class Metafield extends Model implements TranslatableModel
 {
     use GuardsTenantOwnership;
+
     /** @use HasFactory<MetafieldFactory> */
     use HasFactory;
 
@@ -143,8 +145,8 @@ class Metafield extends Model implements TranslatableModel
                 ->map(
                     function (mixed $identifier): ?Model {
                         $reference = MetafieldReferenceModelRegistry::findReferencedRecord(
-                        $this->definition->referenced_model_type,
-                        $identifier,
+                            $this->definition->referenced_model_type,
+                            $identifier,
                         );
                         $this->assertReferenceOwnership($reference);
 
@@ -185,9 +187,9 @@ class Metafield extends Model implements TranslatableModel
     /** Reject mismatched loaded parent and locale rows before exposing values. */
     private function assertLoadedGraphOwnership(): void
     {
-        app(TenantBoundary::class)->assertRecord($this, 'metafields.values');
+        Container::getInstance()->make(TenantBoundary::class)->assertRecord($this, 'metafields.values');
         $tenant = $this->getAttribute('tenant_id');
-        app(TenantBoundary::class)->assertRecord($this->definition, 'metafields.definitions');
+        Container::getInstance()->make(TenantBoundary::class)->assertRecord($this->definition, 'metafields.definitions');
         if (is_string($tenant) && $this->definition->getAttribute('tenant_id') !== $tenant) {
             throw new TenantBoundaryViolation('A Metafield definition belongs to another tenant.');
         }

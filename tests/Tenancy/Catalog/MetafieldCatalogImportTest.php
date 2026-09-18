@@ -107,7 +107,12 @@ it('copies every locale and rejects a stale source snapshot', function (): void 
     $copy = $scenario->run($scenario::A, fn () => app(ImportPlatformMetafieldDefinitionAction::class)
         ->execute(metafieldCatalogRequest($grant, $source)));
 
-    expect($copy->translations->pluck('locale')->all())->toBe(['en'])
+    $locales = $scenario->run(
+        $scenario::A,
+        fn (): array => $copy->translations->pluck('locale')->all(),
+    );
+
+    expect($locales)->toBe(['en'])
         ->and($copy->catalog_source_revision)->toBe($source->revision)
         ->and($copy->catalog_source_hash)->toMatch('/^[a-f0-9]{64}$/');
 

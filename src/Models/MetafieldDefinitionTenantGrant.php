@@ -11,7 +11,18 @@ use Illuminate\Support\Carbon;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
 
-/** Records revocable permission for one tenant to copy one platform definition. */
+/**
+ * Records revocable permission for one tenant to copy one platform definition.
+ *
+ * @property string $id
+ * @property string $tenant_id
+ * @property string $definition_id
+ * @property int $source_revision
+ * @property int $revision
+ * @property bool $enabled
+ * @property Carbon|null $revoked_at
+ * @property-read MetafieldDefinition $definition
+ */
 final class MetafieldDefinitionTenantGrant extends Model
 {
     use GuardsTenantOwnership;
@@ -24,7 +35,7 @@ final class MetafieldDefinitionTenantGrant extends Model
     /** @var list<string> */
     protected $fillable = [];
 
-    /** Return the granted platform definition. */
+    /** @return BelongsTo<MetafieldDefinition, $this> */
     public function definition(): BelongsTo
     {
         return $this->belongsTo(MetafieldDefinition::class, 'definition_id')->withTrashed();

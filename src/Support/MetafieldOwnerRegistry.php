@@ -18,7 +18,11 @@ final class MetafieldOwnerRegistry
     /** @var array<string, array<string, mixed>> */
     private array $registered = [];
 
-    /** Register one immutable code-owned owner declaration without changing global configuration. */
+    /**
+     * Register one immutable code-owned owner declaration without changing global configuration.
+     *
+     * @param  list<string>  $sections
+     */
     public function register(string $type, string $model, string $label, array $sections = ['general']): void
     {
         if (isset($this->registered[$type]) && ($this->registered[$type]['model'] ?? null) !== $model) {

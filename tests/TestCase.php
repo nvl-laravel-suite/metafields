@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Tests;
 
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -19,6 +20,20 @@ use Orchestra\Testbench\TestCase as Orchestra;
 abstract class TestCase extends Orchestra
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        Relation::morphMap([], false);
+        Relation::requireMorphMap(false);
+        parent::setUp();
+    }
+
+    protected function tearDown(): void
+    {
+        Relation::morphMap([], false);
+        Relation::requireMorphMap(false);
+        parent::tearDown();
+    }
 
     /**
      * @return list<class-string>

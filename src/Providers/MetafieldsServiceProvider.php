@@ -231,9 +231,21 @@ final class MetafieldsServiceProvider extends ServiceProvider
             MetafieldTranslation::class => 'metafields.value-translations',
             MetafieldDefinitionTenantGrant::class => 'metafields.catalog-grants',
         ] as $model => $resource) {
-            $model::addGlobalScope('tenant', static function (Builder $query) use ($boundary, $resource): void {
-                $boundary->query($query, $resource);
-            });
+            $this->registerTenantScope($model, $resource, $boundary);
         }
+    }
+
+    /**
+     * Register one model-specific tenant scope without collapsing invariant builder generics.
+     *
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  class-string<TModel>  $model
+     */
+    private function registerTenantScope(string $model, string $resource, TenantBoundary $boundary): void
+    {
+        $model::addGlobalScope('tenant', static function (Builder $query) use ($boundary, $resource): void {
+            $boundary->query($query, $resource);
+        });
     }
 }

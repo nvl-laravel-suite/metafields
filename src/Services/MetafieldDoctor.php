@@ -7,6 +7,7 @@ namespace Nvl\Metafields\Services;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Nvl\Metafields\Contracts\MetafieldAuthorization;
 use Nvl\Metafields\Contracts\MetafieldReferenceAuthorization;
 use Nvl\Metafields\Data\MetafieldDoctorCheckData;
@@ -193,7 +194,7 @@ final readonly class MetafieldDoctor
                     key: 'tenancy.marker.'.$resource,
                     severity: 'error',
                     passed: false,
-                    message: 'Tenant ownership marker is unavailable or incompatible: '.mb_substr($exception->getMessage(), 0, 500),
+                    message: 'Tenant ownership marker is unavailable or incompatible: '.Str::limit($exception->getMessage(), 500, ''),
                 );
             }
         }
