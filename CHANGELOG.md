@@ -4,6 +4,8 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-09-21
+
 ### Added
 
 - Added opt-in tenant ownership for the complete definition/value graph,
