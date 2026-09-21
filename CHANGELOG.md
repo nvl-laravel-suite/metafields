@@ -4,6 +4,13 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-09-21
+
+### Added
+
+- Published the existing `ImportPlatformMetafieldDefinitionData` contract in
+  the generated TypeScript declarations.
+
 ## [2.1.0] - 2026-09-21
 
 ### Added
