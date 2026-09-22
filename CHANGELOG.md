@@ -4,17 +4,12 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
-## [2.1.1] - 2026-09-21
+## [2.0.1] - 2026-09-22
 
 ### Added
 
 - Published the existing `ImportPlatformMetafieldDefinitionData` contract in
   the generated TypeScript declarations.
-
-## [2.1.0] - 2026-09-21
-
-### Added
-
 - Added opt-in tenant ownership for the complete definition/value graph,
   reviewed split adoption, canonical owner/reference enforcement, and Doctor
   readiness checks while preserving disabled standalone installs.
