@@ -1,12 +1,12 @@
 # NVL Metafields — API and usage
 
-[← NVL Laravel Suite](../../../README.md)
+[← NVL Laravel Suite](https://github.com/nvl-laravel-suite)
 
 ## Quick reference
 
 | Item | Value |
 |---|---|
-| Installed through | `composer require nvl/laravel-suite:^2.0` |
+| Installed through | `composer require nvl/metafields:^2.0` |
 | Module identifier | `nvl/metafields` |
 | PHP namespace | `Nvl\Metafields` |
 | Service provider | `Nvl\Metafields\Providers\MetafieldsServiceProvider` |
@@ -29,8 +29,9 @@ settings engine, or secret store.
 
 - PHP 8.4 or newer
 - Laravel 13
-- `nvl/data`
-- `nvl/support`
+- `nvl/core`
+- `nvl/tenancy`
+- `nvl/translatable`
 - `nvl/translatable`
 
 Package-owned rows use UUID primary keys. Polymorphic owner and referenced
@@ -40,7 +41,7 @@ stable application keys.
 ## Installation
 
 ```bash
-composer require nvl/laravel-suite:^2.0
+composer require nvl/metafields:^2.0
 php artisan migrate
 php artisan vendor:publish --tag=metafields-config
 ```
@@ -402,7 +403,7 @@ Review [UPGRADING.md](UPGRADING.md) before adopting an existing schema.
 
 ## TypeScript
 
-DTOs register with `nvl/data` and generate under `Nvl.Metafields.*`:
+DTOs register with Core's Data provider and generate under `Nvl.Metafields.*`:
 
 ```bash
 php artisan nvl:data:types:generate
