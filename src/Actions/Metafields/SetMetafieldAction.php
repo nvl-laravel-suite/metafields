@@ -20,6 +20,8 @@ use RuntimeException;
  * This action preserves the singular `HasMetafields` write API while keeping
  * validation, assignment checks, translation merging, and upsert behavior inside
  * the shared owner sync pipeline.
+ *
+ * @api
  */
 final class SetMetafieldAction implements SetMetafieldContract
 {

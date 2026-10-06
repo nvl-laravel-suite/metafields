@@ -55,6 +55,8 @@ use Nvl\Translatable\Translatable;
  * @property int|null $catalog_source_revision Immutable source revision
  * @property string|null $catalog_source_hash Immutable source snapshot hash
  * @property string|null $catalog_import_request_hash Immutable idempotency request hash
+ *
+ * @api
  */
 class MetafieldDefinition extends Model implements TranslatableModel
 {

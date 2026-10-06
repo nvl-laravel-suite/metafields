@@ -503,6 +503,14 @@ stateful package suite on SQLite, PostgreSQL, and MySQL.
 See [SECURITY.md](SECURITY.md), [UPGRADING.md](UPGRADING.md),
 [CONTRIBUTING.md](CONTRIBUTING.md), and [CHANGELOG.md](CHANGELOG.md).
 
+## Supported PHP usage
+
+The source `@api` declarations identify supported workflows, extension contracts, and value types. Public members marked `@internal` and untagged implementation types remain package-owned. Concrete Actions retain their existing constructors, qualifiers, and `execute()` signatures.
+
+A package model returned or accepted by a public workflow is an identity/result handle. Use its declared type and `getKey()`, `getKeyName()`, `getMorphClass()`, `getRouteKey()`, `getRouteKeyName()`, `is()`, `isNot()`, and `relationLoaded()`. Read only explicitly declared in-memory `@nvl-consumer-read` fields; ordinary model PHPDocs and fillable attributes do not grant consumer reads. Obtain display projections through public reads. Persistence, additional model queries, relation access/loading, and generic model serialization are outside this contract. Host-model queries remain available, while traversal or aggregates of package capability relations require the package public reader or authorized adapter.
+
+The current readable handle fields are `Metafield`: `id`, `definition_id`, `metafieldable_id`, `metafieldable_type`, `revision`, `created_at`, `updated_at`. All other package model handles have no readable attribute grant.
+
 ## License
 
 Released under the [MIT License](LICENSE).

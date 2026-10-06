@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Nvl\Metafields\Database\Factories\MetafieldFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
@@ -38,8 +39,20 @@ use Nvl\Translatable\Translatable;
  * @property string|null $referenced_id UUID of the referenced record
  * @property string|null $value Non-translatable base value
  * @property int $revision Optimistic concurrency revision
+ * @property Carbon|null $created_at Creation timestamp
+ * @property Carbon|null $updated_at Update timestamp
  * @property-read MetafieldDefinition $definition
  * @property-read Model $metafieldable
+ *
+ * @api
+ *
+ * @nvl-consumer-read id
+ * @nvl-consumer-read definition_id
+ * @nvl-consumer-read metafieldable_id
+ * @nvl-consumer-read metafieldable_type
+ * @nvl-consumer-read revision
+ * @nvl-consumer-read created_at
+ * @nvl-consumer-read updated_at
  */
 class Metafield extends Model implements TranslatableModel
 {

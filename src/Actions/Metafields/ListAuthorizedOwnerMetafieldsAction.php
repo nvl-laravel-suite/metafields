@@ -15,6 +15,8 @@ use Nvl\Metafields\Enums\MetafieldAbility;
  *
  * Delegation to ListOwnerMetafieldsAction is deliberate orchestration so the
  * canonical bounded projection remains shared after authorization.
+ *
+ * @api
  */
 final readonly class ListAuthorizedOwnerMetafieldsAction
 {

@@ -6,6 +6,8 @@ namespace Nvl\Metafields\Enums;
 
 /**
  * Stable authorization capabilities exposed by the optional management API.
+ *
+ * @api
  */
 enum MetafieldAbility: string
 {

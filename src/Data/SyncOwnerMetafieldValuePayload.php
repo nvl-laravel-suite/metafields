@@ -17,7 +17,11 @@ use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
 use Spatie\TypeScriptTransformer\Attributes\Optional as TypeScriptOptional;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
-/** SyncOwnerMetafieldValuePayload: one owner-metafield mutation payload item. */
+/**
+ * SyncOwnerMetafieldValuePayload: one owner-metafield mutation payload item.
+ *
+ * @api
+ */
 #[MapOutputName(CamelCaseMapper::class)]
 #[MapInputName(CamelCaseMapper::class)]
 #[TypeScript]

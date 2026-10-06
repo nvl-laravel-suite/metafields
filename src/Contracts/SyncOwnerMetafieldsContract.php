@@ -9,6 +9,11 @@ use Illuminate\Support\Collection;
 use Nvl\Metafields\Data\SyncOwnerMetafieldsPayload;
 use Nvl\Metafields\Models\Metafield;
 
+/**
+ * Synchronize validated metafield values for an admitted owner.
+ *
+ * @api
+ */
 interface SyncOwnerMetafieldsContract
 {
     /**

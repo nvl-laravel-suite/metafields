@@ -8,6 +8,8 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 
 /**
  * Deletes a metafield definition through a revision-aware contract.
+ *
+ * @api
  */
 interface DeleteMetafieldDefinitionContract
 {

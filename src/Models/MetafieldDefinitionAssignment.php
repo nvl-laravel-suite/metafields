@@ -26,6 +26,8 @@ use Nvl\Support\Config\PackageStorage;
  * @property bool $is_active
  * @property array<string, mixed>|null $ui_config
  * @property-read MetafieldDefinition|null $definition
+ *
+ * @api
  */
 class MetafieldDefinitionAssignment extends Model
 {

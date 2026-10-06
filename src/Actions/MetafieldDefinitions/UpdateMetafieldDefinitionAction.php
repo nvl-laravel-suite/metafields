@@ -17,6 +17,8 @@ use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionWriter;
  * UpdateMetafieldDefinitionAction
  *
  * Orchestrates the update of an existing metafield definition.
+ *
+ * @api
  */
 final class UpdateMetafieldDefinitionAction implements UpdateMetafieldDefinitionContract
 {

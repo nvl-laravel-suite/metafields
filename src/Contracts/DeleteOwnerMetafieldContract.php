@@ -9,6 +9,8 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 
 /**
  * Clears one owner metafield through a revision-aware mutation.
+ *
+ * @api
  */
 interface DeleteOwnerMetafieldContract
 {

@@ -17,6 +17,10 @@ use Nvl\Metafields\Services\Metafields\OwnerMetafieldQueryAdapter;
  *
  * Provides the owner-to-metafields morph relation only. Metafield reads and
  * writes must go through injected actions and services.
+ *
+ * @api
+ *
+ * @nvl-consumer-relation metafields
  */
 trait HasMetafields
 {
@@ -33,6 +37,8 @@ trait HasMetafields
 
     /**
      * @return MorphMany<Metafield, $this>
+     *
+     * @internal
      */
     public function metafields(): MorphMany
     {

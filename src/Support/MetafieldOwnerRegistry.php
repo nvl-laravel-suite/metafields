@@ -13,6 +13,8 @@ use Nvl\Support\OwnerRegistry;
 
 /**
  * Normalizes configured owner aliases and prevents ambiguous model registrations.
+ *
+ * @api
  */
 final class MetafieldOwnerRegistry
 {

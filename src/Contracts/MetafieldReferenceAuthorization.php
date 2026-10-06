@@ -9,6 +9,8 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 
 /**
  * Consumer-owned authorization boundary for referenced records used by metafield values.
+ *
+ * @api
  */
 interface MetafieldReferenceAuthorization
 {

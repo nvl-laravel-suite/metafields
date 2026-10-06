@@ -12,7 +12,11 @@ use Spatie\LaravelData\Mappers\CamelCaseMapper;
 use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
-/** MetafieldOwner: output DTO describing one supported owner registry entry. */
+/**
+ * MetafieldOwner: output DTO describing one supported owner registry entry.
+ *
+ * @api
+ */
 #[MapOutputName(CamelCaseMapper::class)]
 #[MapInputName(CamelCaseMapper::class)]
 #[TypeScript]

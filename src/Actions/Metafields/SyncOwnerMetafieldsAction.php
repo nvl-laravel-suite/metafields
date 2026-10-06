@@ -29,6 +29,8 @@ use Spatie\LaravelData\Optional;
  * The action enforces owner assignment, required-section completeness,
  * validation, soft-delete restoration, translation writes, and typed value
  * storage in one transaction.
+ *
+ * @api
  */
 final class SyncOwnerMetafieldsAction implements SyncOwnerMetafieldsContract
 {

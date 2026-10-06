@@ -9,6 +9,8 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 
 /**
  * Creates a metafield definition from the validated creation contract.
+ *
+ * @api
  */
 interface CreateMetafieldDefinitionContract
 {

@@ -9,6 +9,8 @@ use Nvl\Metafields\Models\Metafield;
 
 /**
  * Sets one owner metafield through the canonical revision-aware sync pipeline.
+ *
+ * @api
  */
 interface SetMetafieldContract
 {

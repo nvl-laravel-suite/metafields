@@ -15,6 +15,8 @@ use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionWriter;
  * CreateMetafieldDefinitionAction
  *
  * Orchestrates the creation of a new metafield definition.
+ *
+ * @api
  */
 final class CreateMetafieldDefinitionAction implements CreateMetafieldDefinitionContract
 {

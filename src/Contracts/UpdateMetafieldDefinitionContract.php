@@ -9,6 +9,8 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 
 /**
  * Updates a metafield definition through a revision-aware mutation contract.
+ *
+ * @api
  */
 interface UpdateMetafieldDefinitionContract
 {

@@ -12,6 +12,8 @@ use InvalidArgumentException;
  * MetafieldTypeEnum
  *
  * Defines supported data types for metafields with validation and casting logic.
+ *
+ * @api
  */
 enum MetafieldTypeEnum: string
 {

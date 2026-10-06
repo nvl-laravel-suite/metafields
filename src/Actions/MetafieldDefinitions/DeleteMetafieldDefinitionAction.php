@@ -14,6 +14,8 @@ use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionRemover;
  * DeleteMetafieldDefinitionAction
  *
  * Orchestrates the soft deletion of a metafield definition.
+ *
+ * @api
  */
 final class DeleteMetafieldDefinitionAction implements DeleteMetafieldDefinitionContract
 {

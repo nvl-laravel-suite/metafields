@@ -25,7 +25,11 @@ use Spatie\LaravelData\Mappers\CamelCaseMapper;
 use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
-/** OwnerMetafieldField: assigned owner-metafield definition with current owner value state. */
+/**
+ * OwnerMetafieldField: assigned owner-metafield definition with current owner value state.
+ *
+ * @api
+ */
 #[MapOutputName(CamelCaseMapper::class)]
 #[MapInputName(CamelCaseMapper::class)]
 #[TypeScript]
@@ -73,6 +77,11 @@ final class OwnerMetafieldField extends Data
         public readonly int $displayOrder,
     ) {}
 
+    /**
+     * Build the package projection from its internal storage state.
+     *
+     * @internal
+     */
     public static function fromAssignment(
         MetafieldDefinitionAssignment $assignment,
         ?Metafield $metafield,

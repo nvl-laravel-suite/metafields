@@ -17,7 +17,11 @@ use Spatie\LaravelData\DataCollection;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
 use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
-/** SyncOwnerMetafieldsPayload: batch owner-metafield mutation payload. */
+/**
+ * SyncOwnerMetafieldsPayload: batch owner-metafield mutation payload.
+ *
+ * @api
+ */
 #[MapOutputName(CamelCaseMapper::class)]
 #[MapInputName(CamelCaseMapper::class)]
 #[TypeScript]

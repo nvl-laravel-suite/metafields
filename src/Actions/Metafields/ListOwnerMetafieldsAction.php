@@ -11,6 +11,8 @@ use Nvl\Metafields\Services\Metafields\OwnerMetafieldFieldCatalog;
 
 /**
  * List metafield values for a given owner model with optional locale scoping.
+ *
+ * @api
  */
 final class ListOwnerMetafieldsAction
 {

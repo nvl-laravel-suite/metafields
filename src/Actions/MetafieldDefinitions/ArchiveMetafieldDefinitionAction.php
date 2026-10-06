@@ -12,6 +12,8 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 
 /**
  * Archives or restores a definition while preserving historical values.
+ *
+ * @api
  */
 final class ArchiveMetafieldDefinitionAction
 {

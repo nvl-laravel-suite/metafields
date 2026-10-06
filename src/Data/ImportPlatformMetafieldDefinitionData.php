@@ -6,7 +6,11 @@ namespace Nvl\Metafields\Data;
 
 use Spatie\LaravelData\Data;
 
-/** Validated tenant import request without any client-supplied ownership field. */
+/**
+ * Validated tenant import request without any client-supplied ownership field.
+ *
+ * @api
+ */
 final class ImportPlatformMetafieldDefinitionData extends Data
 {
     /**

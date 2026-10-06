@@ -10,6 +10,8 @@ use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionCatalog;
 
 /**
  * List all registered metafield definitions from the catalog.
+ *
+ * @api
  */
 final class ListMetafieldDefinitionsAction
 {

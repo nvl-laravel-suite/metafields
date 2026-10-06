@@ -11,7 +11,11 @@ use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionImporter;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 use Nvl\Support\Tenancy\Services\EffectiveTenantConnection;
 
-/** Imports a granted platform definition as one independent tenant schema. */
+/**
+ * Imports a granted platform definition as one independent tenant schema.
+ *
+ * @api
+ */
 final readonly class ImportPlatformMetafieldDefinitionAction
 {
     /** Create the standalone catalog import action. */

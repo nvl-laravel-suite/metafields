@@ -14,6 +14,8 @@ use Nvl\Metafields\Models\MetafieldDefinition;
  *
  * Deletion is modeled as a bulk sync item with `clear=true` so assignment,
  * required-field, and soft-delete behavior stay identical to regular syncs.
+ *
+ * @api
  */
 final class DeleteOwnerMetafieldAction implements DeleteOwnerMetafieldContract
 {

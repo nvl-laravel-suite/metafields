@@ -12,7 +12,11 @@ use Nvl\Support\Tenancy\Contracts\TenantContext;
 use Nvl\Support\Tenancy\Enums\TenantContextMode;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 
-/** Revokes future definition copies without changing committed tenant schemas. */
+/**
+ * Revokes future definition copies without changing committed tenant schemas.
+ *
+ * @api
+ */
 final readonly class RevokeMetafieldDefinitionTenantGrantAction
 {
     /** Create the platform revocation action. */

@@ -17,7 +17,11 @@ use Nvl\Support\Tenancy\Enums\TenantStatus;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 use Nvl\Support\Tenancy\ValueObjects\TenantId;
 
-/** Grants one exact platform definition revision to an active tenant. */
+/**
+ * Grants one exact platform definition revision to an active tenant.
+ *
+ * @api
+ */
 final readonly class GrantMetafieldDefinitionToTenantAction
 {
     /** Create the platform grant action. */

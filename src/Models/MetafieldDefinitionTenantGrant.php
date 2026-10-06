@@ -23,6 +23,8 @@ use Nvl\Support\Config\PackageStorage;
  * @property bool $enabled
  * @property Carbon|null $revoked_at
  * @property-read MetafieldDefinition $definition
+ *
+ * @api
  */
 final class MetafieldDefinitionTenantGrant extends Model
 {

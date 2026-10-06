@@ -10,6 +10,8 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 
 /**
  * Consumer-owned authorization boundary for optional Metafields HTTP routes.
+ *
+ * @api
  */
 interface MetafieldAuthorization
 {

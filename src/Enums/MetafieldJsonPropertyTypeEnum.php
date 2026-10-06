@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Enums;
 
+/**
+ * MetafieldJsonPropertyTypeEnum describes the supported public payload.
+ *
+ * @api
+ */
 enum MetafieldJsonPropertyTypeEnum: string
 {
     case String = 'string';
