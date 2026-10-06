@@ -4,6 +4,12 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- Bounded authorized many-owner DTO reads, grouped canonical/reference admission and explicit query-free SQL policy contracts.
+- Exact native identity object maps and payload ceilings, preserving existing single-owner APIs.
+- Prefixed `whereNvlMetafield` stored-scalar filtering with exact portable owner correlations and retained host scopes/selections.
+
 ### Changed
 
 - Prepare lockstep major 5 with required and development NVL peer floors of `^5.0`. This candidate has not been tagged or published.

@@ -245,7 +245,62 @@ assignment. Values are indexed by definition and polymorphic owner. Query
 helpers operate on registered definitions and supported scalar values; raw
 request columns, relations, and arbitrary JSON paths are never accepted.
 
-Use `ListAuthorizedOwnerMetafieldsAction` for application-facing owner reads:
+For list screens, inject `ListAuthorizedOwnersMetafieldsContract` and bind an
+explicit host `MetafieldBatchAuthorization` SQL adapter:
+
+```php
+use Nvl\Metafields\Contracts\ListAuthorizedOwnersMetafieldsContract;
+use Nvl\Metafields\Contracts\MetafieldBatchAuthorization;
+
+$this->app->bind(MetafieldBatchAuthorization::class, App\Authorization\MetafieldBatchPolicy::class);
+$fields = app(ListAuthorizedOwnersMetafieldsContract::class)->execute($articles->all(), 'bg');
+$articleFields = $fields->owners->{$article->getMorphClass()}->{(string) $article->getKey()}->fields;
+```
+
+Results contain JSON object maps at both the native morph-type and owner-key
+levels, plus separate request `order`. Assignment capability aliases retain their
+existing meaning; they never replace native identity in values or result keys.
+The reader reloads canonical owners through retained host scopes and active Tenancy;
+absent/deleted owners and foreign connections fail closed.
+
+All policy methods are query-free. Authorize canonical owners, restrict assignments
+and values in SQL before reads, decide loaded definition visibility and admit stored
+**and default** reference targets through loaded `MetafieldReferenceFacts`. Keep
+`scopeAssignments` consistent with `allowsDefinition`. SQL callback OR clauses are
+nested inside mandatory package predicates. Existing imperative Gate callbacks
+require a batch adapter; missing adapters raise `MetafieldBatchReadException` with
+the binding to provide. Existing host bindings take precedence.
+
+Limits are 100 input entries, 100 active definitions per native owner type, 10,000
+current values, 1,000 distinct stored/default references and ten requested/fallback
+locales. Exact identities deduplicate with first-request order preserved. Overflow,
+missing targets and denied targets reject the batch. Target models remain internal;
+only admitted identifiers reach DTOs. Empty input returns `{}` without storage SQL.
+
+With the same owner-class mix, locale chain and populated field options, localized
+reads use seven SQL queries at 1/25/100 owners, including real active Tenancy.
+Disabled Tenancy adds one cold installation-table probe (eight total, seven warm).
+Each reference target class adds one grouped query; additional concrete owner
+classes add grouped admission queries. No single-owner Action or translated model
+getter runs in the batch projection.
+
+`HasMetafields::whereNvlMetafield($handle, $value, $policy, $operator = '=')` adds
+a correlated **stored-value-only** filter retaining caller columns and scopes.
+Missing and default-only fields never match. Definitions must be active, assigned
+and filterable. Operators are `=`, `!=`, `<`, `<=`, `>` and `>=`; null permits only
+`=` and `!=`. Numeric types compare numerically. Localized, reference and structured
+comparisons require a separately supported SQL adapter. `scopeHostValues` must
+express owner, definition and value visibility in SQL. Native identity correlations
+use exact text/binary comparisons on SQLite, PostgreSQL, MySQL and MariaDB.
+
+From the suite root, verify the default and real tenant profiles with:
+
+```bash
+vendor/bin/pest --test-directory=packages/nvl/metafields/tests --configuration=packages/nvl/metafields/phpunit.xml.dist --bootstrap=vendor/autoload.php --compact packages/nvl/metafields/tests/Feature/BatchedOwnerReadsTest.php packages/nvl/metafields/tests/Tenancy/Feature/BatchedOwnerReadsTest.php
+php tools/run-package-quality.php metafields
+```
+
+Use `ListAuthorizedOwnerMetafieldsAction` for application-facing single-owner reads:
 
 ```php
 use Nvl\Metafields\Actions\Metafields\ListAuthorizedOwnerMetafieldsAction;

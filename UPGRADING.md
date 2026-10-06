@@ -1,5 +1,26 @@
 # Upgrading NVL Metafields
 
+## Bounded authorized batch reads
+
+Replace per-owner read loops with the bound `ListAuthorizedOwnersMetafieldsContract`.
+Bind a query-free `MetafieldBatchAuthorization` SQL adapter explicitly; single-owner
+Gate callbacks cannot prove batch visibility and raise an actionable package
+exception. An active authorization implementation that also implements the batch
+contract is compatible; explicit host bindings take precedence.
+
+The reader reloads owners with host scopes and active tenant boundaries. Result
+keys use native morph types and normalized keys as JSON objects, with order separate.
+Absent/deleted owners, foreign storage and denied/missing stored or default references
+fail closed. Assignment aliases and existing single-owner APIs retain their semantics.
+
+Respect the 100-input, 100-definition-per-type, 10,000-value, 1,000-reference and
+ten-locale ceilings. `whereNvlMetafield` compares stored scalar values only;
+missing/default-only fields never match. Legacy filters remain available. New host
+filters require active assigned filterable definitions and an explicit SQL policy;
+localized/reference/structured comparisons reject unsupported adapters. SQLite
+execution and PostgreSQL/MySQL/MariaDB SQL generation are covered; native execution
+on supported versions remains a family release gate.
+
 ## Tenant ownership adoption
 
 Tenancy remains disabled by default. Register every concrete owner and reference

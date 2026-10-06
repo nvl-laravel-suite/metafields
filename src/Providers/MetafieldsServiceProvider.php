@@ -14,6 +14,7 @@ use Nvl\Metafields\Actions\MetafieldDefinitions\CreateMetafieldDefinitionAction;
 use Nvl\Metafields\Actions\MetafieldDefinitions\DeleteMetafieldDefinitionAction;
 use Nvl\Metafields\Actions\MetafieldDefinitions\UpdateMetafieldDefinitionAction;
 use Nvl\Metafields\Actions\Metafields\DeleteOwnerMetafieldAction;
+use Nvl\Metafields\Actions\Metafields\ListAuthorizedOwnersMetafieldsAction;
 use Nvl\Metafields\Actions\Metafields\SetMetafieldAction;
 use Nvl\Metafields\Actions\Metafields\SyncOwnerMetafieldsAction;
 use Nvl\Metafields\Console\Commands\MetafieldDefinitionAddCommand;
@@ -23,7 +24,9 @@ use Nvl\Metafields\Console\Commands\MetafieldListCommand;
 use Nvl\Metafields\Contracts\CreateMetafieldDefinitionContract;
 use Nvl\Metafields\Contracts\DeleteMetafieldDefinitionContract;
 use Nvl\Metafields\Contracts\DeleteOwnerMetafieldContract;
+use Nvl\Metafields\Contracts\ListAuthorizedOwnersMetafieldsContract;
 use Nvl\Metafields\Contracts\MetafieldAuthorization;
+use Nvl\Metafields\Contracts\MetafieldBatchAuthorization;
 use Nvl\Metafields\Contracts\MetafieldReferenceAuthorization;
 use Nvl\Metafields\Contracts\SetMetafieldContract;
 use Nvl\Metafields\Contracts\SyncOwnerMetafieldsContract;
@@ -41,6 +44,7 @@ use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionImporter;
 use Nvl\Metafields\Services\MetafieldDoctor;
 use Nvl\Metafields\Services\Metafields\MetafieldOwnerModelResolver;
 use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
+use Nvl\Metafields\Services\UnsupportedMetafieldBatchAuthorization;
 use Nvl\Metafields\Support\MetafieldConfiguration;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Tenancy\MetafieldAdoptionAdapter;
@@ -141,10 +145,21 @@ final class MetafieldsServiceProvider extends ServiceProvider
         $this->app->bind(UpdateMetafieldDefinitionContract::class, UpdateMetafieldDefinitionAction::class);
         $this->app->bind(DeleteMetafieldDefinitionContract::class, DeleteMetafieldDefinitionAction::class);
         $this->app->bindIf(MetafieldAuthorization::class, ConfiguredMetafieldAuthorization::class);
+        $this->app->bindIf(ListAuthorizedOwnersMetafieldsContract::class, ListAuthorizedOwnersMetafieldsAction::class);
+        $this->app->bindIf(MetafieldBatchAuthorization::class, function (): MetafieldBatchAuthorization {
+            return $this->batchAuthorization($this->app->make(MetafieldAuthorization::class));
+        });
         $this->app->bindIf(
             MetafieldReferenceAuthorization::class,
             ConfiguredMetafieldReferenceAuthorization::class,
         );
+    }
+
+    /** Derive only from an explicitly compatible active authorization binding. */
+    private function batchAuthorization(MetafieldAuthorization $authorization): MetafieldBatchAuthorization
+    {
+        return $authorization instanceof MetafieldBatchAuthorization
+            ? $authorization : new UnsupportedMetafieldBatchAuthorization;
     }
 
     /**

@@ -5,6 +5,33 @@ description: Implement, integrate, test, or review nvl/metafields in Laravel 13.
 
 # NVL Metafields
 
+## Authorized batch reads
+
+Inject `ListAuthorizedOwnersMetafieldsContract` for list screens and bind an explicit
+`MetafieldBatchAuthorization`. Imperative Gate callbacks cannot be inferred as SQL
+policies. Policy methods are query-free: use canonical owners and loaded
+`MetafieldReferenceFacts`, constrain assignment/value/target queries before reads,
+and keep SQL assignment visibility consistent with `allowsDefinition`. The reader
+nests callbacks within mandatory owner/tenant predicates so OR cannot widen them.
+
+Pass at most 100 persisted model entries. Results use native morph/key JSON objects
+and separate request order. Capability assignment aliases remain metadata. The
+reader retains host scopes and active tenant boundaries and rejects foreign storage,
+deleted owners and missing/denied stored **or default** references. Limits are 100
+definitions per owner type, 10,000 values, 1,000 references and ten locales. Empty
+input performs no SQL. Localized budgets are seven queries at 1/25/100 owners;
+disabled Tenancy adds one cold probe and each reference class adds one query.
+
+Use `whereNvlMetafield($handle, $value, $policy, $operator = '=')` for active assigned
+filterable nonlocalized scalar fields. It compares stored values; missing/default-only
+fields never match. Its host policy must express owner/definition/value visibility.
+Keep the prior boolean scopes unchanged.
+
+Batch projections must use admitted preloaded rows with `TranslationResolver` and
+`getRelation`. Existing translated model getters and even the loaded `translations`
+property issue ownership SQL under real Tenancy. Verify 1/25/100 budgets with the
+actual enabled tenant boundary.
+
 Use definitions as the schema and metafield rows as owner-specific values. Route mutations through package Actions.
 
 ## Register boundaries
