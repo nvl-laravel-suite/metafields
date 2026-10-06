@@ -10,27 +10,45 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Nvl\Data\Services\TypeScriptSourceRegistry;
+use Nvl\Metafields\Actions\GrantMetafieldDefinitionToTenantAction;
+use Nvl\Metafields\Actions\ImportPlatformMetafieldDefinitionAction;
+use Nvl\Metafields\Actions\MetafieldDefinitions\ArchiveMetafieldDefinitionAction;
 use Nvl\Metafields\Actions\MetafieldDefinitions\CreateMetafieldDefinitionAction;
 use Nvl\Metafields\Actions\MetafieldDefinitions\DeleteMetafieldDefinitionAction;
+use Nvl\Metafields\Actions\MetafieldDefinitions\ListMetafieldDefinitionsAction;
 use Nvl\Metafields\Actions\MetafieldDefinitions\UpdateMetafieldDefinitionAction;
 use Nvl\Metafields\Actions\Metafields\DeleteOwnerMetafieldAction;
+use Nvl\Metafields\Actions\Metafields\ListAuthorizedOwnerMetafieldsAction;
 use Nvl\Metafields\Actions\Metafields\ListAuthorizedOwnersMetafieldsAction;
+use Nvl\Metafields\Actions\Metafields\ListOwnerMetafieldsAction;
 use Nvl\Metafields\Actions\Metafields\SetMetafieldAction;
 use Nvl\Metafields\Actions\Metafields\SyncOwnerMetafieldsAction;
+use Nvl\Metafields\Actions\RevokeMetafieldDefinitionTenantGrantAction;
 use Nvl\Metafields\Console\Commands\MetafieldDefinitionAddCommand;
 use Nvl\Metafields\Console\Commands\MetafieldDefinitionRemoveCommand;
 use Nvl\Metafields\Console\Commands\MetafieldDoctorCommand;
 use Nvl\Metafields\Console\Commands\MetafieldListCommand;
+use Nvl\Metafields\Contracts\ArchiveMetafieldDefinitionContract;
 use Nvl\Metafields\Contracts\CreateMetafieldDefinitionContract;
 use Nvl\Metafields\Contracts\DeleteMetafieldDefinitionContract;
 use Nvl\Metafields\Contracts\DeleteOwnerMetafieldContract;
+use Nvl\Metafields\Contracts\GrantMetafieldDefinitionToTenantContract;
+use Nvl\Metafields\Contracts\ImportPlatformMetafieldDefinitionContract;
+use Nvl\Metafields\Contracts\ListAuthorizedOwnerMetafieldsContract;
 use Nvl\Metafields\Contracts\ListAuthorizedOwnersMetafieldsContract;
+use Nvl\Metafields\Contracts\ListMetafieldDefinitionsContract;
+use Nvl\Metafields\Contracts\ListOwnerMetafieldsContract;
 use Nvl\Metafields\Contracts\MetafieldAuthorization;
 use Nvl\Metafields\Contracts\MetafieldBatchAuthorization;
 use Nvl\Metafields\Contracts\MetafieldReferenceAuthorization;
+use Nvl\Metafields\Contracts\RevokeMetafieldDefinitionTenantGrantContract;
 use Nvl\Metafields\Contracts\SetMetafieldContract;
 use Nvl\Metafields\Contracts\SyncOwnerMetafieldsContract;
 use Nvl\Metafields\Contracts\UpdateMetafieldDefinitionContract;
+use Nvl\Metafields\Events\MetafieldSet;
+use Nvl\Metafields\Events\MetafieldSetEvent;
+use Nvl\Metafields\Events\MetafieldsSynced;
+use Nvl\Metafields\Events\MetafieldsSyncedEvent;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
@@ -50,6 +68,7 @@ use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Tenancy\MetafieldAdoptionAdapter;
 use Nvl\Metafields\Tenancy\MetafieldTenancyResources;
 use Nvl\Support\Doctor\PackageDoctorContributor;
+use Nvl\Support\Events\EventAliases;
 use Nvl\Support\Globals\GlobalNames;
 use Nvl\Support\Providers\SupportServiceProvider;
 use Nvl\Support\Tenancy\Contracts\TenantBoundary;
@@ -76,6 +95,8 @@ final class MetafieldsServiceProvider extends ServiceProvider
         TenantResourceRegistry $tenantResources,
         TenantBoundary $tenantBoundary,
     ): void {
+        $this->app->make(EventAliases::class)->register(MetafieldSet::class, MetafieldSetEvent::class);
+        $this->app->make(EventAliases::class)->register(MetafieldsSynced::class, MetafieldsSyncedEvent::class);
         $typeScriptSources->register(__DIR__.'/..', 'nvl/metafields');
         $tenancyResources->register($tenantResources);
         if ($this->app->bound(TenantAdoptionRegistry::class)) {
@@ -125,6 +146,14 @@ final class MetafieldsServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bindIf(GrantMetafieldDefinitionToTenantContract::class, GrantMetafieldDefinitionToTenantAction::class);
+        $this->app->bindIf(ImportPlatformMetafieldDefinitionContract::class, ImportPlatformMetafieldDefinitionAction::class);
+        $this->app->bindIf(ArchiveMetafieldDefinitionContract::class, ArchiveMetafieldDefinitionAction::class);
+        $this->app->bindIf(ListMetafieldDefinitionsContract::class, ListMetafieldDefinitionsAction::class);
+        $this->app->bindIf(ListAuthorizedOwnerMetafieldsContract::class, ListAuthorizedOwnerMetafieldsAction::class);
+        $this->app->bindIf(ListOwnerMetafieldsContract::class, ListOwnerMetafieldsAction::class);
+        $this->app->bindIf(RevokeMetafieldDefinitionTenantGrantContract::class, RevokeMetafieldDefinitionTenantGrantAction::class);
+
         $this->app->register(SupportServiceProvider::class);
         PackageDoctorContributor::register($this->app, 'nvl/metafields', fn (): array => $this->app->make(MetafieldDoctor::class)->inspect());
 
@@ -138,12 +167,12 @@ final class MetafieldsServiceProvider extends ServiceProvider
         $this->app->scoped(MetafieldOwnerModelResolver::class);
         $this->app->scoped(MetafieldReferenceRecordResolver::class);
 
-        $this->app->bind(SetMetafieldContract::class, SetMetafieldAction::class);
-        $this->app->bind(SyncOwnerMetafieldsContract::class, SyncOwnerMetafieldsAction::class);
-        $this->app->bind(DeleteOwnerMetafieldContract::class, DeleteOwnerMetafieldAction::class);
-        $this->app->bind(CreateMetafieldDefinitionContract::class, CreateMetafieldDefinitionAction::class);
-        $this->app->bind(UpdateMetafieldDefinitionContract::class, UpdateMetafieldDefinitionAction::class);
-        $this->app->bind(DeleteMetafieldDefinitionContract::class, DeleteMetafieldDefinitionAction::class);
+        $this->app->bindIf(SetMetafieldContract::class, SetMetafieldAction::class);
+        $this->app->bindIf(SyncOwnerMetafieldsContract::class, SyncOwnerMetafieldsAction::class);
+        $this->app->bindIf(DeleteOwnerMetafieldContract::class, DeleteOwnerMetafieldAction::class);
+        $this->app->bindIf(CreateMetafieldDefinitionContract::class, CreateMetafieldDefinitionAction::class);
+        $this->app->bindIf(UpdateMetafieldDefinitionContract::class, UpdateMetafieldDefinitionAction::class);
+        $this->app->bindIf(DeleteMetafieldDefinitionContract::class, DeleteMetafieldDefinitionAction::class);
         $this->app->bindIf(MetafieldAuthorization::class, ConfiguredMetafieldAuthorization::class);
         $this->app->bindIf(ListAuthorizedOwnersMetafieldsContract::class, ListAuthorizedOwnersMetafieldsAction::class);
         $this->app->bindIf(MetafieldBatchAuthorization::class, function (): MetafieldBatchAuthorization {

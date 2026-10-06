@@ -1,0 +1,30 @@
+{
+    "schema_version": 1,
+    "configs": {
+        "nvl-metafields": {
+            "required": [],
+            "common": [
+                "authorization.definition_ability",
+                "authorization.owner_ability",
+                "authorization.reference_ability",
+                "migrations.enabled",
+                "owners",
+                "routes.enabled",
+                "routes.management_middleware",
+                "routes.middleware",
+                "routes.prefix",
+                "routes.rate_limit_per_minute"
+            ],
+            "advanced": [
+                "limits.maximum_json_bytes",
+                "limits.maximum_json_depth",
+                "limits.maximum_json_items",
+                "limits.maximum_schema_properties",
+                "limits.maximum_sync_items",
+                "name",
+                "reference_models",
+                "transactions.attempts"
+            ]
+        }
+    }
+}

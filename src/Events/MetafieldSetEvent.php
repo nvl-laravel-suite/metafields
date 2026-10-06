@@ -4,14 +4,6 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Events;
 
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
-use Nvl\Metafields\Models\Metafield;
-
-final class MetafieldSetEvent implements ShouldDispatchAfterCommit
-{
-    use Dispatchable, SerializesModels;
-
-    public function __construct(public Metafield $metafield) {}
-}
+/** @api
+ * @deprecated Use MetafieldSet with the versioned scalar payload; removed no earlier than major 6. */
+class_alias(MetafieldSet::class, __NAMESPACE__.'\\MetafieldSetEvent');

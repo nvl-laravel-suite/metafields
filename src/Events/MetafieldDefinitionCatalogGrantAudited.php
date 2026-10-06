@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Events;
 
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
-use Illuminate\Foundation\Events\Dispatchable;
+use Nvl\Support\Contracts\DomainEvent;
 
-/** Scalar-only audit fact for a committed definition grant lifecycle change. */
-final readonly class MetafieldDefinitionCatalogGrantAudited implements ShouldDispatchAfterCommit
+/** Scalar-only audit fact for a committed definition grant lifecycle change. *
+ * @api
+ */
+final readonly class MetafieldDefinitionCatalogGrantAudited implements DomainEvent
 {
-    use Dispatchable;
-
     /** Create the committed audit fact. */
     public function __construct(
         public string $operation,
@@ -20,5 +19,12 @@ final readonly class MetafieldDefinitionCatalogGrantAudited implements ShouldDis
         public string $definitionId,
         public int $sourceRevision,
         public int $grantRevision,
+        public int $schemaVersion = 1,
     ) {}
+
+    /** Return the immutable event payload schema version. */
+    public function schemaVersion(): int
+    {
+        return $this->schemaVersion;
+    }
 }

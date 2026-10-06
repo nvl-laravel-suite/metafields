@@ -6,6 +6,7 @@ namespace Nvl\Metafields\Actions\Metafields;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Nvl\Metafields\Contracts\ListOwnerMetafieldsContract;
 use Nvl\Metafields\Data\OwnerMetafieldField;
 use Nvl\Metafields\Services\Metafields\OwnerMetafieldFieldCatalog;
 
@@ -14,7 +15,7 @@ use Nvl\Metafields\Services\Metafields\OwnerMetafieldFieldCatalog;
  *
  * @api
  */
-final class ListOwnerMetafieldsAction
+final class ListOwnerMetafieldsAction implements ListOwnerMetafieldsContract
 {
     public function __construct(
         private readonly OwnerMetafieldFieldCatalog $catalog,

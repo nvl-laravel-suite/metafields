@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Actions;
 
+use Nvl\Metafields\Contracts\ImportPlatformMetafieldDefinitionContract;
 use Nvl\Metafields\Data\ImportPlatformMetafieldDefinitionData;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionCatalogReader;
@@ -16,7 +17,7 @@ use Nvl\Support\Tenancy\Services\EffectiveTenantConnection;
  *
  * @api
  */
-final readonly class ImportPlatformMetafieldDefinitionAction
+final readonly class ImportPlatformMetafieldDefinitionAction implements ImportPlatformMetafieldDefinitionContract
 {
     /** Create the standalone catalog import action. */
     public function __construct(

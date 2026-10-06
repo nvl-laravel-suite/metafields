@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Actions;
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Nvl\Metafields\Contracts\GrantMetafieldDefinitionToTenantContract;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Events\MetafieldDefinitionCatalogGrantAudited;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
+use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Tenancy\Contracts\TenantContext;
 use Nvl\Support\Tenancy\Contracts\TenantDirectory;
 use Nvl\Support\Tenancy\Enums\TenantContextMode;
@@ -22,10 +23,10 @@ use Nvl\Support\Tenancy\ValueObjects\TenantId;
  *
  * @api
  */
-final readonly class GrantMetafieldDefinitionToTenantAction
+final readonly class GrantMetafieldDefinitionToTenantAction implements GrantMetafieldDefinitionToTenantContract
 {
     /** Create the platform grant action. */
-    public function __construct(private TenantContext $context, private TenantDirectory $directory) {}
+    public function __construct(private TenantContext $context, private TenantDirectory $directory, private DomainEventDispatcher $domainEvents) {}
 
     /** Grant or refresh the exact platform source revision. */
     public function execute(string $definitionId, TenantId $recipient, int $sourceRevision): MetafieldDefinitionTenantGrant
@@ -35,14 +36,14 @@ final readonly class GrantMetafieldDefinitionToTenantAction
             throw new TenantBoundaryViolation('Metafield grants require platform context and an active recipient.');
         }
 
-        return DB::transaction(function () use ($definitionId, $recipient, $sourceRevision): MetafieldDefinitionTenantGrant {
-            DB::table(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks))->insertOrIgnore([
+        return (new MetafieldDefinitionTenantGrant)->getConnection()->transaction(function () use ($definitionId, $recipient, $sourceRevision): MetafieldDefinitionTenantGrant {
+            (new MetafieldDefinitionTenantGrant)->getConnection()->table(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks))->insertOrIgnore([
                 'tenant_id' => $recipient->value,
                 'definition_id' => $definitionId,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            DB::table(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks))
+            (new MetafieldDefinitionTenantGrant)->getConnection()->table(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks))
                 ->where('tenant_id', $recipient->value)
                 ->where('definition_id', $definitionId)
                 ->lockForUpdate()->first();
@@ -78,9 +79,9 @@ final readonly class GrantMetafieldDefinitionToTenantAction
                     'enabled' => true,
                 ]);
             }
-            MetafieldDefinitionCatalogGrantAudited::dispatch(
+            $this->domainEvents->dispatch(new MetafieldDefinitionCatalogGrantAudited(
                 $operation, $grant->id, $recipient->value, $source->id, $sourceRevision, $grant->revision,
-            );
+            ), $grant->getConnection());
 
             return $grant->refresh();
         });

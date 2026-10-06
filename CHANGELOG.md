@@ -1,10 +1,19 @@
 # Changelog
 
+## Unreleased — consumer runtime integration
+
+- Added focused consumer contract/testing guidance and shipped-factory usage limits.
+- Versioned committed event payloads and documented canonical aliases, source connections, failure metadata and optional safe rendering.
+- Added explicit first-use/installer and deployment guidance; new acceptance checks remain pending.
+
+
 All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
 ### Added
+
+- Added focused injectable contracts for all 14 selected public workflows, with native signatures and conditional defaults preserving host bindings.
 
 - Bounded authorized many-owner DTO reads, grouped canonical/reference admission and explicit query-free SQL policy contracts.
 - Exact native identity object maps and payload ceilings, preserving existing single-owner APIs.

@@ -30,6 +30,8 @@ use Nvl\Metafields\Data\UpdateMetafieldDefinitionPayload;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Enums\MetafieldAbility;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
+use Nvl\Metafields\Events\MetafieldSet;
+use Nvl\Metafields\Events\MetafieldsSynced;
 use Nvl\Metafields\Events\MetafieldsSyncedEvent;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
 use Nvl\Metafields\Models\Metafield;
@@ -43,6 +45,8 @@ use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Support\MetafieldValidationRuleCompiler;
 use Nvl\Metafields\Support\OwnerMetafieldBooleanFilter;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
+use Nvl\Support\Events\ConnectionCommitCallbacks;
+use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Tenancy\Contracts\TenantInstallationState;
 
 function metafieldTestOwner(): TestMetafieldOwner
@@ -1387,4 +1391,34 @@ it('reports a healthy standalone schema through the machine-readable doctor', fu
         '--strict' => true,
         '--format' => 'json',
     ])->assertSuccessful();
+});
+
+it('publishes stored metafield morph identity and the native integer sync owner key without model payloads', function (): void {
+    /** RefreshDatabase replaces the migration-time native transaction manager. */
+    app()->forgetInstance(ConnectionCommitCallbacks::class);
+    app()->forgetInstance(DomainEventDispatcher::class);
+    $setEvents = [];
+    $syncEvents = [];
+    Event::listen(MetafieldSet::class, function (MetafieldSet $event) use (&$setEvents): void {
+        $setEvents[] = $event;
+    });
+    Event::listen(MetafieldsSynced::class, function (MetafieldsSynced $event) use (&$syncEvents): void {
+        $syncEvents[] = $event;
+    });
+    $definition = MetafieldDefinition::factory()->create([
+        'namespace' => 'product', 'key' => 'c4_identity', 'type' => MetafieldTypeEnum::String,
+    ]);
+    assignMetafieldTestDefinition($definition);
+    $owner = metafieldTestOwner();
+    $stored = app(SetMetafieldAction::class)->execute($owner, 'product.c4_identity', 'private-value');
+
+    expect($setEvents)->toHaveCount(1)->and($syncEvents)->toHaveCount(1)
+        ->and($setEvents[0]->ownerType)->toBe($stored->metafieldable_type)
+        ->and($setEvents[0]->ownerId)->toBe($stored->metafieldable_id)
+        ->and($setEvents[0]->definitionId)->toBe($definition->id)
+        ->and($setEvents[0]->revision)->toBe($stored->revision)
+        ->and($syncEvents[0]->ownerType)->toBe('products')
+        ->and($syncEvents[0]->ownerId)->toBe($owner->getKey())->toBeInt()
+        ->and($syncEvents[0]->metafieldIds)->toBe([$stored->id])
+        ->and(serialize([$setEvents[0], $syncEvents[0]]))->not->toContain('private-value', TestMetafieldOwner::class.'":');
 });

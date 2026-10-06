@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Actions\MetafieldDefinitions;
 
 use Illuminate\Support\Collection;
+use Nvl\Metafields\Contracts\ListMetafieldDefinitionsContract;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionCatalog;
 
@@ -13,7 +14,7 @@ use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionCatalog;
  *
  * @api
  */
-final class ListMetafieldDefinitionsAction
+final class ListMetafieldDefinitionsAction implements ListMetafieldDefinitionsContract
 {
     public function __construct(
         private readonly MetafieldDefinitionCatalog $catalog,

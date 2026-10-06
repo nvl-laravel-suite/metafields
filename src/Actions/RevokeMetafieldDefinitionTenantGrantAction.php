@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Actions;
 
-use Illuminate\Support\Facades\DB;
+use Nvl\Metafields\Contracts\RevokeMetafieldDefinitionTenantGrantContract;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Events\MetafieldDefinitionCatalogGrantAudited;
 use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
+use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Tenancy\Contracts\TenantContext;
 use Nvl\Support\Tenancy\Enums\TenantContextMode;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
@@ -17,10 +18,10 @@ use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
  *
  * @api
  */
-final readonly class RevokeMetafieldDefinitionTenantGrantAction
+final readonly class RevokeMetafieldDefinitionTenantGrantAction implements RevokeMetafieldDefinitionTenantGrantContract
 {
     /** Create the platform revocation action. */
-    public function __construct(private TenantContext $context) {}
+    public function __construct(private TenantContext $context, private DomainEventDispatcher $domainEvents) {}
 
     /** Revoke one exact grant revision. */
     public function execute(string $grantId, int $expectedRevision): MetafieldDefinitionTenantGrant
@@ -29,18 +30,18 @@ final readonly class RevokeMetafieldDefinitionTenantGrantAction
             throw new TenantBoundaryViolation('Metafield grant revocation requires platform context.');
         }
 
-        return DB::transaction(function () use ($grantId, $expectedRevision): MetafieldDefinitionTenantGrant {
+        return (new MetafieldDefinitionTenantGrant)->getConnection()->transaction(function () use ($grantId, $expectedRevision): MetafieldDefinitionTenantGrant {
             $identity = MetafieldDefinitionTenantGrant::withoutGlobalScope('tenant')->whereKey($grantId)->first(['tenant_id', 'definition_id']);
             if (! $identity instanceof MetafieldDefinitionTenantGrant) {
                 throw new TenantBoundaryViolation('The Metafield grant revision is unavailable.');
             }
-            DB::table(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks))->insertOrIgnore([
+            (new MetafieldDefinitionTenantGrant)->getConnection()->table(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks))->insertOrIgnore([
                 'tenant_id' => $identity->tenant_id,
                 'definition_id' => $identity->definition_id,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            DB::table(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks))
+            (new MetafieldDefinitionTenantGrant)->getConnection()->table(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks))
                 ->where('tenant_id', $identity->tenant_id)
                 ->where('definition_id', $identity->definition_id)
                 ->lockForUpdate()->first();
@@ -53,9 +54,9 @@ final readonly class RevokeMetafieldDefinitionTenantGrantAction
                 'revoked_at' => now(),
                 'revision' => $grant->revision + 1,
             ])->save();
-            MetafieldDefinitionCatalogGrantAudited::dispatch(
+            $this->domainEvents->dispatch(new MetafieldDefinitionCatalogGrantAudited(
                 'revoked', $grant->id, $grant->tenant_id, $grant->definition_id, $grant->source_revision, $grant->revision,
-            );
+            ), $grant->getConnection());
 
             return $grant->refresh();
         });

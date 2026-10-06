@@ -10,7 +10,7 @@ use Illuminate\Validation\ValidationException;
 use Nvl\Metafields\Contracts\SyncOwnerMetafieldsContract;
 use Nvl\Metafields\Data\SyncOwnerMetafieldsPayload;
 use Nvl\Metafields\Data\SyncOwnerMetafieldValuePayload;
-use Nvl\Metafields\Events\MetafieldsSyncedEvent;
+use Nvl\Metafields\Events\MetafieldsSynced;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
@@ -21,7 +21,9 @@ use Nvl\Metafields\Services\Metafields\OwnerMetafieldRecordWriter;
 use Nvl\Metafields\Services\Metafields\OwnerMetafieldSyncValidator;
 use Nvl\Metafields\Support\MetafieldConfiguration;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
+use Nvl\Support\Events\DomainEventDispatcher;
 use Spatie\LaravelData\Optional;
+use TypeError;
 
 /**
  * Synchronizes assigned metafield values for a polymorphic owner model.
@@ -41,6 +43,7 @@ final class SyncOwnerMetafieldsAction implements SyncOwnerMetafieldsContract
         private readonly OwnerMetafieldSyncValidator $syncValidator,
         private readonly OwnerMetafieldRecordWriter $recordWriter,
         private readonly MetafieldOwnerModelResolver $ownerResolver,
+        private DomainEventDispatcher $domainEvents,
     ) {}
 
     /**
@@ -212,10 +215,15 @@ final class SyncOwnerMetafieldsAction implements SyncOwnerMetafieldsContract
                 $syncedMetafields->push($metafield);
             }
 
+            $ownerId = $owner->getKey();
+            if (! is_string($ownerId) && ! is_int($ownerId)) {
+                throw new TypeError('Committed metafield owner identity must be a string or integer.');
+            }
+            $metafieldIds = array_values($syncedMetafields->map(static fn (Metafield $metafield): string => $metafield->id)->all());
+            $this->domainEvents->dispatch(new MetafieldsSynced($ownerType, $ownerId, $metafieldIds), (new Metafield)->getConnection());
+
             return $syncedMetafields->values();
         }, MetafieldConfiguration::positiveInteger('nvl-metafields.transactions.attempts', 3));
-
-        MetafieldsSyncedEvent::dispatch($owner, $synced);
 
         return $synced;
     }

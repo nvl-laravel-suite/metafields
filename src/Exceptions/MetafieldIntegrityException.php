@@ -7,6 +7,8 @@ namespace Nvl\Metafields\Exceptions;
 use Illuminate\Database\Eloquent\Model;
 
 /**
+ * @api
+
  * MetafieldIntegrityException
  *
  * Raised when persisted metafield rows violate runtime invariants.

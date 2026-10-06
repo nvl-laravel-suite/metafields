@@ -6,6 +6,7 @@ namespace Nvl\Metafields\Actions\Metafields;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Nvl\Metafields\Contracts\ListAuthorizedOwnerMetafieldsContract;
 use Nvl\Metafields\Contracts\MetafieldAuthorization;
 use Nvl\Metafields\Data\OwnerMetafieldField;
 use Nvl\Metafields\Enums\MetafieldAbility;
@@ -18,7 +19,7 @@ use Nvl\Metafields\Enums\MetafieldAbility;
  *
  * @api
  */
-final readonly class ListAuthorizedOwnerMetafieldsAction
+final readonly class ListAuthorizedOwnerMetafieldsAction implements ListAuthorizedOwnerMetafieldsContract
 {
     /**
      * Create the authorized owner-field reader.

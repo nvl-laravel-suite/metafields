@@ -8,10 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use Nvl\Metafields\Contracts\SetMetafieldContract;
 use Nvl\Metafields\Data\SyncOwnerMetafieldsPayload;
-use Nvl\Metafields\Events\MetafieldSetEvent;
+use Nvl\Metafields\Events\MetafieldSet;
+use Nvl\Metafields\Exceptions\InvalidMetafieldMutationException;
+use Nvl\Metafields\Exceptions\MetafieldDefinitionNotFoundException;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionCatalog;
+use Nvl\Support\Events\DomainEventDispatcher;
 use RuntimeException;
 
 /**
@@ -28,6 +31,7 @@ final class SetMetafieldAction implements SetMetafieldContract
     public function __construct(
         private readonly MetafieldDefinitionCatalog $definitionCatalog,
         private readonly SyncOwnerMetafieldsAction $syncOwnerMetafieldsAction,
+        private DomainEventDispatcher $domainEvents,
     ) {}
 
     /**
@@ -52,14 +56,14 @@ final class SetMetafieldAction implements SetMetafieldContract
         $definition = $this->definitionCatalog->findByHandle($handle);
 
         if (! $definition instanceof MetafieldDefinition) {
-            throw new InvalidArgumentException("Metafield definition not found: {$handle}");
+            throw new MetafieldDefinitionNotFoundException("Metafield definition not found: {$handle}");
         }
 
         $item = ['definitionId' => $definition->id];
 
         if ($definition->is_translatable) {
             if (! is_string($locale) || $locale === '') {
-                throw new InvalidArgumentException(
+                throw new InvalidMetafieldMutationException(
                     "A locale is required when setting translatable metafield [{$handle}].",
                 );
             }
@@ -73,17 +77,19 @@ final class SetMetafieldAction implements SetMetafieldContract
             $item['expectedRevision'] = $expectedRevision;
         }
 
-        /** @var Metafield|null $metafield */
-        $metafield = $this->syncOwnerMetafieldsAction
-            ->execute($owner, SyncOwnerMetafieldsPayload::from(['items' => [$item]]))
-            ->first();
+        return (new Metafield)->getConnection()->transaction(function () use ($owner, $item, $handle): Metafield {
+            /** @var Metafield|null $metafield */
+            $metafield = $this->syncOwnerMetafieldsAction
+                ->execute($owner, SyncOwnerMetafieldsPayload::from(['items' => [$item]]))
+                ->first();
 
-        if (! $metafield instanceof Metafield) {
-            throw new RuntimeException("Metafield sync did not return a persisted row for [{$handle}].");
-        }
+            if (! $metafield instanceof Metafield) {
+                throw new RuntimeException("Metafield sync did not return a persisted row for [{$handle}].");
+            }
 
-        MetafieldSetEvent::dispatch($metafield);
+            $this->domainEvents->dispatch(new MetafieldSet($metafield->id, $metafield->metafieldable_type, $metafield->metafieldable_id, $metafield->definition_id, $metafield->revision), $metafield->getConnection());
 
-        return $metafield;
+            return $metafield;
+        });
     }
 }

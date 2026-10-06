@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Nvl\Metafields\Database\Factories\MetafieldDefinitionTranslationFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
 use Nvl\Support\Config\PackageStorage;
@@ -25,10 +27,17 @@ use Nvl\Support\Config\PackageStorage;
  * @property string|null $default_value
  * @property array<string, mixed>|null $properties
  * @property-read MetafieldDefinition $definition
+ *
+ * @api
+ *
+ * @nvl-consumer-read id
  */
 final class MetafieldDefinitionTranslation extends Model
 {
     use GuardsTenantOwnership;
+
+    /** @use HasFactory<MetafieldDefinitionTranslationFactory> */
+    use HasFactory;
     use HasUuids;
 
     public const string TABLE = MetafieldsTables::DefinitionsI18n;
@@ -77,5 +86,15 @@ final class MetafieldDefinitionTranslation extends Model
     public function getConnectionName(): ?string
     {
         return PackageStorage::connectionName($this->connection ?? PackageStorage::connection('metafields') ?? parent::getConnectionName());
+    }
+
+    /**
+     * Return the package's runtime fixture factory.
+     *
+     * @internal
+     */
+    protected static function newFactory(): MetafieldDefinitionTranslationFactory
+    {
+        return MetafieldDefinitionTranslationFactory::new();
     }
 }

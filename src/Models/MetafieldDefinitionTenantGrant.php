@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Nvl\Metafields\Database\Factories\MetafieldDefinitionTenantGrantFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
 use Nvl\Support\Config\PackageStorage;
@@ -29,6 +31,9 @@ use Nvl\Support\Config\PackageStorage;
 final class MetafieldDefinitionTenantGrant extends Model
 {
     use GuardsTenantOwnership;
+
+    /** @use HasFactory<MetafieldDefinitionTenantGrantFactory> */
+    use HasFactory;
     use HasUuids;
 
     public const string TABLE = MetafieldsTables::TenantGrants;
@@ -67,5 +72,15 @@ final class MetafieldDefinitionTenantGrant extends Model
     public function getConnectionName(): ?string
     {
         return PackageStorage::connectionName($this->connection ?? PackageStorage::connection('metafields') ?? parent::getConnectionName());
+    }
+
+    /**
+     * Return the package's runtime fixture factory.
+     *
+     * @internal
+     */
+    protected static function newFactory(): MetafieldDefinitionTenantGrantFactory
+    {
+        return MetafieldDefinitionTenantGrantFactory::new();
     }
 }

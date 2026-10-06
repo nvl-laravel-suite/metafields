@@ -1,0 +1,316 @@
+{
+  "schema_version": 1,
+  "package": "nvl/metafields",
+  "documentation": "docs/events.md",
+  "implementation_status": "implemented; executable acceptance proof pending",
+  "events": [
+    {
+      "class": "Nvl\\Metafields\\Events\\MetafieldDefinitionCatalogGrantAudited",
+      "source": "packages/nvl/metafields/src/Events/MetafieldDefinitionCatalogGrantAudited.php",
+      "constructor_fields": [
+        {
+          "name": "operation",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "grantId",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "tenantId",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "definitionId",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "sourceRevision",
+          "type": "int",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "grantRevision",
+          "type": "int",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "schemaVersion",
+          "type": "int",
+          "visibility": "public",
+          "required": false,
+          "default_expression": "1"
+        }
+      ],
+      "public_fields": [
+        {
+          "name": "operation",
+          "type": "string"
+        },
+        {
+          "name": "grantId",
+          "type": "string"
+        },
+        {
+          "name": "tenantId",
+          "type": "string"
+        },
+        {
+          "name": "definitionId",
+          "type": "string"
+        },
+        {
+          "name": "sourceRevision",
+          "type": "int"
+        },
+        {
+          "name": "grantRevision",
+          "type": "int"
+        },
+        {
+          "name": "schemaVersion",
+          "type": "int"
+        }
+      ],
+      "kind": "value_object",
+      "schema_version": 1,
+      "trigger": "Definition catalog tenant grant changed.",
+      "aliases": [],
+      "producers": [
+        {
+          "path": "packages/nvl/metafields/src/Actions/GrantMetafieldDefinitionToTenantAction.php",
+          "trigger": "Definition catalog tenant grant changed.",
+          "connection": "$grant->getConnection()",
+          "construction_expression": "new MetafieldDefinitionCatalogGrantAudited( $operation, $grant->id, $recipient->value, $source->id, $sourceRevision, $grant->revision, )"
+        },
+        {
+          "path": "packages/nvl/metafields/src/Actions/RevokeMetafieldDefinitionTenantGrantAction.php",
+          "trigger": "Definition catalog tenant grant changed.",
+          "connection": "$grant->getConnection()",
+          "construction_expression": "new MetafieldDefinitionCatalogGrantAudited( 'revoked', $grant->id, $grant->tenant_id, $grant->definition_id, $grant->source_revision, $grant->revision, )"
+        }
+      ],
+      "security_notes": [
+        "Value-free metafield/definition/grant and persisted morph-owner identities, revisions and synchronized UUID lists. No owner/model/collection or stored metafield value."
+      ],
+      "no_op_semantics": "Existing set/sync/grant revision guards govern publication; synced emits the identifiers of the returned synchronized set. No stored value is copied. No blanket request deduplication is added."
+    },
+    {
+      "class": "Nvl\\Metafields\\Events\\MetafieldSet",
+      "source": "packages/nvl/metafields/src/Events/MetafieldSet.php",
+      "constructor_fields": [
+        {
+          "name": "metafieldId",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "ownerType",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "ownerId",
+          "type": "int|string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "definitionId",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "revision",
+          "type": "int",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "schemaVersion",
+          "type": "int",
+          "visibility": "public",
+          "required": false,
+          "default_expression": "1"
+        }
+      ],
+      "public_fields": [
+        {
+          "name": "metafieldId",
+          "type": "string"
+        },
+        {
+          "name": "ownerType",
+          "type": "string"
+        },
+        {
+          "name": "ownerId",
+          "type": "int|string"
+        },
+        {
+          "name": "definitionId",
+          "type": "string"
+        },
+        {
+          "name": "revision",
+          "type": "int"
+        },
+        {
+          "name": "schemaVersion",
+          "type": "int"
+        }
+      ],
+      "kind": "value_object",
+      "schema_version": 1,
+      "trigger": "Metafield revision persisted.",
+      "aliases": [
+        {
+          "legacy": "Nvl\\Metafields\\Events\\MetafieldSetEvent",
+          "canonical": "Nvl\\Metafields\\Events\\MetafieldSet",
+          "path": "packages/nvl/metafields/src/Events/MetafieldSetEvent.php",
+          "deprecated_in_major": 5,
+          "removal_not_before_major": 6
+        }
+      ],
+      "producers": [
+        {
+          "path": "packages/nvl/metafields/src/Actions/Metafields/SetMetafieldAction.php",
+          "trigger": "Metafield revision persisted.",
+          "connection": "$metafield->getConnection()",
+          "construction_expression": "new MetafieldSet($metafield->id, $metafield->metafieldable_type, $metafield->metafieldable_id, $metafield->definition_id, $metafield->revision)"
+        }
+      ],
+      "security_notes": [
+        "Value-free metafield/definition/grant and persisted morph-owner identities, revisions and synchronized UUID lists. No owner/model/collection or stored metafield value."
+      ],
+      "no_op_semantics": "Existing set/sync/grant revision guards govern publication; synced emits the identifiers of the returned synchronized set. No stored value is copied. No blanket request deduplication is added."
+    },
+    {
+      "class": "Nvl\\Metafields\\Events\\MetafieldsSynced",
+      "source": "packages/nvl/metafields/src/Events/MetafieldsSynced.php",
+      "constructor_fields": [
+        {
+          "name": "ownerType",
+          "type": "string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "ownerId",
+          "type": "int|string",
+          "visibility": "public",
+          "required": true
+        },
+        {
+          "name": "metafieldIds",
+          "type": "array",
+          "visibility": "public",
+          "required": true,
+          "phpdoc_type": "list<string>"
+        },
+        {
+          "name": "schemaVersion",
+          "type": "int",
+          "visibility": "public",
+          "required": false,
+          "default_expression": "1"
+        }
+      ],
+      "public_fields": [
+        {
+          "name": "ownerType",
+          "type": "string"
+        },
+        {
+          "name": "ownerId",
+          "type": "int|string"
+        },
+        {
+          "name": "metafieldIds",
+          "type": "array",
+          "phpdoc_type": "list<string>"
+        },
+        {
+          "name": "schemaVersion",
+          "type": "int"
+        }
+      ],
+      "kind": "value_object",
+      "schema_version": 1,
+      "trigger": "Owner synchronization completed.",
+      "aliases": [
+        {
+          "legacy": "Nvl\\Metafields\\Events\\MetafieldsSyncedEvent",
+          "canonical": "Nvl\\Metafields\\Events\\MetafieldsSynced",
+          "path": "packages/nvl/metafields/src/Events/MetafieldsSyncedEvent.php",
+          "deprecated_in_major": 5,
+          "removal_not_before_major": 6
+        }
+      ],
+      "producers": [
+        {
+          "path": "packages/nvl/metafields/src/Actions/Metafields/SyncOwnerMetafieldsAction.php",
+          "trigger": "Owner synchronization completed.",
+          "connection": "(new Metafield)->getConnection()",
+          "construction_expression": "new MetafieldsSynced($ownerType, $ownerId, $metafieldIds)"
+        }
+      ],
+      "security_notes": [
+        "Value-free metafield/definition/grant and persisted morph-owner identities, revisions and synchronized UUID lists. No owner/model/collection or stored metafield value."
+      ],
+      "no_op_semantics": "Existing set/sync/grant revision guards govern publication; synced emits the identifiers of the returned synchronized set. No stored value is copied. No blanket request deduplication is added."
+    }
+  ],
+  "value_types": [],
+  "aliases": [
+    {
+      "legacy": "Nvl\\Metafields\\Events\\MetafieldSetEvent",
+      "canonical": "Nvl\\Metafields\\Events\\MetafieldSet",
+      "path": "packages/nvl/metafields/src/Events/MetafieldSetEvent.php",
+      "deprecated_in_major": 5,
+      "removal_not_before_major": 6
+    },
+    {
+      "legacy": "Nvl\\Metafields\\Events\\MetafieldsSyncedEvent",
+      "canonical": "Nvl\\Metafields\\Events\\MetafieldsSynced",
+      "path": "packages/nvl/metafields/src/Events/MetafieldsSyncedEvent.php",
+      "deprecated_in_major": 5,
+      "removal_not_before_major": 6
+    }
+  ],
+  "publication": {
+    "publication": "The native host dispatcher receives the captured event after the supplied source connection outer commit, or immediately when that connection has no active transaction.",
+    "rollback": "Callbacks attach to the matching native connection and current nesting record; native outer/savepoint rollback discards the corresponding callbacks.",
+    "registration_failure": "Missing source transaction records fail before commit; Mail Notifications reports and drops unusable observations.",
+    "host_policy": "Host after-commit listeners and queue after_commit policies can add their own deferral after publication. Host transaction infrastructure and dispatcher bindings are preserved.",
+    "delivery_limit": "Local callbacks are not an outbox. Process exit between commit and callback can lose delivery; no crash durability or exactly-once delivery is promised.",
+    "cardinality": "One canonical object is dispatched per qualifying producer call. This is local publication, not cross-process deduplication or a guarantee that repeated observations are unique.",
+    "manual_producers": "Use Nvl\\Support\\Events\\DomainEventDispatcher::dispatch($event, $writerConnection). Native Event::dispatch() is immediate and has no package interception."
+  },
+  "security_notes": [
+    "Value-free metafield/definition/grant and persisted morph-owner identities, revisions and synchronized UUID lists. No owner/model/collection or stored metafield value."
+  ],
+  "no_op_semantics": "Existing set/sync/grant revision guards govern publication; synced emits the identifiers of the returned synchronized set. No stored value is copied. No blanket request deduplication is added.",
+  "notes": [],
+  "alias_policy": [
+    "Legacy names are deprecated for major 5 and removed no earlier than major 6. class_alias preserves imports, instanceof, listener type hints and the new versioned constructor, not the former model-bearing API.",
+    "The native Laravel exact-listener bridge reads getRawListeners at delivery time and prepares legacy listeners through makeListener; strict-identical canonical registrations are skipped. Late registration, subscribers, cached discovery and queued listener preparation use the native dispatcher seams; proof is pending.",
+    "One canonical object is emitted once. Native wildcard/interface listeners see the canonical event once; suffix-specific *Event wildcards must migrate. The bridge does not redispatch a legacy string.",
+    "Drain old queued model-bearing payloads and restart workers before upgrade. New serialized alias instances restore the canonical versioned class without model restoration.",
+    "Event fakes/filters and assertions use canonical class names. EventAliases::canonicalName() helps migrate old names; old fake filters are not automatically rewritten.",
+    "Host custom dispatchers are retained. Explicit EventAliases::listen($event, $listener) maps through the canonical adapter; absent native bridging/host adapter, Doctor reports the deprecated-name limitation."
+  ]
+}

@@ -1,13 +1,5 @@
-# Contributing to NVL Metafields
+# Contributing
 
-This public repository is a publication mirror of private source. Open an issue
-here for a bug or proposal; include a reproduction and, if helpful, a patch.
-Maintainers apply accepted changes in source and publish a mirror release.
-Direct mirror pull requests do not update source. See the
-[organization contribution guide](https://github.com/nvl-laravel-suite/.github/blob/main/CONTRIBUTING.md).
+This repository is a read-only release mirror. Pull requests to the mirror are not accepted. Open a public issue with a reproducible example or a proposed patch. Maintainers apply reviewed changes in the private source repository and publish immutable releases from there.
 
-Changes must remain generic across integer, UUID, ULID, and string owner identifiers.
-
-Add Pest coverage for every type, localization eligibility, schemas, payload limits, references, revisions, uniqueness, deletion policies, patch/replace semantics, query plans, and database parity. Run Pint, PHPStan at maximum strictness, Composer validation, dependency analysis, and distribution validation.
-
-New type adapters require normalized storage, display DTOs, validation, query behavior, and documentation.
+Report vulnerabilities privately through the [security policy](https://github.com/nvl-laravel-suite/metafields/security/policy). Public issues must not contain undisclosed vulnerability details.

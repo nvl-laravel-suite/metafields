@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Exceptions;
 
 /**
+ * @api
+
  * Raised when a mutation attempts to overwrite a newer definition or value.
  */
 final class StaleMetafieldVersionException extends MetafieldException

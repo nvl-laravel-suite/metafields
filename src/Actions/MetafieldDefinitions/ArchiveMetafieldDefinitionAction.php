@@ -6,6 +6,7 @@ namespace Nvl\Metafields\Actions\MetafieldDefinitions;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Nvl\Metafields\Contracts\ArchiveMetafieldDefinitionContract;
 use Nvl\Metafields\Data\ArchiveMetafieldDefinitionPayload;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
 use Nvl\Metafields\Models\MetafieldDefinition;
@@ -15,7 +16,7 @@ use Nvl\Metafields\Models\MetafieldDefinition;
  *
  * @api
  */
-final class ArchiveMetafieldDefinitionAction
+final class ArchiveMetafieldDefinitionAction implements ArchiveMetafieldDefinitionContract
 {
     /**
      * Archive or restore a definition through its expected revision.

@@ -1,5 +1,28 @@
 # NVL Metafields — API and usage
 
+## Quickstart
+
+```sh
+composer require nvl/metafields:^5.0
+php artisan nvl:install metafields --dry-run
+php artisan nvl:install metafields
+```
+
+Required NVL dependencies: `nvl/core` (`^5.0`), `nvl/translatable` (`^5.0`). Register definitions and owner assignments using native morph identity. Supply a persisted authorized owner; listing does not replace host authorization.
+Review the published common config, select one migration owner, and run schema preflight before existing-table upgrades. The installer does not enable features or run migrations. Follow the detailed installation and capability sections below before invoking a storage/provider operation.
+
+Inject `Nvl\Metafields\Contracts\ListOwnerMetafieldsContract` in a host service. After supplying the trusted inputs described above, the first public call is:
+
+```php
+use Nvl\Metafields\Contracts\ListOwnerMetafieldsContract;
+
+/** @var ListOwnerMetafieldsContract $capability */
+$result = $capability->execute($owner);
+```
+
+Use the [event catalog](docs/events.md) and [Testing your app](#testing-your-app) below. The suite [getting-started guide](https://github.com/nvl-laravel-suite/laravel-suite/blob/main/docs/getting-started.md) provides a complete Comments host fixture; package archives retain their own local references.
+
+
 [← NVL Laravel Suite](https://github.com/nvl-laravel-suite)
 
 For support, [open an issue](https://github.com/nvl-laravel-suite/metafields/issues). For vulnerabilities, use
@@ -503,6 +526,51 @@ stateful package suite on SQLite, PostgreSQL, and MySQL.
 See [SECURITY.md](SECURITY.md), [UPGRADING.md](UPGRADING.md),
 [CONTRIBUTING.md](CONTRIBUTING.md), and [CHANGELOG.md](CHANGELOG.md).
 
+## Injectable workflow contracts
+
+Constructor-inject focused interfaces from `Nvl\Metafields\Contracts` when composing host workflows. Each interface retains the native Action’s complete `execute` parameters, defaults, return type, and documented generic/shape result. Concrete Actions remain directly usable in major 5.
+
+```php
+use Illuminate\Database\Eloquent\Model;
+use Nvl\Metafields\Contracts\SetMetafieldContract;
+use Nvl\Metafields\Models\Metafield;
+
+final readonly class SetMetafieldWorkflow
+{
+    public function __construct(private SetMetafieldContract $workflow) {}
+
+    public function execute(
+        Model $owner,
+        string $handle,
+        mixed $value,
+        ?string $locale = null,
+        ?int $expectedRevision = null,
+    ): Metafield
+    {
+        return $this->workflow->execute($owner, $handle, $value, $locale, $expectedRevision);
+    }
+}
+```
+
+The provider installs conditional transient defaults (`bindIf`) for the following selected workflows. A host interface binding registered before package discovery is retained; a later binding/instance replacement is used by newly resolved host services. Keep authorization, validation, query ownership, and mutation behavior inside the owning package workflow.
+
+| Contract | Native implementation |
+| --- | --- |
+| `GrantMetafieldDefinitionToTenantContract` | `GrantMetafieldDefinitionToTenantAction` |
+| `ImportPlatformMetafieldDefinitionContract` | `ImportPlatformMetafieldDefinitionAction` |
+| `ArchiveMetafieldDefinitionContract` | `ArchiveMetafieldDefinitionAction` |
+| `CreateMetafieldDefinitionContract` | `CreateMetafieldDefinitionAction` |
+| `DeleteMetafieldDefinitionContract` | `DeleteMetafieldDefinitionAction` |
+| `ListMetafieldDefinitionsContract` | `ListMetafieldDefinitionsAction` |
+| `UpdateMetafieldDefinitionContract` | `UpdateMetafieldDefinitionAction` |
+| `DeleteOwnerMetafieldContract` | `DeleteOwnerMetafieldAction` |
+| `ListAuthorizedOwnerMetafieldsContract` | `ListAuthorizedOwnerMetafieldsAction` |
+| `ListAuthorizedOwnersMetafieldsContract` | `ListAuthorizedOwnersMetafieldsAction` |
+| `ListOwnerMetafieldsContract` | `ListOwnerMetafieldsAction` |
+| `SetMetafieldContract` | `SetMetafieldAction` |
+| `SyncOwnerMetafieldsContract` | `SyncOwnerMetafieldsAction` |
+| `RevokeMetafieldDefinitionTenantGrantContract` | `RevokeMetafieldDefinitionTenantGrantAction` |
+
 ## Supported PHP usage
 
 The source `@api` declarations identify supported workflows, extension contracts, and value types. Public members marked `@internal` and untagged implementation types remain package-owned. Concrete Actions retain their existing constructors, qualifiers, and `execute()` signatures.
@@ -510,10 +578,6 @@ The source `@api` declarations identify supported workflows, extension contracts
 A package model returned or accepted by a public workflow is an identity/result handle. Use its declared type and `getKey()`, `getKeyName()`, `getMorphClass()`, `getRouteKey()`, `getRouteKeyName()`, `is()`, `isNot()`, and `relationLoaded()`. Read only explicitly declared in-memory `@nvl-consumer-read` fields; ordinary model PHPDocs and fillable attributes do not grant consumer reads. Obtain display projections through public reads. Persistence, additional model queries, relation access/loading, and generic model serialization are outside this contract. Host-model queries remain available, while traversal or aggregates of package capability relations require the package public reader or authorized adapter.
 
 The current readable handle fields are `Metafield`: `id`, `definition_id`, `metafieldable_id`, `metafieldable_type`, `revision`, `created_at`, `updated_at`. All other package model handles have no readable attribute grant.
-
-## License
-
-Released under the [MIT License](LICENSE).
 
 ## Shared owner identity
 
@@ -559,3 +623,75 @@ Migration filenames contain `nvl_metafields_`. Existing installations must compl
 ## Canonical configuration ownership
 
 Use `nvl-metafields` settings in `config/nvl-metafields.php` and canonical package environment names. Old generic roots are foreign unless an upgrading NVL host explicitly selects them in Core's default-off compatibility. Canonical false/null/empty values win; no old roots are populated or written back. Keep logical package/resource IDs unchanged. Review [Core's rename inventory and cache/worker cutover](https://github.com/nvl-laravel-suite/core/blob/main/UPGRADING.md#major-5-canonical-configuration-and-environment).
+
+## Testing your app
+
+Inject the supported contract rather than constructing its concrete Action or querying package tables. Replace `Nvl\Metafields\Contracts\ListOwnerMetafieldsContract` in Laravel's native container for a host-workflow test:
+
+```php
+use Nvl\Metafields\Contracts\ListOwnerMetafieldsContract;
+
+$double = Mockery::mock(ListOwnerMetafieldsContract::class);
+$this->app->instance(ListOwnerMetafieldsContract::class, $double);
+// Configure the exact execute arguments and documented return value for your host case.
+```
+
+The package's conditional native binding preserves host substitutions. Production uses the real contract; test doubles do not prove its storage/authorization behavior.
+
+A detached fixture for a returned identity/data handle is:
+
+```php
+use Nvl\Metafields\Models\MetafieldDefinition;
+$fixture = MetafieldDefinition::factory()->withoutParents()->make();
+```
+
+Ordinary `make()` may persist declared package parents. `withoutParents()->make()` disables parent expansion/admission for detached fixtures; use explicit persisted parents/owners and matching effective connections for a real `create()`. Factories do not authorize workflows, call Stripe, create backing Media objects or publish Template artifacts. Enabled tenancy requires explicit admitted persisted tenants/parents. Your host test installation supplies Faker; no test runner is a runtime package dependency.
+
+Use Laravel `Event::fake()`, `Queue::fake()`, `Mail::fake()` or `Storage::fake()` only for the effects the host test intends to isolate. Use real commits/listeners for timing proof. Add the optional Core consumer boundary rules to host PHPStan:
+
+```neon
+includes:
+    - vendor/nvl/core/support/consumer-audit.neon
+parameters:
+    nvlConsumer:
+        testPaths: [tests]
+        tableNames: []
+        exceptions: []
+```
+
+Rules read installed public metadata without suite boot. They flag internal symbols, package model queries/writes, capability relations and owned tables; they cannot prove dynamic code or runtime authorization. Exact exceptions require `file`, `identifier`, `symbol`, and a documented `reason`. New C3/C4/E tests, archives and guide execution remain pending until the integration phase records results.
+
+### Shipped factory states
+
+These runtime builders keep Laravel's native Factory API. The listed methods name explicit supported parent/owner/lifecycle states; follow each factory's native admission requirements. Detached examples above do not assert persistence validity.
+
+| Factory | Explicit states |
+| --- | --- |
+| [`MetafieldDefinitionAssignmentFactory`](database/factories/MetafieldDefinitionAssignmentFactory.php) | `forOwnerType(string\|BackedEnum $ownerType)`, `forDefinition(MetafieldDefinition $definition)`, `required()`, `inactive()`, `inSection(string $section)` |
+| [`MetafieldDefinitionFactory`](database/factories/MetafieldDefinitionFactory.php) | `translatable()`, `required()`, `filterable()`, `ofType(MetafieldTypeEnum $type)`, `withDefaultValue(mixed $value)`, `withJsonPropertySchema(array $schema)`, `withValidationRules(array $rules)` |
+| [`MetafieldDefinitionTenantGrantFactory`](database/factories/MetafieldDefinitionTenantGrantFactory.php) | `forDefinition(MetafieldDefinition $parent)`, `forRecipient(TenantId $recipient)` |
+| [`MetafieldDefinitionTranslationFactory`](database/factories/MetafieldDefinitionTranslationFactory.php) | `forDefinition(MetafieldDefinition $parent)` |
+| [`MetafieldFactory`](database/factories/MetafieldFactory.php) | `forDefinition(MetafieldDefinition $definition)`, `forOwner(Model $owner)`, `withValue(mixed $value)` |
+| [`MetafieldTranslationFactory`](database/factories/MetafieldTranslationFactory.php) | `forMetafield(Metafield $parent)`, `forOwner(Model $owner)` |
+
+## Error codes and events
+
+All recognized package failures implement `Nvl\Support\Contracts\PackageException`; only `RespondableException` opts into safe response metadata. Keep native PHP programmer errors and Laravel/SDK exceptions distinct. The optional `PackageExceptionRenderer` is registered by the host in `withExceptions`; it leaves unrelated, marker-only and non-JSON handling to the host. Its JSON envelope is `{message:string, code:string, context:object}`. Request locale is host-owned; diagnostics/previous exceptions are not public copy. Event schemas and source connections are documented in [events](docs/events.md).
+
+The table lists enum discriminators, including any successful codes retained for compatibility. A code is not itself an HTTP status; the throwing exception's `suggestedStatus()` is authoritative, especially legacy/custom constructors. Empty context renders as `{}`; only documented JSON-safe context is presented.
+
+| Code | Suggested status | Public context | Translation key |
+| --- | --- | --- | --- |
+| `stale_metafield_version` | 409 | Declared safe scalar/array map; otherwise `{}` | `nvl-metafields::responsecode.stale_metafield_version` |
+| `metafield_integrity_conflict` | 409 | Declared safe scalar/array map; otherwise `{}` | `nvl-metafields::responsecode.metafield_integrity_conflict` |
+| `batch_read_unavailable` | 500 | Declared safe scalar/array map; otherwise `{}` | `nvl-metafields::responsecode.batch_read_unavailable` |
+| `updated` | Exception-defined; see `suggestedStatus()` | Declared safe scalar/array map; otherwise `{}` | `nvl-metafields::responsecode.updated` |
+| `deleted` | Exception-defined; see `suggestedStatus()` | Declared safe scalar/array map; otherwise `{}` | `nvl-metafields::responsecode.deleted` |
+| `definition_not_found` | 404 | Declared safe scalar/array map; otherwise `{}` | `nvl-metafields::responsecode.definition_not_found` |
+| `invalid_metafield_mutation` | 422 | Declared safe scalar/array map; otherwise `{}` | `nvl-metafields::responsecode.invalid_metafield_mutation` |
+| `operation_failed` | Exception-defined; see `suggestedStatus()` | Declared safe scalar/array map; otherwise `{}` | `nvl-metafields::responsecode.operation_failed` |
+
+
+## License
+
+Released under the [MIT License](LICENSE).

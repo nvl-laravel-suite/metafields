@@ -145,6 +145,15 @@
             "properties": [],
             "constants": []
         },
+        "Nvl\\Metafields\\Contracts\\ArchiveMetafieldDefinitionContract": {
+            "kind": "interface",
+            "file": "src/Contracts/ArchiveMetafieldDefinitionContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Metafields\\Contracts\\CreateMetafieldDefinitionContract": {
             "kind": "interface",
             "file": "src/Contracts/CreateMetafieldDefinitionContract.php",
@@ -172,9 +181,54 @@
             "properties": [],
             "constants": []
         },
+        "Nvl\\Metafields\\Contracts\\GrantMetafieldDefinitionToTenantContract": {
+            "kind": "interface",
+            "file": "src/Contracts/GrantMetafieldDefinitionToTenantContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Contracts\\ImportPlatformMetafieldDefinitionContract": {
+            "kind": "interface",
+            "file": "src/Contracts/ImportPlatformMetafieldDefinitionContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Contracts\\ListAuthorizedOwnerMetafieldsContract": {
+            "kind": "interface",
+            "file": "src/Contracts/ListAuthorizedOwnerMetafieldsContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Metafields\\Contracts\\ListAuthorizedOwnersMetafieldsContract": {
             "kind": "interface",
             "file": "src/Contracts/ListAuthorizedOwnersMetafieldsContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Contracts\\ListMetafieldDefinitionsContract": {
+            "kind": "interface",
+            "file": "src/Contracts/ListMetafieldDefinitionsContract.php",
+            "methods": [
+                "execute"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Contracts\\ListOwnerMetafieldsContract": {
+            "kind": "interface",
+            "file": "src/Contracts/ListOwnerMetafieldsContract.php",
             "methods": [
                 "execute"
             ],
@@ -211,6 +265,15 @@
             "file": "src/Contracts/MetafieldReferenceAuthorization.php",
             "methods": [
                 "authorize"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Contracts\\RevokeMetafieldDefinitionTenantGrantContract": {
+            "kind": "interface",
+            "file": "src/Contracts/RevokeMetafieldDefinitionTenantGrantContract.php",
+            "methods": [
+                "execute"
             ],
             "properties": [],
             "constants": []
@@ -531,6 +594,80 @@
             ],
             "constants": []
         },
+        "Nvl\\Metafields\\Database\\Factories\\MetafieldDefinitionAssignmentFactory": {
+            "kind": "class",
+            "file": "database/factories/MetafieldDefinitionAssignmentFactory.php",
+            "methods": [
+                "definition",
+                "forDefinition",
+                "forOwnerType",
+                "inSection",
+                "inactive",
+                "required"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Database\\Factories\\MetafieldDefinitionFactory": {
+            "kind": "class",
+            "file": "database/factories/MetafieldDefinitionFactory.php",
+            "methods": [
+                "definition",
+                "filterable",
+                "ofType",
+                "required",
+                "translatable",
+                "withDefaultValue",
+                "withJsonPropertySchema",
+                "withValidationRules"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Database\\Factories\\MetafieldDefinitionTenantGrantFactory": {
+            "kind": "class",
+            "file": "database/factories/MetafieldDefinitionTenantGrantFactory.php",
+            "methods": [
+                "definition",
+                "forDefinition",
+                "forRecipient"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Database\\Factories\\MetafieldDefinitionTranslationFactory": {
+            "kind": "class",
+            "file": "database/factories/MetafieldDefinitionTranslationFactory.php",
+            "methods": [
+                "definition",
+                "forDefinition"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Database\\Factories\\MetafieldFactory": {
+            "kind": "class",
+            "file": "database/factories/MetafieldFactory.php",
+            "methods": [
+                "definition",
+                "forDefinition",
+                "forOwner",
+                "withValue"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Database\\Factories\\MetafieldTranslationFactory": {
+            "kind": "class",
+            "file": "database/factories/MetafieldTranslationFactory.php",
+            "methods": [
+                "definition",
+                "forMetafield",
+                "forOwner"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Metafields\\Enums\\MetafieldAbility": {
             "kind": "enum",
             "file": "src/Enums/MetafieldAbility.php",
@@ -582,6 +719,29 @@
                 "Url"
             ]
         },
+        "Nvl\\Metafields\\Enums\\MetafieldResponseCode": {
+            "kind": "enum",
+            "file": "src/Enums/MetafieldResponseCode.php",
+            "methods": [
+                "cases",
+                "from",
+                "tryFrom"
+            ],
+            "properties": [
+                "name",
+                "value"
+            ],
+            "constants": [
+                "BatchReadUnavailable",
+                "DefinitionNotFound",
+                "Deleted",
+                "InvalidMetafieldMutation",
+                "MetafieldIntegrityConflict",
+                "OperationFailed",
+                "StaleMetafieldVersion",
+                "Updated"
+            ]
+        },
         "Nvl\\Metafields\\Enums\\MetafieldTypeEnum": {
             "kind": "enum",
             "file": "src/Enums/MetafieldTypeEnum.php",
@@ -616,6 +776,182 @@
                 "Text",
                 "Url"
             ]
+        },
+        "Nvl\\Metafields\\Events\\MetafieldDefinitionCatalogGrantAudited": {
+            "kind": "class",
+            "file": "src/Events/MetafieldDefinitionCatalogGrantAudited.php",
+            "methods": [
+                "__construct",
+                "schemaVersion"
+            ],
+            "properties": [
+                "definitionId",
+                "grantId",
+                "grantRevision",
+                "operation",
+                "schemaVersion",
+                "sourceRevision",
+                "tenantId"
+            ],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Events\\MetafieldSet": {
+            "kind": "class",
+            "file": "src/Events/MetafieldSet.php",
+            "methods": [
+                "__construct",
+                "schemaVersion"
+            ],
+            "properties": [
+                "definitionId",
+                "metafieldId",
+                "ownerId",
+                "ownerType",
+                "revision",
+                "schemaVersion"
+            ],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Events\\MetafieldSetEvent": {
+            "kind": "class",
+            "file": "src/Events/MetafieldSetEvent.php",
+            "methods": [
+                "__construct",
+                "schemaVersion"
+            ],
+            "properties": [
+                "definitionId",
+                "metafieldId",
+                "ownerId",
+                "ownerType",
+                "revision",
+                "schemaVersion"
+            ],
+            "constants": [],
+            "alias_of": "Nvl\\Metafields\\Events\\MetafieldSet"
+        },
+        "Nvl\\Metafields\\Events\\MetafieldsSynced": {
+            "kind": "class",
+            "file": "src/Events/MetafieldsSynced.php",
+            "methods": [
+                "__construct",
+                "schemaVersion"
+            ],
+            "properties": [
+                "metafieldIds",
+                "ownerId",
+                "ownerType",
+                "schemaVersion"
+            ],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Events\\MetafieldsSyncedEvent": {
+            "kind": "class",
+            "file": "src/Events/MetafieldsSyncedEvent.php",
+            "methods": [
+                "__construct",
+                "schemaVersion"
+            ],
+            "properties": [
+                "metafieldIds",
+                "ownerId",
+                "ownerType",
+                "schemaVersion"
+            ],
+            "constants": [],
+            "alias_of": "Nvl\\Metafields\\Events\\MetafieldsSynced"
+        },
+        "Nvl\\Metafields\\Exceptions\\InvalidMetafieldMutationException": {
+            "kind": "class",
+            "file": "src/Exceptions/InvalidMetafieldMutationException.php",
+            "methods": [
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Exceptions\\MetafieldBatchReadException": {
+            "kind": "class",
+            "file": "src/Exceptions/MetafieldBatchReadException.php",
+            "methods": [
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Exceptions\\MetafieldDefinitionNotFoundException": {
+            "kind": "class",
+            "file": "src/Exceptions/MetafieldDefinitionNotFoundException.php",
+            "methods": [
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Exceptions\\MetafieldException": {
+            "kind": "class",
+            "file": "src/Exceptions/MetafieldException.php",
+            "methods": [
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Exceptions\\MetafieldIntegrityException": {
+            "kind": "class",
+            "file": "src/Exceptions/MetafieldIntegrityException.php",
+            "methods": [
+                "duplicateActiveOwnerDefinitionRecords",
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Exceptions\\StaleMetafieldVersionException": {
+            "kind": "class",
+            "file": "src/Exceptions/StaleMetafieldVersionException.php",
+            "methods": [
+                "forResource",
+                "package",
+                "publicContext",
+                "responseCode",
+                "responseHeaders",
+                "suggestedStatus",
+                "translationKey",
+                "translationParameters"
+            ],
+            "properties": [],
+            "constants": []
         },
         "Nvl\\Metafields\\Models\\Metafield": {
             "kind": "class",
@@ -687,6 +1023,42 @@
                 "relationLoaded"
             ],
             "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Models\\MetafieldDefinitionTranslation": {
+            "kind": "class",
+            "file": "src/Models/MetafieldDefinitionTranslation.php",
+            "methods": [
+                "getKey",
+                "getKeyName",
+                "getMorphClass",
+                "getRouteKey",
+                "getRouteKeyName",
+                "is",
+                "isNot",
+                "relationLoaded"
+            ],
+            "properties": [
+                "id"
+            ],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Models\\MetafieldTranslation": {
+            "kind": "class",
+            "file": "src/Models/MetafieldTranslation.php",
+            "methods": [
+                "getKey",
+                "getKeyName",
+                "getMorphClass",
+                "getRouteKey",
+                "getRouteKeyName",
+                "is",
+                "isNot",
+                "relationLoaded"
+            ],
+            "properties": [
+                "id"
+            ],
             "constants": []
         },
         "Nvl\\Metafields\\Support\\MetafieldOwnerRegistry": {
@@ -768,6 +1140,38 @@
         },
         "Nvl\\Metafields\\Models\\MetafieldDefinitionTenantGrant": {
             "read": [],
+            "identity_methods": [
+                "getKey",
+                "getKeyName",
+                "getMorphClass",
+                "getRouteKey",
+                "getRouteKeyName",
+                "is",
+                "isNot",
+                "relationLoaded"
+            ],
+            "capability_relations": []
+        },
+        "Nvl\\Metafields\\Models\\MetafieldDefinitionTranslation": {
+            "read": [
+                "id"
+            ],
+            "identity_methods": [
+                "getKey",
+                "getKeyName",
+                "getMorphClass",
+                "getRouteKey",
+                "getRouteKeyName",
+                "is",
+                "isNot",
+                "relationLoaded"
+            ],
+            "capability_relations": []
+        },
+        "Nvl\\Metafields\\Models\\MetafieldTranslation": {
+            "read": [
+                "id"
+            ],
             "identity_methods": [
                 "getKey",
                 "getKeyName",

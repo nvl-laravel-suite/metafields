@@ -16,6 +16,7 @@ use Nvl\Metafields\Tests\Fixtures\MetafieldTenancyFixtureServiceProvider;
 use Nvl\Metafields\Tests\Fixtures\MetafieldTenancyMaintenanceMode;
 use Nvl\Metafields\Tests\Fixtures\MetafieldTenancyPlatformAccess;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
+use Nvl\Support\Providers\LocaleServiceProvider;
 use Nvl\Support\Providers\SupportServiceProvider;
 use Nvl\Tenancy\Contracts\PlatformAccess;
 use Nvl\Tenancy\Contracts\TenantDirectory;
@@ -48,6 +49,7 @@ abstract class MetafieldTenancyTestCase extends Orchestra
     protected function getPackageProviders($app): array
     {
         return [
+            LocaleServiceProvider::class,
             DataServiceProvider::class,
             SupportServiceProvider::class,
             TenancyServiceProvider::class,
