@@ -9,9 +9,9 @@ use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
-use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Tenancy\Services\TenantBoundary;
-use Nvl\Tenancy\Services\TenantResourceRegistry;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
+use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
 /**
  * Resolves configured metafield owner models without leaking persistence into controllers.

@@ -8,9 +8,9 @@ use Illuminate\Support\Facades\DB;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Events\MetafieldDefinitionCatalogGrantAudited;
 use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
-use Nvl\Tenancy\Contracts\TenantContext;
-use Nvl\Tenancy\Enums\TenantContextMode;
-use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
+use Nvl\Support\Tenancy\Contracts\TenantContext;
+use Nvl\Support\Tenancy\Enums\TenantContextMode;
+use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 
 /** Revokes future definition copies without changing committed tenant schemas. */
 final readonly class RevokeMetafieldDefinitionTenantGrantAction
@@ -30,13 +30,13 @@ final readonly class RevokeMetafieldDefinitionTenantGrantAction
             if (! $identity instanceof MetafieldDefinitionTenantGrant) {
                 throw new TenantBoundaryViolation('The Metafield grant revision is unavailable.');
             }
-            DB::table(MetafieldsTables::TenantGrantLocks)->insertOrIgnore([
+            DB::table(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks))->insertOrIgnore([
                 'tenant_id' => $identity->tenant_id,
                 'definition_id' => $identity->definition_id,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            DB::table(MetafieldsTables::TenantGrantLocks)
+            DB::table(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks))
                 ->where('tenant_id', $identity->tenant_id)
                 ->where('definition_id', $identity->definition_id)
                 ->lockForUpdate()->first();

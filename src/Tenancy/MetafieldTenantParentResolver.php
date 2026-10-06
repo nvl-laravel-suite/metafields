@@ -6,7 +6,7 @@ namespace Nvl\Metafields\Tenancy;
 
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
-use Nvl\Tenancy\Contracts\TenantParentResolver;
+use Nvl\Support\Tenancy\Contracts\TenantParentResolver;
 
 /** Exposes the package's configured canonical owner allowlist to Tenancy. */
 final readonly class MetafieldTenantParentResolver implements TenantParentResolver

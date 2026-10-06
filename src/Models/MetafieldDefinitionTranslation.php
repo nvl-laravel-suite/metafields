@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
+use Nvl\Support\Config\PackageStorage;
 
 /**
  * Stores localized definition copy and defaults for one metafield locale.
@@ -64,5 +65,17 @@ final class MetafieldDefinitionTranslation extends Model
     public function definition(): BelongsTo
     {
         return $this->belongsTo(MetafieldDefinition::class, 'metafield_definition_id');
+    }
+
+    /** Resolve the configured package storage table. */
+    public function getTable(): string
+    {
+        return MetafieldsTables::get(MetafieldsTables::DefinitionsI18n);
+    }
+
+    /** Resolve the package connection through shared infrastructure defaults. */
+    public function getConnectionName(): ?string
+    {
+        return PackageStorage::connectionName($this->connection ?? PackageStorage::connection('metafields') ?? parent::getConnectionName());
     }
 }

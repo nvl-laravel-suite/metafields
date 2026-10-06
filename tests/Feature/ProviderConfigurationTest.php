@@ -2,12 +2,11 @@
 
 declare(strict_types=1);
 
-use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Providers\MetafieldsServiceProvider;
 use Nvl\Metafields\Services\MetafieldDoctor;
 
 test('consumer configuration wins while omitted nested package defaults remain available', function (): void {
-    config()->set(MetafieldsTables::Metafields, [
+    config()->set('metafields', [
         'routes' => [
             'prefix' => 'consumer/metafields',
         ],

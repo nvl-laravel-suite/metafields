@@ -7,7 +7,7 @@ namespace Nvl\Metafields\Services\MetafieldDefinitions;
 use Nvl\Metafields\Data\MetafieldDefinitionMutationPayload;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\MetafieldDefinition;
-use Nvl\Tenancy\Services\TenantBoundary;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 use Nvl\Translatable\Services\TranslationWriter;
 use Spatie\LaravelData\Optional;
 

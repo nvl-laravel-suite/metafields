@@ -6,15 +6,22 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
+use Nvl\Support\Config\PackageStorage;
 
 return new class extends Migration
 {
+    /** Use the effective package connection for Laravel's migration transaction. */
+    public function getConnection(): ?string
+    {
+        return PackageStorage::connection('metafields');
+    }
+
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        Schema::create(MetafieldsTables::Definitions, function (Blueprint $table) {
+        Schema::connection(PackageStorage::connection('metafields'))->create(MetafieldsTables::get(MetafieldsTables::Definitions), function (Blueprint $table) {
             $table->uuid('id')->primary();
 
             // Identifier fields
@@ -90,6 +97,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists(MetafieldsTables::Definitions);
+        Schema::connection(PackageStorage::connection('metafields'))->dropIfExists(MetafieldsTables::get(MetafieldsTables::Definitions));
     }
 };

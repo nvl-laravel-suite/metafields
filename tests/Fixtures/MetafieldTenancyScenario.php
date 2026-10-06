@@ -9,12 +9,12 @@ use Illuminate\Contracts\Foundation\MaintenanceMode;
 use Nvl\Metafields\Actions\MetafieldDefinitions\CreateMetafieldDefinitionAction;
 use Nvl\Metafields\Data\CreateMetafieldDefinitionPayload;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Tenancy\Contracts\TenantRunner;
+use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
+use Nvl\Support\Tenancy\ValueObjects\TenantId;
 use Nvl\Tenancy\Services\TenantAdoptionCoordinator;
-use Nvl\Tenancy\Services\TenantBoundary;
-use Nvl\Tenancy\Services\TenantResourceRegistry;
-use Nvl\Tenancy\Services\TenantRunner;
 use Nvl\Tenancy\ValueObjects\PlatformOperation;
-use Nvl\Tenancy\ValueObjects\TenantId;
 
 /** Installs the complete Metafield graph through the real adoption coordinator. */
 final readonly class MetafieldTenancyScenario

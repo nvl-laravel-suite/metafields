@@ -8,8 +8,8 @@ use Nvl\Metafields\Data\ImportPlatformMetafieldDefinitionData;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionCatalogReader;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionImporter;
-use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Tenancy\Services\EffectiveTenantConnection;
+use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
+use Nvl\Support\Tenancy\Services\EffectiveTenantConnection;
 
 /** Imports a granted platform definition as one independent tenant schema. */
 final readonly class ImportPlatformMetafieldDefinitionAction

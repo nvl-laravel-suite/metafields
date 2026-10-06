@@ -11,8 +11,8 @@ use Nvl\Metafields\Data\AssignMetafieldDefinitionPayload;
 use Nvl\Metafields\Data\ImportPlatformMetafieldDefinitionData;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Tests\Fixtures\MetafieldTenancyScenario;
+use Nvl\Support\Tenancy\ValueObjects\TenantId;
 use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Tenancy\ValueObjects\TenantId;
 
 function metafieldCatalogRequest(object $grant, object $source, string $key = 'local-color', ?string $idempotencyKey = null): ImportPlatformMetafieldDefinitionData
 {

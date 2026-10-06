@@ -8,9 +8,9 @@ use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
-use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Tenancy\Services\TenantBoundary;
-use Nvl\Tenancy\Services\TenantResourceRegistry;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
+use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
 /** Resolves reference records through their registered canonical tenant boundary. */
 final readonly class MetafieldReferenceRecordResolver

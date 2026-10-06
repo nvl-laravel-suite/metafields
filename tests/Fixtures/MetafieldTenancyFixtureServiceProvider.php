@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Tests\Fixtures;
 
 use Illuminate\Support\ServiceProvider;
+use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 use Nvl\Tenancy\Services\TenantAdoptionRegistry;
-use Nvl\Tenancy\Services\TenantResourceRegistry;
 use Nvl\Tenancy\ValueObjects\TenantResourceDefinition;
 
 /** Registers only the test-owned canonical Metafield owner resource and adapter. */

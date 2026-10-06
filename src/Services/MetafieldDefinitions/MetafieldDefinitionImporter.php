@@ -16,12 +16,12 @@ use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
 use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
-use Nvl\Tenancy\Contracts\TenantContext;
-use Nvl\Tenancy\Contracts\TenantDirectory;
-use Nvl\Tenancy\Enums\TenantStatus;
-use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Tenancy\Services\EffectiveTenantConnection;
-use Nvl\Tenancy\ValueObjects\TenantId;
+use Nvl\Support\Tenancy\Contracts\TenantContext;
+use Nvl\Support\Tenancy\Contracts\TenantDirectory;
+use Nvl\Support\Tenancy\Enums\TenantStatus;
+use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
+use Nvl\Support\Tenancy\Services\EffectiveTenantConnection;
+use Nvl\Support\Tenancy\ValueObjects\TenantId;
 
 /** Persists independent tenant definition schemas from authorized snapshots. */
 final readonly class MetafieldDefinitionImporter
@@ -52,13 +52,13 @@ final readonly class MetafieldDefinitionImporter
             throw new TenantBoundaryViolation('The Metafield catalog recipient is no longer active.');
         }
 
-        $connection->table(MetafieldsTables::TenantGrantLocks)->insertOrIgnore([
+        $connection->table(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks))->insertOrIgnore([
             'tenant_id' => $tenant->value,
             'definition_id' => $source->sourceId,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        $connection->table(MetafieldsTables::TenantGrantLocks)
+        $connection->table(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks))
             ->where('tenant_id', $tenant->value)
             ->where('definition_id', $source->sourceId)
             ->lockForUpdate()->first();
@@ -66,9 +66,9 @@ final readonly class MetafieldDefinitionImporter
             ->whereKey($source->grantId)->where('tenant_id', $tenant->value)->lockForUpdate()->first();
         $platform = MetafieldDefinition::withoutGlobalScope('tenant')
             ->whereKey($source->sourceId)->whereNull('tenant_id')->where('ownership_key', 'platform')->lockForUpdate()->first();
-        $connection->table(MetafieldsTables::DefinitionAssignments)
+        $connection->table(MetafieldsTables::get(MetafieldsTables::DefinitionAssignments))
             ->where('definition_id', $source->sourceId)->orderBy('id')->lockForUpdate()->get();
-        $connection->table(MetafieldsTables::DefinitionsI18n)
+        $connection->table(MetafieldsTables::get(MetafieldsTables::DefinitionsI18n))
             ->where('metafield_definition_id', $source->sourceId)->orderBy('id')->lockForUpdate()->get();
         if (! $grant instanceof MetafieldDefinitionTenantGrant || ! $grant->enabled || $grant->revoked_at !== null
             || $grant->revision !== $source->grantRevision || $grant->source_revision !== $source->sourceRevision

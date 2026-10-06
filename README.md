@@ -446,3 +446,44 @@ See [SECURITY.md](SECURITY.md), [UPGRADING.md](UPGRADING.md),
 ## License
 
 Released under the [MIT License](LICENSE).
+
+## Shared owner identity
+
+Declare a model once in `config/nvl-core.php`:
+
+```php
+'owners' => ['article' => Article::class],
+```
+
+Enable this package capability separately in `config/metafields.php`:
+
+```php
+'owners' => [
+    'article' => ['label' => 'Articles', 'sections' => ['content'], 'runtime_status' => 'live'],
+],
+```
+
+The omitted model defaults to the shared alias matching the capability key. An explicit model may also reference an alias. Preserve supported types, sections, planned/live status, and mutation authorization. Core registration does not add the model to this package's allowlist.
+
+Existing package class/resolver/handler registrations remain accepted for one major cycle. Run `php artisan nvl:doctor --strict --format=json` to inspect compatibility diagnostics. See [UPGRADING.md](UPGRADING.md) before changing a persisted morph type.
+
+## Shared consumer diagnostics
+
+Run `php artisan nvl:doctor --strict --format=json` to combine the read-only checks from loaded NVL package providers. Errors fail the gate, and strict mode also fails warnings. This package's existing Doctor command remains available and uses the same package-owned inspection service.
+
+## Next major: isolated schema identities
+
+Use `metafields.tables.<logical-key>` for every table and `metafields.connection` for its database connection. Null connection inherits `nvl-core.connection`, then Laravel's default. Tables are resolved at runtime by the package table definition helper.
+
+| Logical key | New default | Previous name |
+| --- | --- | --- |
+| `metafields` | `nvl_metafields_metafields` | `metafields` |
+| `definitions` | `nvl_metafields_definitions` | `metafields_definitions` |
+| `definitions_i18n` | `nvl_metafields_definitions_i18n` | `metafields_definitions_i18n` |
+| `definition_assignments` | `nvl_metafields_definition_assignments` | `metafield_definition_assignments` |
+| `i18n` | `nvl_metafields_i18n` | `metafields_i18n` |
+| `tenant_grants` | `nvl_metafields_tenant_grants` | `metafield_definition_tenant_grants` |
+| `tenant_grant_locks` | `nvl_metafields_tenant_grant_locks` | `metafield_definition_tenant_grant_locks` |
+| `tenant_adoption_copies` | `nvl_metafields_tenant_adoption_copies` | `metafield_definition_tenant_adoption_copies` |
+
+Migration filenames contain `nvl_metafields_`. Existing installations must complete the upgrade in `UPGRADING.md` before running new migrations. A pending creator rejects an existing target before any migration in the batch runs; legacy storage with old history needs an ownership decision.

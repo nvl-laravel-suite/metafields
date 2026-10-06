@@ -13,6 +13,7 @@ use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Support\MetafieldConfiguration;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
+use Nvl\Support\Contracts\LocaleCatalog;
 
 /**
  * MetafieldDefinitionAddCommand
@@ -50,6 +51,7 @@ final class MetafieldDefinitionAddCommand extends Command
     public function handle(
         CreateMetafieldDefinitionAction $action,
         MetafieldOwnerRegistry $ownerRegistry,
+        LocaleCatalog $locales,
     ): int {
         $namespaceInput = $this->argument('namespace');
         $namespace = is_string($namespaceInput) && $namespaceInput !== ''
@@ -88,10 +90,7 @@ final class MetafieldDefinitionAddCommand extends Command
             $fieldType = MetafieldTypeEnum::from($type);
             $ownerType = $this->resolveOwnerType();
             $section = $ownerRegistry->forType($ownerType)->sections[0] ?? 'general';
-            $configuredLocale = config('translatable.default_locale', 'en');
-            $locale = is_string($configuredLocale) && $configuredLocale !== ''
-                ? $configuredLocale
-                : 'en';
+            $locale = $locales->default();
             $payload = [
                 'namespace' => $namespace,
                 'key' => $key,

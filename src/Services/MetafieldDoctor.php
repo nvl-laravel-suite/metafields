@@ -15,9 +15,9 @@ use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
-use Nvl\Tenancy\Services\EffectiveTenantConnection;
-use Nvl\Tenancy\Services\TenantInstallationState;
-use Nvl\Tenancy\Services\TenantResourceRegistry;
+use Nvl\Support\Tenancy\Contracts\TenantInstallationState;
+use Nvl\Support\Tenancy\Services\EffectiveTenantConnection;
+use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 use Throwable;
 
 /**
@@ -55,21 +55,21 @@ final readonly class MetafieldDoctor
     private function schemaChecks(): array
     {
         $tables = [
-            MetafieldsTables::Definitions => [
+            MetafieldsTables::get(MetafieldsTables::Definitions) => [
                 'id', 'namespace', 'key', 'handle', 'active_handle', 'type',
                 'revision', 'archived_at', 'deleted_at',
             ],
-            MetafieldsTables::Metafields => [
+            MetafieldsTables::get(MetafieldsTables::Metafields) => [
                 'id', 'definition_id', 'metafieldable_type', 'metafieldable_id',
                 'value', 'referenced_id', 'revision', 'deleted_at',
             ],
-            MetafieldsTables::I18n => [
+            MetafieldsTables::get(MetafieldsTables::I18n) => [
                 'id', 'metafield_id', 'locale', 'value',
             ],
-            MetafieldsTables::DefinitionsI18n => [
+            MetafieldsTables::get(MetafieldsTables::DefinitionsI18n) => [
                 'id', 'metafield_definition_id', 'locale', 'title',
             ],
-            MetafieldsTables::DefinitionAssignments => [
+            MetafieldsTables::get(MetafieldsTables::DefinitionAssignments) => [
                 'id', 'definition_id', 'owner_type', 'section', 'is_active',
             ],
         ];
@@ -105,38 +105,38 @@ final readonly class MetafieldDoctor
 
         $indexes = config('tenancy.enabled') === true ? [
             [
-                MetafieldsTables::Definitions,
+                MetafieldsTables::get(MetafieldsTables::Definitions),
                 'metafield_definitions_partition_handle_unique',
                 [config('tenancy.sharing.metafields') === 'copy' || config('tenancy.resources.metafields') === 'platform' ? 'ownership_key' : 'tenant_id', 'active_handle'],
                 true,
             ],
             [
-                MetafieldsTables::Metafields,
+                MetafieldsTables::get(MetafieldsTables::Metafields),
                 'metafields_tenant_owner_definition_unique',
                 ['tenant_id', 'metafieldable_type', 'metafieldable_id', 'definition_id'],
                 true,
             ],
         ] : [
             [
-                MetafieldsTables::Definitions,
+                MetafieldsTables::get(MetafieldsTables::Definitions),
                 'metafields_definitions_active_handle_unique',
                 ['active_handle'],
                 true,
             ],
             [
-                MetafieldsTables::Metafields,
+                MetafieldsTables::get(MetafieldsTables::Metafields),
                 'metafields_owner_definition_unique',
                 ['metafieldable_type', 'metafieldable_id', 'definition_id'],
                 true,
             ],
             [
-                MetafieldsTables::DefinitionAssignments,
+                MetafieldsTables::get(MetafieldsTables::DefinitionAssignments),
                 'metafield_definition_assignments_unique',
                 ['definition_id', 'owner_type'],
                 true,
             ],
             [
-                MetafieldsTables::DefinitionAssignments,
+                MetafieldsTables::get(MetafieldsTables::DefinitionAssignments),
                 'metafield_assignment_owner_active_section_idx',
                 ['owner_type', 'is_active', 'section'],
                 false,
@@ -211,9 +211,9 @@ final readonly class MetafieldDoctor
         $partitioned = config('tenancy.sharing.metafields') === 'copy'
             || config('tenancy.resources.metafields') === 'platform';
         $ownershipReady = ! $partitioned || collect([
-            MetafieldsTables::Definitions,
-            MetafieldsTables::DefinitionAssignments,
-            MetafieldsTables::DefinitionsI18n,
+            MetafieldsTables::get(MetafieldsTables::Definitions),
+            MetafieldsTables::get(MetafieldsTables::DefinitionAssignments),
+            MetafieldsTables::get(MetafieldsTables::DefinitionsI18n),
         ])->every(static fn (string $table): bool => Schema::hasColumn($table, 'ownership_key'));
         $checks[] = new MetafieldDoctorCheckData(
             key: 'tenancy.schema.partition',
@@ -223,8 +223,8 @@ final readonly class MetafieldDoctor
                 ? 'Metafield ownership columns match the configured partition mode.'
                 : 'Metafield catalog sharing or platform mode requires the adopted mixed ownership schema.',
         );
-        $grantReady = Schema::hasTable(MetafieldsTables::TenantGrants)
-            && Schema::hasTable(MetafieldsTables::TenantGrantLocks);
+        $grantReady = Schema::hasTable(MetafieldsTables::get(MetafieldsTables::TenantGrants))
+            && Schema::hasTable(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks));
         $checks[] = new MetafieldDoctorCheckData(
             key: 'tenancy.schema.catalog_grants',
             severity: 'error',

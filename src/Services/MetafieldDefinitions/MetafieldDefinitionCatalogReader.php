@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\MetafieldDefinitions;
 
-use Illuminate\Contracts\Config\Repository;
 use Nvl\Metafields\Data\MetafieldDefinitionCatalogSnapshot;
 use Nvl\Metafields\Data\MetafieldDefinitionPayload;
 use Nvl\Metafields\Data\MetafieldJsonProperty;
@@ -12,15 +11,16 @@ use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
-use Nvl\Tenancy\Contracts\TenantContext;
-use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
+use Nvl\Support\Contracts\LocaleCatalog;
+use Nvl\Support\Tenancy\Contracts\TenantContext;
+use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 use Spatie\LaravelData\DataCollection;
 
 /** Reads one explicitly granted platform definition into a scalar snapshot. */
 final readonly class MetafieldDefinitionCatalogReader
 {
     /** Create the narrow authorized reader. */
-    public function __construct(private TenantContext $context, private Repository $configuration) {}
+    public function __construct(private TenantContext $context, private LocaleCatalog $locales) {}
 
     /** Return the immutable authorized source snapshot. */
     public function find(string $grantId): MetafieldDefinitionCatalogSnapshot
@@ -102,8 +102,8 @@ final readonly class MetafieldDefinitionCatalogReader
     private function displayTranslation(array $translations): array
     {
         $chain = array_values(array_unique(array_filter([
-            $this->configuration->get('translatable.default_locale'),
-            ...(array) $this->configuration->get('translatable.fallback_locales', []),
+            $this->locales->default(),
+            ...$this->locales->fallbacks(),
             ...array_keys($translations),
         ], is_string(...))));
         foreach ($chain as $locale) {

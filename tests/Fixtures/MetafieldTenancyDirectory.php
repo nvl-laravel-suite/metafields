@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Tests\Fixtures;
 
+use Nvl\Support\Tenancy\ValueObjects\TenantId;
 use Nvl\Tenancy\Contracts\TenantDirectory;
 use Nvl\Tenancy\Enums\TenantStatus;
 use Nvl\Tenancy\Exceptions\TenantNotFound;
 use Nvl\Tenancy\ValueObjects\TenantDescriptor;
-use Nvl\Tenancy\ValueObjects\TenantId;
 
 /** Resolves the two active Metafield fixture tenants. */
 final class MetafieldTenancyDirectory implements TenantDirectory

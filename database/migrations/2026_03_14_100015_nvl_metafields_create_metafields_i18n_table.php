@@ -6,15 +6,22 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
+use Nvl\Support\Config\PackageStorage;
 
 return new class extends Migration
 {
+    /** Use the effective package connection for Laravel's migration transaction. */
+    public function getConnection(): ?string
+    {
+        return PackageStorage::connection('metafields');
+    }
+
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        Schema::create(MetafieldsTables::I18n, function (Blueprint $table) {
+        Schema::connection(PackageStorage::connection('metafields'))->create(MetafieldsTables::get(MetafieldsTables::I18n), function (Blueprint $table) {
             $table->uuid('id')->primary();
 
             $table->uuid('metafield_id')
@@ -34,7 +41,7 @@ return new class extends Migration
             // Foreign key
             $table->foreign('metafield_id')
                 ->references('id')
-                ->on(MetafieldsTables::Metafields)
+                ->on(MetafieldsTables::get(MetafieldsTables::Metafields))
                 ->onDelete('cascade');
         });
     }
@@ -44,6 +51,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists(MetafieldsTables::I18n);
+        Schema::connection(PackageStorage::connection('metafields'))->dropIfExists(MetafieldsTables::get(MetafieldsTables::I18n));
     }
 };

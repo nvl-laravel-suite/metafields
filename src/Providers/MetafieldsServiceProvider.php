@@ -6,7 +6,6 @@ namespace Nvl\Metafields\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -39,16 +38,19 @@ use Nvl\Metafields\Services\ConfiguredMetafieldAuthorization;
 use Nvl\Metafields\Services\ConfiguredMetafieldReferenceAuthorization;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionCatalogReader;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionImporter;
+use Nvl\Metafields\Services\MetafieldDoctor;
 use Nvl\Metafields\Services\Metafields\MetafieldOwnerModelResolver;
 use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
 use Nvl\Metafields\Support\MetafieldConfiguration;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Tenancy\MetafieldAdoptionAdapter;
 use Nvl\Metafields\Tenancy\MetafieldTenancyResources;
+use Nvl\Support\Doctor\PackageDoctorContributor;
+use Nvl\Support\Providers\SupportServiceProvider;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 use Nvl\Support\Traits\MergesPackageConfiguration;
 use Nvl\Tenancy\Services\TenantAdoptionRegistry;
-use Nvl\Tenancy\Services\TenantBoundary;
-use Nvl\Tenancy\Services\TenantResourceRegistry;
 use Nvl\Translatable\Services\TranslationResourceRegistry;
 
 /** Registers Metafields' package services, ownership graph, and optional surfaces. */
@@ -65,12 +67,13 @@ final class MetafieldsServiceProvider extends ServiceProvider
         MetafieldOwnerRegistry $owners,
         MetafieldTenancyResources $tenancyResources,
         TenantResourceRegistry $tenantResources,
-        TenantAdoptionRegistry $tenantAdoptions,
         TenantBoundary $tenantBoundary,
     ): void {
         $typeScriptSources->register(__DIR__.'/..', 'nvl/metafields');
         $tenancyResources->register($tenantResources);
-        $tenantAdoptions->register('metafields', MetafieldAdoptionAdapter::class);
+        if ($this->app->bound(TenantAdoptionRegistry::class)) {
+            $this->app->make(TenantAdoptionRegistry::class)->register('metafields', MetafieldAdoptionAdapter::class);
+        }
         $this->registerTenantScopes($tenantBoundary);
 
         $this->publishes([
@@ -115,6 +118,9 @@ final class MetafieldsServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->register(SupportServiceProvider::class);
+        PackageDoctorContributor::register($this->app, 'nvl/metafields', fn (): array => $this->app->make(MetafieldDoctor::class)->inspect());
+
         $this->mergePackageConfiguration(__DIR__.'/../../config/metafields.php', 'metafields');
         $this->app->singleton(MetafieldOwnerRegistry::class);
 
@@ -181,13 +187,7 @@ final class MetafieldsServiceProvider extends ServiceProvider
      */
     private function registerOwnerMorphMap(MetafieldOwnerRegistry $owners): void
     {
-        $morphMap = [];
-
-        foreach ($owners->all() as $alias => $configuration) {
-            $morphMap[$alias] = $configuration['model'];
-        }
-
-        Relation::morphMap($morphMap, merge: true);
+        $owners->all();
     }
 
     /**

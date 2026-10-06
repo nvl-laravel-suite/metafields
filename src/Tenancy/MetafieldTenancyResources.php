@@ -11,10 +11,10 @@ use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
 use Nvl\Metafields\Models\MetafieldTranslation;
-use Nvl\Tenancy\Enums\TenantResourceKind;
-use Nvl\Tenancy\Exceptions\TenantConfigurationInvalid;
-use Nvl\Tenancy\Services\TenantResourceRegistry;
-use Nvl\Tenancy\ValueObjects\TenantResourceDefinition;
+use Nvl\Support\Tenancy\Enums\TenantResourceKind;
+use Nvl\Support\Tenancy\Exceptions\TenantConfigurationInvalid;
+use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
+use Nvl\Support\Tenancy\ValueObjects\TenantResourceDefinition;
 
 /** Registers Metafields' immutable complete ownership graph. */
 final readonly class MetafieldTenancyResources

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use InvalidArgumentException;
 use Nvl\Metafields\Data\MetafieldOwner;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
+use Nvl\Support\OwnerRegistry;
 
 /**
  * Normalizes configured owner aliases and prevents ambiguous model registrations.
@@ -17,6 +18,9 @@ final class MetafieldOwnerRegistry
 {
     /** @var array<string, array<string, mixed>> */
     private array $registered = [];
+
+    /** Create the capability registry against the shared owner identity. */
+    public function __construct(private readonly OwnerRegistry $identities) {}
 
     /**
      * Register one immutable code-owned owner declaration without changing global configuration.
@@ -74,7 +78,9 @@ final class MetafieldOwnerRegistry
             $normalized[$type] = $this->normalizeConfiguration($type, $configuration);
             $modelClass = $normalized[$type]['model'];
 
-            $this->assertMorphMapCompatibility($type, $modelClass, $existingMorphMap);
+            if (is_string($configuration['model'] ?? null) && is_a($configuration['model'], Model::class, true)) {
+                $this->assertMorphMapCompatibility($type, $modelClass, $existingMorphMap);
+            }
 
             if (isset($registeredModels[$modelClass])) {
                 throw new InvalidArgumentException(
@@ -93,6 +99,16 @@ final class MetafieldOwnerRegistry
             }
 
             $registeredModels[$modelClass] = $type;
+        }
+
+        foreach ($normalized as $type => $configuration) {
+            $reference = $owners[$type]['model'] ?? $type;
+
+            if (! is_string($reference)) {
+                throw new InvalidArgumentException("The metafield owner [{$type}] requires a string owner reference.");
+            }
+
+            $this->identities->reference($reference, "metafields.owners.{$type}.model", $type, is_a($reference, Model::class, true));
         }
 
         return $normalized;
@@ -213,7 +229,11 @@ final class MetafieldOwnerRegistry
      */
     private function normalizeConfiguration(string $type, array $configuration): array
     {
-        $modelClass = $configuration['model'] ?? null;
+        $modelClass = $configuration['model'] ?? $type;
+
+        if (is_string($modelClass) && ! class_exists($modelClass)) {
+            $modelClass = $this->identities->model($modelClass);
+        }
 
         if (! is_string($modelClass)
             || ! class_exists($modelClass)

@@ -10,12 +10,12 @@ use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Events\MetafieldDefinitionCatalogGrantAudited;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
-use Nvl\Tenancy\Contracts\TenantContext;
-use Nvl\Tenancy\Contracts\TenantDirectory;
-use Nvl\Tenancy\Enums\TenantContextMode;
-use Nvl\Tenancy\Enums\TenantStatus;
-use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Tenancy\ValueObjects\TenantId;
+use Nvl\Support\Tenancy\Contracts\TenantContext;
+use Nvl\Support\Tenancy\Contracts\TenantDirectory;
+use Nvl\Support\Tenancy\Enums\TenantContextMode;
+use Nvl\Support\Tenancy\Enums\TenantStatus;
+use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
+use Nvl\Support\Tenancy\ValueObjects\TenantId;
 
 /** Grants one exact platform definition revision to an active tenant. */
 final readonly class GrantMetafieldDefinitionToTenantAction
@@ -32,13 +32,13 @@ final readonly class GrantMetafieldDefinitionToTenantAction
         }
 
         return DB::transaction(function () use ($definitionId, $recipient, $sourceRevision): MetafieldDefinitionTenantGrant {
-            DB::table(MetafieldsTables::TenantGrantLocks)->insertOrIgnore([
+            DB::table(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks))->insertOrIgnore([
                 'tenant_id' => $recipient->value,
                 'definition_id' => $definitionId,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            DB::table(MetafieldsTables::TenantGrantLocks)
+            DB::table(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks))
                 ->where('tenant_id', $recipient->value)
                 ->where('definition_id', $definitionId)
                 ->lockForUpdate()->first();

@@ -43,7 +43,7 @@ use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Support\MetafieldValidationRuleCompiler;
 use Nvl\Metafields\Support\OwnerMetafieldBooleanFilter;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
-use Nvl\Tenancy\Services\TenantInstallationState;
+use Nvl\Support\Tenancy\Contracts\TenantInstallationState;
 
 function metafieldTestOwner(): TestMetafieldOwner
 {
@@ -249,6 +249,7 @@ it('keeps owner reads lock-free while allowing mutation lookups to request row l
 
 it('keeps owner field projection queries independent of assigned field count', function (): void {
     $owner = metafieldTestOwner();
+    app(MetafieldOwnerRegistry::class)->all();
     app(TenantInstallationState::class)->assertUsable('metafields.values');
     $create = static function (int $index) use ($owner): void {
         $definition = MetafieldDefinition::factory()->create([
@@ -262,13 +263,14 @@ it('keeps owner field projection queries independent of assigned field count', f
             ->withValue("value-{$index}")
             ->create();
     };
-    $measure = static function () use ($owner): int {
+    $measure = static function (int $expectedFieldCount) use ($owner): int {
         DB::flushQueryLog();
         DB::enableQueryLog();
 
         $fields = app(ListOwnerMetafieldsAction::class)->execute($owner, 'en');
         $queryCount = count(DB::getQueryLog());
-        $fields->each(static fn (OwnerMetafieldField $field): mixed => $field->value);
+        expect($fields)->toHaveCount($expectedFieldCount);
+        $fields->each(static fn (OwnerMetafieldField $field): mixed => expect($field->value)->not->toBeNull());
 
         expect(DB::getQueryLog())->toHaveCount($queryCount);
         DB::disableQueryLog();
@@ -277,13 +279,13 @@ it('keeps owner field projection queries independent of assigned field count', f
     };
 
     $create(1);
-    $singleQueryCount = $measure();
+    $singleQueryCount = $measure(1);
 
     foreach (range(2, 25) as $index) {
         $create($index);
     }
 
-    $populatedQueryCount = $measure();
+    $populatedQueryCount = $measure(25);
 
     expect($singleQueryCount)->toBeLessThanOrEqual(7)
         ->and($populatedQueryCount)->toBe($singleQueryCount);
@@ -1288,7 +1290,7 @@ it('filters owners only through definitions explicitly marked filterable', funct
 
     $unfiltered = OwnerMetafieldBooleanFilter::apply(
         TestMetafieldOwner::query(),
-        MetafieldsTables::Metafields,
+        'metafields',
         $definition->handle,
         true,
     )->pluck('id');
@@ -1298,7 +1300,7 @@ it('filters owners only through definitions explicitly marked filterable', funct
 
     $filtered = OwnerMetafieldBooleanFilter::apply(
         TestMetafieldOwner::query(),
-        MetafieldsTables::Metafields,
+        'metafields',
         $definition->handle,
         true,
     )->pluck('id');
@@ -1306,6 +1308,14 @@ it('filters owners only through definitions explicitly marked filterable', funct
     expect($unfiltered)->toHaveCount(2)
         ->and($filtered->all())->toBe([metafieldTestOwner()->getKey()])
         ->and($filtered->contains($otherOwner->getKey()))->toBeFalse();
+
+    $notFeatured = OwnerMetafieldBooleanFilter::apply(
+        TestMetafieldOwner::query(),
+        'metafields',
+        $definition->handle,
+        false,
+    )->pluck('id');
+    expect($notFeatured->all())->toBe([$otherOwner->getKey()]);
 });
 
 it('rejects decimal formats that cannot be cast for storage', function (): void {

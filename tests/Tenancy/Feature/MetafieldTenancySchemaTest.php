@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Schema;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Tests\Fixtures\MetafieldTenancyScenario;
-use Nvl\Tenancy\Services\TenantResourceRegistry;
+use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
 it('declares and constrains the entire metafield tenant graph', function (): void {
     MetafieldTenancyScenario::install();

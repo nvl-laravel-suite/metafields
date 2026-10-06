@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Models\Concerns;
 
-use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
+use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 
 /** Prevents persisted Metafield tenant partition identity from changing. */
 trait GuardsTenantOwnership

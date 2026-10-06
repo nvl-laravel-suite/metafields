@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Nvl\Metafields\Database\Factories\MetafieldDefinitionAssignmentFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
+use Nvl\Support\Config\PackageStorage;
 
 /**
  * @property string $id
@@ -74,5 +75,17 @@ class MetafieldDefinitionAssignment extends Model
     public function definition(): BelongsTo
     {
         return $this->belongsTo(MetafieldDefinition::class, 'definition_id');
+    }
+
+    /** Resolve the configured package storage table. */
+    public function getTable(): string
+    {
+        return MetafieldsTables::get(MetafieldsTables::DefinitionAssignments);
+    }
+
+    /** Resolve the package connection through shared infrastructure defaults. */
+    public function getConnectionName(): ?string
+    {
+        return PackageStorage::connectionName($this->connection ?? PackageStorage::connection('metafields') ?? parent::getConnectionName());
     }
 }

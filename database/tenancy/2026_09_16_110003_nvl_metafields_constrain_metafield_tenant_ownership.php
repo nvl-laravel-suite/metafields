@@ -10,96 +10,103 @@ use Illuminate\Database\Schema\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
+use Nvl\Support\Config\PackageStorage;
 
 return new class extends Migration
 {
+    /** Use the effective package connection for Laravel's migration transaction. */
+    public function getConnection(): ?string
+    {
+        return PackageStorage::connection('metafields');
+    }
+
     /** Apply verified tenant partitions and concrete parent constraints. */
     public function up(): void
     {
         $mixed = config('tenancy.sharing.metafields') === 'copy';
         $platform = config('tenancy.resources.metafields') === 'platform';
         $partitioned = $mixed || $platform;
-        $schema = Schema::getFacadeRoot();
+        $schema = Schema::connection(PackageStorage::connection('metafields'));
         $partition = $partitioned ? 'ownership_key' : 'tenant_id';
 
-        $this->dropIndex($schema, MetafieldsTables::Definitions, 'metafields_definitions_active_handle_unique', true);
-        $this->required($schema, MetafieldsTables::Definitions, 'tenant_id', $partitioned);
+        $this->dropIndex($schema, MetafieldsTables::get(MetafieldsTables::Definitions), 'metafields_definitions_active_handle_unique', true);
+        $this->required($schema, MetafieldsTables::get(MetafieldsTables::Definitions), 'tenant_id', $partitioned);
         if ($partitioned) {
-            $this->required($schema, MetafieldsTables::Definitions, 'ownership_key', false, 'string');
-            $this->ownershipCheck(DB::connection(), MetafieldsTables::Definitions);
+            $this->required($schema, MetafieldsTables::get(MetafieldsTables::Definitions), 'ownership_key', false, 'string');
+            $this->ownershipCheck(DB::connection(), MetafieldsTables::get(MetafieldsTables::Definitions));
         }
-        $this->unique($schema, MetafieldsTables::Definitions, [$partition, 'id'], 'metafield_definitions_partition_id_unique');
-        $this->unique($schema, MetafieldsTables::Definitions, ['tenant_id', 'id'], 'metafield_definitions_tenant_id_unique');
-        $this->unique($schema, MetafieldsTables::Definitions, [$partition, 'active_handle'], 'metafield_definitions_partition_handle_unique');
-        $this->unique($schema, MetafieldsTables::Definitions, ['tenant_id', 'catalog_import_key'], 'metafield_definitions_tenant_import_unique');
+        $this->unique($schema, MetafieldsTables::get(MetafieldsTables::Definitions), [$partition, 'id'], 'metafield_definitions_partition_id_unique');
+        $this->unique($schema, MetafieldsTables::get(MetafieldsTables::Definitions), ['tenant_id', 'id'], 'metafield_definitions_tenant_id_unique');
+        $this->unique($schema, MetafieldsTables::get(MetafieldsTables::Definitions), [$partition, 'active_handle'], 'metafield_definitions_partition_handle_unique');
+        $this->unique($schema, MetafieldsTables::get(MetafieldsTables::Definitions), ['tenant_id', 'catalog_import_key'], 'metafield_definitions_tenant_import_unique');
 
-        foreach ([MetafieldsTables::DefinitionAssignments, MetafieldsTables::DefinitionsI18n] as $child) {
+        foreach ([MetafieldsTables::get(MetafieldsTables::DefinitionAssignments), MetafieldsTables::get(MetafieldsTables::DefinitionsI18n)] as $child) {
             $this->required($schema, $child, 'tenant_id', $partitioned);
             if ($partitioned) {
                 $this->required($schema, $child, 'ownership_key', false, 'string');
                 $this->ownershipCheck(DB::connection(), $child);
             }
-            $this->dropForeignTo($schema, $child, MetafieldsTables::Definitions);
-            $this->foreign($schema, $child, [$partition, $this->definitionColumn($child)], MetafieldsTables::Definitions, [$partition, 'id'], $child.'_definition_partition_foreign');
+            $this->dropForeignTo($schema, $child, MetafieldsTables::get(MetafieldsTables::Definitions));
+            $this->foreign($schema, $child, [$partition, $this->definitionColumn($child)], MetafieldsTables::get(MetafieldsTables::Definitions), [$partition, 'id'], $child.'_definition_partition_foreign');
         }
-        $this->dropIndex($schema, MetafieldsTables::DefinitionAssignments, 'metafield_definition_assignments_unique', true);
-        $this->unique($schema, MetafieldsTables::DefinitionAssignments, [$partition, 'definition_id', 'owner_type'], 'metafield_assignments_partition_owner_unique');
-        $this->dropUniqueContaining($schema, MetafieldsTables::DefinitionsI18n, ['metafield_definition_id', 'locale']);
-        $this->unique($schema, MetafieldsTables::DefinitionsI18n, [$partition, 'metafield_definition_id', 'locale'], 'metafield_definition_i18n_partition_locale_unique');
+        $this->dropIndex($schema, MetafieldsTables::get(MetafieldsTables::DefinitionAssignments), 'metafield_definition_assignments_unique', true);
+        $this->unique($schema, MetafieldsTables::get(MetafieldsTables::DefinitionAssignments), [$partition, 'definition_id', 'owner_type'], 'metafield_assignments_partition_owner_unique');
+        $this->dropUniqueContaining($schema, MetafieldsTables::get(MetafieldsTables::DefinitionsI18n), ['metafield_definition_id', 'locale']);
+        $this->unique($schema, MetafieldsTables::get(MetafieldsTables::DefinitionsI18n), [$partition, 'metafield_definition_id', 'locale'], 'metafield_definition_i18n_partition_locale_unique');
 
-        $this->required($schema, MetafieldsTables::Metafields, 'tenant_id', false);
-        $this->dropForeignTo($schema, MetafieldsTables::Metafields, MetafieldsTables::Definitions);
-        $this->dropIndex($schema, MetafieldsTables::Metafields, 'metafields_owner_definition_unique', true);
-        $this->foreign($schema, MetafieldsTables::Metafields, ['tenant_id', 'definition_id'], MetafieldsTables::Definitions, ['tenant_id', 'id'], 'metafields_tenant_definition_foreign');
-        $this->unique($schema, MetafieldsTables::Metafields, ['tenant_id', 'id'], 'metafields_tenant_id_unique');
-        $this->unique($schema, MetafieldsTables::Metafields, ['tenant_id', 'metafieldable_type', 'metafieldable_id', 'definition_id'], 'metafields_tenant_owner_definition_unique');
-        $this->index($schema, MetafieldsTables::Metafields, ['tenant_id', 'referenced_id'], 'metafields_tenant_reference_idx');
+        $this->required($schema, MetafieldsTables::get(MetafieldsTables::Metafields), 'tenant_id', false);
+        $this->dropForeignTo($schema, MetafieldsTables::get(MetafieldsTables::Metafields), MetafieldsTables::get(MetafieldsTables::Definitions));
+        $this->dropIndex($schema, MetafieldsTables::get(MetafieldsTables::Metafields), 'metafields_owner_definition_unique', true);
+        $this->foreign($schema, MetafieldsTables::get(MetafieldsTables::Metafields), ['tenant_id', 'definition_id'], MetafieldsTables::get(MetafieldsTables::Definitions), ['tenant_id', 'id'], 'metafields_tenant_definition_foreign');
+        $this->unique($schema, MetafieldsTables::get(MetafieldsTables::Metafields), ['tenant_id', 'id'], 'metafields_tenant_id_unique');
+        $this->unique($schema, MetafieldsTables::get(MetafieldsTables::Metafields), ['tenant_id', 'metafieldable_type', 'metafieldable_id', 'definition_id'], 'metafields_tenant_owner_definition_unique');
+        $this->index($schema, MetafieldsTables::get(MetafieldsTables::Metafields), ['tenant_id', 'referenced_id'], 'metafields_tenant_reference_idx');
 
-        $this->required($schema, MetafieldsTables::I18n, 'tenant_id', false);
-        $this->dropForeignTo($schema, MetafieldsTables::I18n, MetafieldsTables::Metafields);
-        $this->dropUniqueContaining($schema, MetafieldsTables::I18n, ['metafield_id', 'locale']);
-        $this->foreign($schema, MetafieldsTables::I18n, ['tenant_id', 'metafield_id'], MetafieldsTables::Metafields, ['tenant_id', 'id'], 'metafield_i18n_tenant_parent_foreign');
-        $this->unique($schema, MetafieldsTables::I18n, ['tenant_id', 'metafield_id', 'locale'], 'metafield_i18n_tenant_locale_unique');
+        $this->required($schema, MetafieldsTables::get(MetafieldsTables::I18n), 'tenant_id', false);
+        $this->dropForeignTo($schema, MetafieldsTables::get(MetafieldsTables::I18n), MetafieldsTables::get(MetafieldsTables::Metafields));
+        $this->dropUniqueContaining($schema, MetafieldsTables::get(MetafieldsTables::I18n), ['metafield_id', 'locale']);
+        $this->foreign($schema, MetafieldsTables::get(MetafieldsTables::I18n), ['tenant_id', 'metafield_id'], MetafieldsTables::get(MetafieldsTables::Metafields), ['tenant_id', 'id'], 'metafield_i18n_tenant_parent_foreign');
+        $this->unique($schema, MetafieldsTables::get(MetafieldsTables::I18n), ['tenant_id', 'metafield_id', 'locale'], 'metafield_i18n_tenant_locale_unique');
         $schema->enableForeignKeyConstraints();
     }
 
     /** Remove final constraints while retaining expanded adoption data. */
     public function down(): void
     {
-        $schema = Schema::getFacadeRoot();
+        $schema = Schema::connection(PackageStorage::connection('metafields'));
         $partition = config('tenancy.sharing.metafields') === 'copy'
             || config('tenancy.resources.metafields') === 'platform'
             ? 'ownership_key'
             : 'tenant_id';
         foreach ([
-            [MetafieldsTables::DefinitionAssignments, [$partition, 'definition_id']],
-            [MetafieldsTables::DefinitionsI18n, [$partition, 'metafield_definition_id']],
-            [MetafieldsTables::Metafields, ['tenant_id', 'definition_id']],
-            [MetafieldsTables::I18n, ['tenant_id', 'metafield_id']],
+            [MetafieldsTables::get(MetafieldsTables::DefinitionAssignments), [$partition, 'definition_id']],
+            [MetafieldsTables::get(MetafieldsTables::DefinitionsI18n), [$partition, 'metafield_definition_id']],
+            [MetafieldsTables::get(MetafieldsTables::Metafields), ['tenant_id', 'definition_id']],
+            [MetafieldsTables::get(MetafieldsTables::I18n), ['tenant_id', 'metafield_id']],
         ] as [$table, $columns]) {
             $this->dropForeign($schema, $table, $columns);
         }
         foreach ([
-            [MetafieldsTables::Definitions, 'metafield_definitions_partition_id_unique', true],
-            [MetafieldsTables::Definitions, 'metafield_definitions_tenant_id_unique', true],
-            [MetafieldsTables::Definitions, 'metafield_definitions_partition_handle_unique', true],
-            [MetafieldsTables::Definitions, 'metafield_definitions_tenant_import_unique', true],
-            [MetafieldsTables::DefinitionAssignments, 'metafield_assignments_partition_owner_unique', true],
-            [MetafieldsTables::DefinitionsI18n, 'metafield_definition_i18n_partition_locale_unique', true],
-            [MetafieldsTables::Metafields, 'metafields_tenant_id_unique', true],
-            [MetafieldsTables::Metafields, 'metafields_tenant_owner_definition_unique', true],
-            [MetafieldsTables::Metafields, 'metafields_tenant_reference_idx', false],
-            [MetafieldsTables::I18n, 'metafield_i18n_tenant_locale_unique', true],
+            [MetafieldsTables::get(MetafieldsTables::Definitions), 'metafield_definitions_partition_id_unique', true],
+            [MetafieldsTables::get(MetafieldsTables::Definitions), 'metafield_definitions_tenant_id_unique', true],
+            [MetafieldsTables::get(MetafieldsTables::Definitions), 'metafield_definitions_partition_handle_unique', true],
+            [MetafieldsTables::get(MetafieldsTables::Definitions), 'metafield_definitions_tenant_import_unique', true],
+            [MetafieldsTables::get(MetafieldsTables::DefinitionAssignments), 'metafield_assignments_partition_owner_unique', true],
+            [MetafieldsTables::get(MetafieldsTables::DefinitionsI18n), 'metafield_definition_i18n_partition_locale_unique', true],
+            [MetafieldsTables::get(MetafieldsTables::Metafields), 'metafields_tenant_id_unique', true],
+            [MetafieldsTables::get(MetafieldsTables::Metafields), 'metafields_tenant_owner_definition_unique', true],
+            [MetafieldsTables::get(MetafieldsTables::Metafields), 'metafields_tenant_reference_idx', false],
+            [MetafieldsTables::get(MetafieldsTables::I18n), 'metafield_i18n_tenant_locale_unique', true],
         ] as [$table, $name, $unique]) {
             $this->dropIndex($schema, $table, $name, $unique);
         }
-        foreach ([MetafieldsTables::Definitions, MetafieldsTables::DefinitionAssignments, MetafieldsTables::DefinitionsI18n] as $table) {
+        foreach ([MetafieldsTables::get(MetafieldsTables::Definitions), MetafieldsTables::get(MetafieldsTables::DefinitionAssignments), MetafieldsTables::get(MetafieldsTables::DefinitionsI18n)] as $table) {
             $this->dropOwnershipCheck(DB::connection(), $table);
         }
-        foreach ([MetafieldsTables::Definitions, MetafieldsTables::DefinitionAssignments, MetafieldsTables::DefinitionsI18n, MetafieldsTables::Metafields, MetafieldsTables::I18n] as $table) {
+        foreach ([MetafieldsTables::get(MetafieldsTables::Definitions), MetafieldsTables::get(MetafieldsTables::DefinitionAssignments), MetafieldsTables::get(MetafieldsTables::DefinitionsI18n), MetafieldsTables::get(MetafieldsTables::Metafields), MetafieldsTables::get(MetafieldsTables::I18n)] as $table) {
             $this->required($schema, $table, 'tenant_id', true);
         }
-        foreach ([MetafieldsTables::Definitions, MetafieldsTables::DefinitionAssignments, MetafieldsTables::DefinitionsI18n] as $table) {
+        foreach ([MetafieldsTables::get(MetafieldsTables::Definitions), MetafieldsTables::get(MetafieldsTables::DefinitionAssignments), MetafieldsTables::get(MetafieldsTables::DefinitionsI18n)] as $table) {
             $this->required($schema, $table, 'ownership_key', true, 'string');
         }
     }
@@ -107,7 +114,7 @@ return new class extends Migration
     /** Return the concrete definition foreign-key column. */
     private function definitionColumn(string $table): string
     {
-        return $table === MetafieldsTables::DefinitionsI18n ? 'metafield_definition_id' : 'definition_id';
+        return $table === MetafieldsTables::get(MetafieldsTables::DefinitionsI18n) ? 'metafield_definition_id' : 'definition_id';
     }
 
     /** Change one prepared ownership column to final nullability. */

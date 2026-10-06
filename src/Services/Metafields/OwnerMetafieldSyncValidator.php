@@ -15,7 +15,7 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Models\MetafieldTranslation;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
-use Nvl\Translatable\Services\LocaleRegistry;
+use Nvl\Support\Contracts\LocaleCatalog;
 use Spatie\LaravelData\Optional;
 
 /**
@@ -26,7 +26,7 @@ final readonly class OwnerMetafieldSyncValidator
     public function __construct(
         private MetafieldOwnerRegistry $ownerRegistry,
         private MetafieldValueValidator $metafieldValueValidator,
-        private LocaleRegistry $locales,
+        private LocaleCatalog $locales,
     ) {}
 
     /**

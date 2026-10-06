@@ -90,7 +90,7 @@ final class OwnerMetafieldBooleanFilter
     ): void {
         $query
             ->whereBelongsTo($definition, 'definition')
-            ->whereRaw(Metafield::TABLE.'.value = ?', [self::storedBooleanValue($expected)]);
+            ->where((new Metafield)->qualifyColumn('value'), self::storedBooleanValue($expected));
     }
 
     /**

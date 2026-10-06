@@ -6,15 +6,22 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
+use Nvl\Support\Config\PackageStorage;
 
 return new class extends Migration
 {
+    /** Use the effective package connection for Laravel's migration transaction. */
+    public function getConnection(): ?string
+    {
+        return PackageStorage::connection('metafields');
+    }
+
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        Schema::create(MetafieldsTables::DefinitionsI18n, function (Blueprint $table): void {
+        Schema::connection(PackageStorage::connection('metafields'))->create(MetafieldsTables::get(MetafieldsTables::DefinitionsI18n), function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->uuid('metafield_definition_id');
             $table->string('locale', 35);
@@ -31,7 +38,7 @@ return new class extends Migration
             );
             $table->foreign('metafield_definition_id')
                 ->references('id')
-                ->on(MetafieldsTables::Definitions)
+                ->on(MetafieldsTables::get(MetafieldsTables::Definitions))
                 ->cascadeOnDelete();
         });
     }
@@ -41,6 +48,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists(MetafieldsTables::DefinitionsI18n);
+        Schema::connection(PackageStorage::connection('metafields'))->dropIfExists(MetafieldsTables::get(MetafieldsTables::DefinitionsI18n));
     }
 };

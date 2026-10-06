@@ -13,11 +13,11 @@ use Illuminate\Support\Str;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
+use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
+use Nvl\Support\Tenancy\Exceptions\TenantConfigurationInvalid;
+use Nvl\Support\Tenancy\Services\EffectiveTenantConnection;
 use Nvl\Tenancy\Contracts\TenantAdoptionAdapter;
 use Nvl\Tenancy\Contracts\TenantAdoptionMetadataValidator;
-use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Tenancy\Exceptions\TenantConfigurationInvalid;
-use Nvl\Tenancy\Services\EffectiveTenantConnection;
 use Nvl\Tenancy\Services\TenantAdoptionMappings;
 use Nvl\Tenancy\ValueObjects\TenantAdoptionPlan;
 use Nvl\Tenancy\ValueObjects\TenantAssignment;
@@ -89,8 +89,8 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
         $this->assertConnection($plan);
         $path = dirname(__DIR__, 2).'/database/tenancy';
         $this->migrator->usingConnection($plan->connection, fn () => $this->migrator->run([
-            $path.'/2026_09_16_110001_expand_metafield_tenant_ownership.php',
-            $path.'/2026_09_16_110002_create_metafield_definition_tenant_grants.php',
+            $path.'/2026_09_16_110001_nvl_metafields_expand_metafield_tenant_ownership.php',
+            $path.'/2026_09_16_110002_nvl_metafields_create_metafield_definition_tenant_grants.php',
         ], ['force' => true]));
     }
 
@@ -122,19 +122,19 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
         $schema = $connection->getSchemaBuilder();
         $errors = [];
         foreach ([
-            MetafieldsTables::Definitions,
-            MetafieldsTables::DefinitionAssignments,
-            MetafieldsTables::DefinitionsI18n,
-            MetafieldsTables::Metafields,
-            MetafieldsTables::I18n,
-            MetafieldsTables::TenantGrants,
+            MetafieldsTables::get(MetafieldsTables::Definitions),
+            MetafieldsTables::get(MetafieldsTables::DefinitionAssignments),
+            MetafieldsTables::get(MetafieldsTables::DefinitionsI18n),
+            MetafieldsTables::get(MetafieldsTables::Metafields),
+            MetafieldsTables::get(MetafieldsTables::I18n),
+            MetafieldsTables::get(MetafieldsTables::TenantGrants),
         ] as $table) {
             if (! $schema->hasTable($table) || ! $schema->hasColumn($table, 'tenant_id')) {
                 $errors[] = $table.'.tenant_id';
             }
         }
         $partitioned = $this->partitioned();
-        $definitions = $connection->table(MetafieldsTables::Definitions)->get(['id', 'tenant_id', ...($partitioned ? ['ownership_key'] : [])]);
+        $definitions = $connection->table(MetafieldsTables::get(MetafieldsTables::Definitions))->get(['id', 'tenant_id', ...($partitioned ? ['ownership_key'] : [])]);
         foreach ($definitions as $definition) {
             if (! is_string($definition->id)
                 || ($this->platformOwned()
@@ -145,11 +145,11 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
             }
         }
         foreach ([
-            MetafieldsTables::DefinitionAssignments => 'definition_id',
-            MetafieldsTables::DefinitionsI18n => 'metafield_definition_id',
+            MetafieldsTables::get(MetafieldsTables::DefinitionAssignments) => 'definition_id',
+            MetafieldsTables::get(MetafieldsTables::DefinitionsI18n) => 'metafield_definition_id',
         ] as $child => $foreign) {
             $rows = $connection->table($child.' as child')
-                ->leftJoin(MetafieldsTables::Definitions.' as root', 'root.id', '=', 'child.'.$foreign)
+                ->leftJoin(MetafieldsTables::get(MetafieldsTables::Definitions).' as root', 'root.id', '=', 'child.'.$foreign)
                 ->where(function (Builder $query) use ($partitioned): void {
                     $query->whereNull('root.id')->orWhereColumn('child.tenant_id', '!=', 'root.tenant_id');
                     if ($partitioned) {
@@ -160,17 +160,17 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
                 $errors[] = $child.'.ownership:'.(is_string($id) || is_int($id) ? (string) $id : 'unknown');
             }
         }
-        foreach ($connection->table(MetafieldsTables::Metafields)->get(['id', 'definition_id', 'metafieldable_type', 'metafieldable_id', 'tenant_id']) as $value) {
+        foreach ($connection->table(MetafieldsTables::get(MetafieldsTables::Metafields))->get(['id', 'definition_id', 'metafieldable_type', 'metafieldable_id', 'tenant_id']) as $value) {
             $valueId = $value->id ?? null;
             $definitionId = $value->definition_id ?? null;
             if (! is_string($valueId) || ! is_string($definitionId) || ! is_string($value->tenant_id)
                 || $this->ownerTenant($value) !== $value->tenant_id
-                || ! $connection->table(MetafieldsTables::Definitions)->where('id', $value->definition_id)->where('tenant_id', $value->tenant_id)->exists()) {
+                || ! $connection->table(MetafieldsTables::get(MetafieldsTables::Definitions))->where('id', $value->definition_id)->where('tenant_id', $value->tenant_id)->exists()) {
                 $errors[] = 'metafields.values.ownership:'.(is_string($valueId) ? $valueId : 'unknown');
             }
         }
-        if ($schema->hasTable(MetafieldsTables::TenantAdoptionCopies)
-            && $connection->table(MetafieldsTables::TenantAdoptionCopies)->where('adoption_run_id', $plan->id)->where('status', '!=', 'committed')->exists()) {
+        if ($schema->hasTable(MetafieldsTables::get(MetafieldsTables::TenantAdoptionCopies))
+            && $connection->table(MetafieldsTables::get(MetafieldsTables::TenantAdoptionCopies))->where('adoption_run_id', $plan->id)->where('status', '!=', 'committed')->exists()) {
             $errors[] = 'metafields.definitions.copy_incomplete';
         }
 
@@ -181,7 +181,7 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
     public function activate(TenantAdoptionPlan $plan): void
     {
         $this->assertVerified($plan, 'Metafield tenant schema did not verify before activation.');
-        $path = dirname(__DIR__, 2).'/database/tenancy/2026_09_16_110003_constrain_metafield_tenant_ownership.php';
+        $path = dirname(__DIR__, 2).'/database/tenancy/2026_09_16_110003_nvl_metafields_constrain_metafield_tenant_ownership.php';
         $this->migrator->usingConnection($plan->connection, fn () => $this->migrator->run([$path], ['force' => true]));
         $this->assertVerified($plan, 'Metafield tenant schema did not verify after activation.');
     }
@@ -198,7 +198,7 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
     private function backfillDefinition(TenantAdoptionPlan $plan, TenantAssignment $assignment): void
     {
         $connection = $this->connection($plan);
-        $source = $connection->table(MetafieldsTables::Definitions)->where('id', $assignment->recordId)->first();
+        $source = $connection->table(MetafieldsTables::get(MetafieldsTables::Definitions))->where('id', $assignment->recordId)->first();
         if (! $source instanceof stdClass) {
             throw new TenantBoundaryViolation('A reviewed Metafield definition is unavailable.');
         }
@@ -217,7 +217,7 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
         ];
         ksort($destinations);
         $valueTenants = [];
-        foreach ($connection->table(MetafieldsTables::Metafields)->where('definition_id', $source->id)->get() as $value) {
+        foreach ($connection->table(MetafieldsTables::get(MetafieldsTables::Metafields))->where('definition_id', $source->id)->get() as $value) {
             $valueTenants[$this->ownerTenant($value)] = true;
         }
         if (array_diff(array_keys($valueTenants), array_keys($destinations)) !== []) {
@@ -225,18 +225,18 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
         }
 
         $connection->transaction(function () use ($connection, $plan, $source, $destinations): void {
-            $assignments = $connection->table(MetafieldsTables::DefinitionAssignments)->where('definition_id', $source->id)->get();
-            $translations = $connection->table(MetafieldsTables::DefinitionsI18n)->where('metafield_definition_id', $source->id)->get();
+            $assignments = $connection->table(MetafieldsTables::get(MetafieldsTables::DefinitionAssignments))->where('definition_id', $source->id)->get();
+            $translations = $connection->table(MetafieldsTables::get(MetafieldsTables::DefinitionsI18n))->where('metafield_definition_id', $source->id)->get();
             foreach ($destinations as $tenant => $destination) {
                 $ownershipKey = $this->partitioned() ? 'tenant:'.$tenant : null;
-                if ($destination !== $source->id && ! $connection->table(MetafieldsTables::Definitions)->where('id', $destination)->exists()) {
+                if ($destination !== $source->id && ! $connection->table(MetafieldsTables::get(MetafieldsTables::Definitions))->where('id', $destination)->exists()) {
                     $attributes = (array) $source;
                     $attributes['id'] = $destination;
                     $attributes['tenant_id'] = $tenant;
                     if ($this->partitioned()) {
                         $attributes['ownership_key'] = $ownershipKey;
                     }
-                    $connection->table(MetafieldsTables::Definitions)->insert($attributes);
+                    $connection->table(MetafieldsTables::get(MetafieldsTables::Definitions))->insert($attributes);
                     foreach ($assignments as $row) {
                         $copy = (array) $row;
                         $copy['id'] = (string) Str::uuid();
@@ -245,7 +245,7 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
                         if ($this->partitioned()) {
                             $copy['ownership_key'] = $ownershipKey;
                         }
-                        $connection->table(MetafieldsTables::DefinitionAssignments)->insert($copy);
+                        $connection->table(MetafieldsTables::get(MetafieldsTables::DefinitionAssignments))->insert($copy);
                     }
                     foreach ($translations as $row) {
                         $copy = (array) $row;
@@ -255,21 +255,21 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
                         if ($this->partitioned()) {
                             $copy['ownership_key'] = $ownershipKey;
                         }
-                        $connection->table(MetafieldsTables::DefinitionsI18n)->insert($copy);
+                        $connection->table(MetafieldsTables::get(MetafieldsTables::DefinitionsI18n))->insert($copy);
                     }
                 }
                 $this->writeDefinitionOwnership($connection, $destination, $tenant, $ownershipKey);
-                foreach ($connection->table(MetafieldsTables::Metafields)->where('definition_id', $source->id)->get() as $value) {
+                foreach ($connection->table(MetafieldsTables::get(MetafieldsTables::Metafields))->where('definition_id', $source->id)->get() as $value) {
                     if ($this->ownerTenant($value) !== $tenant) {
                         continue;
                     }
-                    $connection->table(MetafieldsTables::Metafields)->where('id', $value->id)->update([
+                    $connection->table(MetafieldsTables::get(MetafieldsTables::Metafields))->where('id', $value->id)->update([
                         'tenant_id' => $tenant,
                         'definition_id' => $destination,
                     ]);
-                    $connection->table(MetafieldsTables::I18n)->where('metafield_id', $value->id)->update(['tenant_id' => $tenant]);
+                    $connection->table(MetafieldsTables::get(MetafieldsTables::I18n))->where('metafield_id', $value->id)->update(['tenant_id' => $tenant]);
                 }
-                $connection->table(MetafieldsTables::TenantAdoptionCopies)->updateOrInsert([
+                $connection->table(MetafieldsTables::get(MetafieldsTables::TenantAdoptionCopies))->updateOrInsert([
                     'adoption_run_id' => $plan->id,
                     'source_id' => $source->id,
                     'tenant_id' => $tenant,
@@ -311,9 +311,9 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
         if ($this->partitioned()) {
             $ownership['ownership_key'] = $ownershipKey;
         }
-        $connection->table(MetafieldsTables::Definitions)->where('id', $definitionId)->update($ownership);
-        $connection->table(MetafieldsTables::DefinitionAssignments)->where('definition_id', $definitionId)->update($ownership);
-        $connection->table(MetafieldsTables::DefinitionsI18n)->where('metafield_definition_id', $definitionId)->update($ownership);
+        $connection->table(MetafieldsTables::get(MetafieldsTables::Definitions))->where('id', $definitionId)->update($ownership);
+        $connection->table(MetafieldsTables::get(MetafieldsTables::DefinitionAssignments))->where('definition_id', $definitionId)->update($ownership);
+        $connection->table(MetafieldsTables::get(MetafieldsTables::DefinitionsI18n))->where('metafield_definition_id', $definitionId)->update($ownership);
     }
 
     /** Resolve canonical owner tenant from the registered owner model, including soft-deleted rows. */

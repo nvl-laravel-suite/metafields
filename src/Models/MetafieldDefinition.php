@@ -17,8 +17,9 @@ use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
-use Nvl\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Tenancy\Services\TenantBoundary;
+use Nvl\Support\Config\PackageStorage;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 use Nvl\Translatable\Contracts\TranslatableModel;
 use Nvl\Translatable\Enums\TranslationMutationPolicy;
 use Nvl\Translatable\RelatedTranslationDefinition;
@@ -367,5 +368,17 @@ class MetafieldDefinition extends Model implements TranslatableModel
                 throw new TenantBoundaryViolation('A Metafield definition translation has mismatched ownership.');
             }
         }
+    }
+
+    /** Resolve the configured package storage table. */
+    public function getTable(): string
+    {
+        return MetafieldsTables::get(MetafieldsTables::Definitions);
+    }
+
+    /** Resolve the package connection through shared infrastructure defaults. */
+    public function getConnectionName(): ?string
+    {
+        return PackageStorage::connectionName($this->connection ?? PackageStorage::connection('metafields') ?? parent::getConnectionName());
     }
 }
