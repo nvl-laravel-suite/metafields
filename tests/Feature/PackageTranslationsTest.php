@@ -23,7 +23,7 @@ test('every literal package translation key has a standalone English value', fun
         preg_match_all('/\btrans\(\s*[\'"]([^\'"]+)[\'"]/', $contents, $matches);
 
         foreach ($matches[1] as $key) {
-            if (str_starts_with($key, 'metafields::') && ! str_contains($key, '{$') && ! str_ends_with($key, '.')) {
+            if (str_starts_with($key, 'nvl-metafields::') && ! str_contains($key, '{$') && ! str_ends_with($key, '.')) {
                 $keys[$key] = true;
             }
         }

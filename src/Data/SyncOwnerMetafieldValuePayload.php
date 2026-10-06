@@ -67,7 +67,7 @@ final class SyncOwnerMetafieldValuePayload extends Data
      */
     public static function messages(): array
     {
-        return self::translatedMessages('metafields::owner-metafields');
+        return self::translatedMessages('nvl-metafields::owner-metafields');
     }
 
     /**
@@ -75,6 +75,6 @@ final class SyncOwnerMetafieldValuePayload extends Data
      */
     public static function attributes(): array
     {
-        return self::translatedAttributes('metafields::owner-metafields');
+        return self::translatedAttributes('nvl-metafields::owner-metafields');
     }
 }

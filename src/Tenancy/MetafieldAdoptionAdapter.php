@@ -353,12 +353,12 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
     /** Determine whether definition roots carry the mixed partition discriminator. */
     private function partitioned(): bool
     {
-        return $this->configuration->get('tenancy.sharing.metafields') === 'copy' || $this->platformOwned();
+        return $this->configuration->get('nvl-tenancy.sharing.metafields') === 'copy' || $this->platformOwned();
     }
 
     /** Determine whether this family is structurally platform-owned. */
     private function platformOwned(): bool
     {
-        return $this->configuration->get('tenancy.resources.metafields') === 'platform';
+        return $this->configuration->get('nvl-tenancy.resources.metafields') === 'platform';
     }
 }

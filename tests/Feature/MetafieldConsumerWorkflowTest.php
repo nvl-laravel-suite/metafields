@@ -65,9 +65,9 @@ function assignMetafieldTestDefinition(
 
 beforeEach(function (): void {
     config([
-        'translatable.locales' => ['en', 'bg'],
-        'translatable.fallback_locales' => ['en'],
-        'metafields.owners' => [
+        'nvl-translatable.locales' => ['en', 'bg'],
+        'nvl-translatable.fallback_locales' => ['en'],
+        'nvl-metafields.owners' => [
             'products' => [
                 'model' => TestMetafieldOwner::class,
                 'label' => 'Products',
@@ -79,7 +79,7 @@ beforeEach(function (): void {
                 'runtime_status' => 'live',
             ],
         ],
-        'metafields.reference_models' => [
+        'nvl-metafields.reference_models' => [
             'products' => TestMetafieldOwner::class,
         ],
     ]);
@@ -816,8 +816,8 @@ it('validates localized definition defaults and their storage mode', function ()
 });
 
 it('rejects definition assignments outside the owner type and section allowlists', function (): void {
-    config()->set('metafields.owners.products.supported_types', ['string']);
-    config()->set('metafields.owners.products.sections', ['general']);
+    config()->set('nvl-metafields.owners.products.supported_types', ['string']);
+    config()->set('nvl-metafields.owners.products.sections', ['general']);
 
     expect(fn () => CreateMetafieldDefinitionPayload::validateAndCreate([
         'namespace' => 'content',
@@ -1039,7 +1039,7 @@ it('requires explicit cascading deletion when active owner values exist', functi
 });
 
 it('rejects malformed owner registry configuration with an actionable exception', function (): void {
-    config()->set('metafields.owners.products.model', stdClass::class);
+    config()->set('nvl-metafields.owners.products.model', stdClass::class);
 
     expect(fn () => app(MetafieldOwnerRegistry::class)->forType('products'))
         ->toThrow(InvalidArgumentException::class, 'must configure an Eloquent model class');
@@ -1229,7 +1229,7 @@ it('enforces decimal precision reference lists and bounded structured payloads',
         ]),
     ))->toThrow(ValidationException::class);
 
-    config()->set('metafields.limits.maximum_json_items', 2);
+    config()->set('nvl-metafields.limits.maximum_json_items', 2);
     $structured = MetafieldDefinition::factory()->ofType(MetafieldTypeEnum::Json)->create([
         'namespace' => 'content',
         'key' => 'structured',
@@ -1246,7 +1246,7 @@ it('enforces decimal precision reference lists and bounded structured payloads',
         ]),
     ))->toThrow(ValidationException::class);
 
-    config()->set('metafields.limits.maximum_sync_items', 1);
+    config()->set('nvl-metafields.limits.maximum_sync_items', 1);
 
     expect(fn () => SyncOwnerMetafieldsPayload::validateAndCreate([
         'items' => [
@@ -1255,7 +1255,7 @@ it('enforces decimal precision reference lists and bounded structured payloads',
         ],
     ]))->toThrow(ValidationException::class);
 
-    config()->set('metafields.limits.maximum_json_items', 1);
+    config()->set('nvl-metafields.limits.maximum_json_items', 1);
 
     expect(fn () => CreateMetafieldDefinitionPayload::validateAndCreate([
         'namespace' => 'content',

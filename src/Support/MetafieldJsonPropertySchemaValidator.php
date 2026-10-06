@@ -19,7 +19,7 @@ final class MetafieldJsonPropertySchemaValidator
         }
 
         if (count($schema) > MetafieldConfiguration::positiveInteger(
-            'metafields.limits.maximum_schema_properties',
+            'nvl-metafields.limits.maximum_schema_properties',
             100,
         )
             || ! MetafieldPayloadLimits::accepts($value)) {

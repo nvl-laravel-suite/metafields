@@ -45,7 +45,7 @@ final class ArchiveMetafieldDefinitionAction
                 throw ValidationException::withMessages([
                     'archived' => [
                         trans(
-                            'metafields::metafields/validation.custom.definition.active_handle_conflict',
+                            'nvl-metafields::metafields/validation.custom.definition.active_handle_conflict',
                         ),
                     ],
                 ]);

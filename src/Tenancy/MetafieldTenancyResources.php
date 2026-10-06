@@ -25,8 +25,8 @@ final readonly class MetafieldTenancyResources
     /** Register definition and canonical-owner value graphs. */
     public function register(TenantResourceRegistry $resources): void
     {
-        $sharing = $this->configuration->get('tenancy.sharing.metafields', 'none');
-        $mode = $this->configuration->get('tenancy.resources.metafields', 'tenant');
+        $sharing = $this->configuration->get('nvl-tenancy.sharing.metafields', 'none');
+        $mode = $this->configuration->get('nvl-tenancy.resources.metafields', 'tenant');
         if (! in_array($sharing, ['none', 'copy'], true) || ! in_array($mode, ['tenant', 'platform'], true)) {
             throw new TenantConfigurationInvalid('Metafields tenancy configuration is invalid.');
         }

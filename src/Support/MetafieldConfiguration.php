@@ -34,7 +34,7 @@ final class MetafieldConfiguration
      */
     public static function ownerAliases(): array
     {
-        $owners = config('metafields.owners', []);
+        $owners = config('nvl-metafields.owners', []);
 
         if (! is_array($owners)) {
             return [];

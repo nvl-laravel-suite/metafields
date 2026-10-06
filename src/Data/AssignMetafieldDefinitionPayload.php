@@ -50,7 +50,7 @@ final class AssignMetafieldDefinitionPayload extends Data
     public static function rules(): array
     {
         return [
-            'ownerType' => ['required', 'string', Rule::in(array_keys((array) config('metafields.owners', [])))],
+            'ownerType' => ['required', 'string', Rule::in(array_keys((array) config('nvl-metafields.owners', [])))],
             'section' => ['required', 'string', 'max:255'],
             'displayOrder' => ['nullable', 'integer', 'min:0'],
             'isRequired' => ['boolean'],

@@ -61,8 +61,8 @@ abstract class MetafieldTenancyTestCase extends Orchestra
         $app['config']->set([
             'app.key' => 'base64:YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=',
             'cache.default' => 'array',
-            'metafields.migrations.enabled' => true,
-            'metafields.owners.test-owner' => [
+            'nvl-metafields.migrations.enabled' => true,
+            'nvl-metafields.owners.test-owner' => [
                 'model' => TestMetafieldOwner::class,
                 'label' => 'Test owners',
                 'supported_types' => array_map(
@@ -72,15 +72,15 @@ abstract class MetafieldTenancyTestCase extends Orchestra
                 'sections' => ['general'],
                 'runtime_status' => 'live',
             ],
-            'metafields.reference_models.test-owner' => TestMetafieldOwner::class,
-            'translatable.locales' => ['en', 'bg'],
-            'translatable.fallback_locales' => ['en'],
-            'tenancy.enabled' => true,
-            'tenancy.resources.metafields' => 'tenant',
-            'tenancy.sharing.metafields' => 'none',
-            'tenancy.directory.driver' => 'host',
-            'tenancy.directory.adapter' => null,
-            'tenancy.access.platform' => null,
+            'nvl-metafields.reference_models.test-owner' => TestMetafieldOwner::class,
+            'nvl-translatable.locales' => ['en', 'bg'],
+            'nvl-translatable.fallback_locales' => ['en'],
+            'nvl-tenancy.enabled' => true,
+            'nvl-tenancy.resources.metafields' => 'tenant',
+            'nvl-tenancy.sharing.metafields' => 'none',
+            'nvl-tenancy.directory.driver' => 'host',
+            'nvl-tenancy.directory.adapter' => null,
+            'nvl-tenancy.access.platform' => null,
         ]);
         $app->instance(MaintenanceMode::class, new MetafieldTenancyMaintenanceMode);
         $app->instance(TenantDirectory::class, new MetafieldTenancyDirectory);

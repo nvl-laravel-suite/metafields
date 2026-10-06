@@ -141,7 +141,7 @@ final class SyncOwnerMetafieldsAction implements SyncOwnerMetafieldsContract
                 if (! $definition instanceof MetafieldDefinition) {
                     throw ValidationException::withMessages([
                         "items.{$index}.definitionId" => [
-                            trans('metafields::owner-metafields/validation.custom.definitionId.missing_definition'),
+                            trans('nvl-metafields::owner-metafields/validation.custom.definitionId.missing_definition'),
                         ],
                     ]);
                 }
@@ -211,7 +211,7 @@ final class SyncOwnerMetafieldsAction implements SyncOwnerMetafieldsContract
             }
 
             return $syncedMetafields->values();
-        }, MetafieldConfiguration::positiveInteger('metafields.transactions.attempts', 3));
+        }, MetafieldConfiguration::positiveInteger('nvl-metafields.transactions.attempts', 3));
 
         MetafieldsSyncedEvent::dispatch($owner, $synced);
 

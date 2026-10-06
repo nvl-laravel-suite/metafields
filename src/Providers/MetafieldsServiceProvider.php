@@ -46,10 +46,12 @@ use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Tenancy\MetafieldAdoptionAdapter;
 use Nvl\Metafields\Tenancy\MetafieldTenancyResources;
 use Nvl\Support\Doctor\PackageDoctorContributor;
+use Nvl\Support\Globals\GlobalNames;
 use Nvl\Support\Providers\SupportServiceProvider;
 use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 use Nvl\Support\Traits\MergesPackageConfiguration;
+use Nvl\Support\Traits\RegistersNamespacedResources;
 use Nvl\Tenancy\Services\TenantAdoptionRegistry;
 use Nvl\Translatable\Services\TranslationResourceRegistry;
 
@@ -57,6 +59,7 @@ use Nvl\Translatable\Services\TranslationResourceRegistry;
 final class MetafieldsServiceProvider extends ServiceProvider
 {
     use MergesPackageConfiguration;
+    use RegistersNamespacedResources;
 
     /**
      * Boot the application events.
@@ -91,7 +94,7 @@ final class MetafieldsServiceProvider extends ServiceProvider
         $this->registerConfig();
         $this->registerOwnerMorphMap($owners);
         $this->registerRateLimiter();
-        if ((bool) config('metafields.migrations.enabled', true)) {
+        if ((bool) config('nvl-metafields.migrations.enabled', true)) {
             $this->loadMigrationsFrom(__DIR__.'/../../database/migrations');
         }
 
@@ -121,7 +124,7 @@ final class MetafieldsServiceProvider extends ServiceProvider
         $this->app->register(SupportServiceProvider::class);
         PackageDoctorContributor::register($this->app, 'nvl/metafields', fn (): array => $this->app->make(MetafieldDoctor::class)->inspect());
 
-        $this->mergePackageConfiguration(__DIR__.'/../../config/metafields.php', 'metafields');
+        $this->mergePackageConfiguration(__DIR__.'/../../config/nvl-metafields.php', 'metafields');
         $this->app->singleton(MetafieldOwnerRegistry::class);
 
         $this->app->register(RouteServiceProvider::class);
@@ -164,11 +167,10 @@ final class MetafieldsServiceProvider extends ServiceProvider
     {
         $langPath = __DIR__.'/../../lang';
 
-        $this->loadTranslationsFrom($langPath, 'metafields');
-        $this->loadJsonTranslationsFrom($langPath);
+        $this->app->make(GlobalNames::class)->translations('metafields', $langPath, $this->app->make('translation.loader'));
 
         $this->publishes([
-            $langPath => lang_path('vendor/metafields'),
+            $langPath => lang_path('vendor/nvl-metafields'),
         ], 'metafields-translations');
     }
 
@@ -178,7 +180,7 @@ final class MetafieldsServiceProvider extends ServiceProvider
     protected function registerConfig(): void
     {
         $this->publishes([
-            __DIR__.'/../../config/metafields.php' => config_path('metafields.php'),
+            __DIR__.'/../../config/nvl-metafields.php' => config_path('nvl-metafields.php'),
         ], 'metafields-config');
     }
 
@@ -195,7 +197,10 @@ final class MetafieldsServiceProvider extends ServiceProvider
      */
     private function registerRateLimiter(): void
     {
-        RateLimiter::for('metafields-management', static function (Request $request): Limit {
+        if (config('nvl-metafields.routes.enabled', false) !== true) {
+            return;
+        }
+        $limiter = static function (Request $request): Limit {
             $authenticatedIdentifier = $request->user()?->getAuthIdentifier();
             $identifier = is_string($authenticatedIdentifier) || is_int($authenticatedIdentifier)
                 ? (string) $authenticatedIdentifier
@@ -203,11 +208,18 @@ final class MetafieldsServiceProvider extends ServiceProvider
 
             return Limit::perMinute(
                 MetafieldConfiguration::positiveInteger(
-                    'metafields.routes.rate_limit_per_minute',
+                    'nvl-metafields.routes.rate_limit_per_minute',
                     60,
                 ),
             )->by($identifier);
-        });
+        };
+        $names = $this->app->make(GlobalNames::class);
+        $exists = static fn (string $name): bool => RateLimiter::limiter($name) !== null;
+        $install = static function (string $name) use ($limiter): void {
+            RateLimiter::for($name, $limiter);
+        };
+        $names->reserve('metafields', 'limiter', 'nvl.metafields.management', $exists, $install);
+        $names->register('metafields', 'limiter', 'metafields-management', 'nvl.metafields.management', $exists, $install);
     }
 
     /**

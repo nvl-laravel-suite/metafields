@@ -46,8 +46,8 @@ test('non-translatable metafield values remain raw and typed', function (): void
 });
 
 test('metafield values and definitions resolve through the shared translation contract', function (): void {
-    config()->set('translatable.locales', ['en', 'bg']);
-    config()->set('translatable.fallback_locales', ['en']);
+    config()->set('nvl-translatable.locales', ['en', 'bg']);
+    config()->set('nvl-translatable.fallback_locales', ['en']);
 
     $definition = MetafieldDefinition::factory()->translatable()->create([
         'type' => MetafieldTypeEnum::String,

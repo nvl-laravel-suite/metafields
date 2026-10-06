@@ -20,7 +20,7 @@ final class ConfiguredMetafieldAuthorization implements MetafieldAuthorization
         MetafieldAbility $ability,
         ?MetafieldDefinition $definition = null,
     ): void {
-        $configuredAbility = config('metafields.authorization.definition_ability');
+        $configuredAbility = config('nvl-metafields.authorization.definition_ability');
 
         if (! is_string($configuredAbility) || $configuredAbility === '') {
             throw new AuthorizationException(
@@ -42,7 +42,7 @@ final class ConfiguredMetafieldAuthorization implements MetafieldAuthorization
         ?Model $owner = null,
         ?MetafieldDefinition $definition = null,
     ): void {
-        $configuredAbility = config('metafields.authorization.owner_ability');
+        $configuredAbility = config('nvl-metafields.authorization.owner_ability');
 
         if (is_string($configuredAbility) && $configuredAbility !== '') {
             $arguments = [$ability->value];

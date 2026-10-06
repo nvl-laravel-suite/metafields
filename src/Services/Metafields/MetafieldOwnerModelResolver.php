@@ -60,12 +60,12 @@ final class MetafieldOwnerModelResolver
         if ($owner->getConnection() !== (new Metafield)->getConnection()) {
             throw new TenantBoundaryViolation('Metafield owners must use the canonical tenant connection.');
         }
-        if ($this->configuration->get('tenancy.enabled') !== true && ! $lock) {
+        if ($this->configuration->get('nvl-tenancy.enabled') !== true && ! $lock) {
             return $owner;
         }
 
         $query = $owner->newQueryWithoutScopes()->whereKey($owner->getKey());
-        if ($this->configuration->get('tenancy.enabled') === true) {
+        if ($this->configuration->get('nvl-tenancy.enabled') === true) {
             $definition = $this->resources->forModel($owner);
             $this->boundary->query($query, $definition->key);
         }
@@ -74,7 +74,7 @@ final class MetafieldOwnerModelResolver
         }
         $canonical = $query->first();
         if (! $canonical instanceof Model) {
-            if ($this->configuration->get('tenancy.enabled') === true) {
+            if ($this->configuration->get('nvl-tenancy.enabled') === true) {
                 throw new TenantBoundaryViolation('The metafield owner is unavailable in the current tenant boundary.');
             }
 

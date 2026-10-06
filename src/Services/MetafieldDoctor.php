@@ -103,11 +103,11 @@ final readonly class MetafieldDoctor
             );
         }
 
-        $indexes = config('tenancy.enabled') === true ? [
+        $indexes = config('nvl-tenancy.enabled') === true ? [
             [
                 MetafieldsTables::get(MetafieldsTables::Definitions),
                 'metafield_definitions_partition_handle_unique',
-                [config('tenancy.sharing.metafields') === 'copy' || config('tenancy.resources.metafields') === 'platform' ? 'ownership_key' : 'tenant_id', 'active_handle'],
+                [config('nvl-tenancy.sharing.metafields') === 'copy' || config('nvl-tenancy.resources.metafields') === 'platform' ? 'ownership_key' : 'tenant_id', 'active_handle'],
                 true,
             ],
             [
@@ -157,7 +157,7 @@ final readonly class MetafieldDoctor
      */
     private function tenancyChecks(): array
     {
-        if (config('tenancy.enabled') !== true) {
+        if (config('nvl-tenancy.enabled') !== true) {
             return [];
         }
 
@@ -208,8 +208,8 @@ final readonly class MetafieldDoctor
                 ? 'Metafield operations use the canonical tenant connection.'
                 : 'Metafield operations must use the canonical tenant connection.',
         );
-        $partitioned = config('tenancy.sharing.metafields') === 'copy'
-            || config('tenancy.resources.metafields') === 'platform';
+        $partitioned = config('nvl-tenancy.sharing.metafields') === 'copy'
+            || config('nvl-tenancy.resources.metafields') === 'platform';
         $ownershipReady = ! $partitioned || collect([
             MetafieldsTables::get(MetafieldsTables::Definitions),
             MetafieldsTables::get(MetafieldsTables::DefinitionAssignments),
@@ -304,7 +304,7 @@ final readonly class MetafieldDoctor
 
     private function routeCheck(): MetafieldDoctorCheckData
     {
-        if (! (bool) config('metafields.routes.enabled', false)) {
+        if (! (bool) config('nvl-metafields.routes.enabled', false)) {
             return new MetafieldDoctorCheckData(
                 key: 'routes.management',
                 severity: 'warning',
@@ -314,7 +314,7 @@ final readonly class MetafieldDoctor
         }
 
         $middleware = array_values(array_filter(
-            (array) config('metafields.routes.management_middleware', []),
+            (array) config('nvl-metafields.routes.management_middleware', []),
             static fn (mixed $value): bool => is_string($value) && $value !== '',
         ));
 
@@ -343,7 +343,7 @@ final readonly class MetafieldDoctor
     private function ownerRegistryCheck(): MetafieldDoctorCheckData
     {
         try {
-            foreach (array_keys((array) config('metafields.owners', [])) as $alias) {
+            foreach (array_keys((array) config('nvl-metafields.owners', [])) as $alias) {
                 if (is_string($alias)) {
                     $this->owners->forType($alias);
                 }

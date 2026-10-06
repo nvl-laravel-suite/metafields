@@ -12,9 +12,9 @@ return [
     */
     'routes' => [
         'enabled' => false,
-        'prefix' => 'api/v1',
+        'prefix' => 'nvl/api/v1',
         'middleware' => ['api'],
-        'management_middleware' => ['auth', 'throttle:metafields-management'],
+        'management_middleware' => ['auth', 'throttle:nvl.metafields.management'],
         'rate_limit_per_minute' => 60,
     ],
 

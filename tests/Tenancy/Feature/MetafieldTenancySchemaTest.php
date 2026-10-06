@@ -37,5 +37,5 @@ it('declares and constrains the entire metafield tenant graph', function (): voi
 });
 
 it('keeps the optional tenant schema absent while tenancy remains disabled', function (): void {
-    expect(config('tenancy.enabled'))->toBeTrue();
+    expect(config('nvl-tenancy.enabled'))->toBeTrue();
 });

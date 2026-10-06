@@ -23,8 +23,8 @@ return new class extends Migration
     /** Apply verified tenant partitions and concrete parent constraints. */
     public function up(): void
     {
-        $mixed = config('tenancy.sharing.metafields') === 'copy';
-        $platform = config('tenancy.resources.metafields') === 'platform';
+        $mixed = config('nvl-tenancy.sharing.metafields') === 'copy';
+        $platform = config('nvl-tenancy.resources.metafields') === 'platform';
         $partitioned = $mixed || $platform;
         $schema = Schema::connection(PackageStorage::connection('metafields'));
         $partition = $partitioned ? 'ownership_key' : 'tenant_id';
@@ -74,8 +74,8 @@ return new class extends Migration
     public function down(): void
     {
         $schema = Schema::connection(PackageStorage::connection('metafields'));
-        $partition = config('tenancy.sharing.metafields') === 'copy'
-            || config('tenancy.resources.metafields') === 'platform'
+        $partition = config('nvl-tenancy.sharing.metafields') === 'copy'
+            || config('nvl-tenancy.resources.metafields') === 'platform'
             ? 'ownership_key'
             : 'tenant_id';
         foreach ([

@@ -11,6 +11,6 @@ abstract class MetafieldCatalogTenancyTestCase extends MetafieldTenancyTestCase
     protected function defineEnvironment($app): void
     {
         parent::defineEnvironment($app);
-        $app['config']->set('tenancy.sharing.metafields', 'copy');
+        $app['config']->set('nvl-tenancy.sharing.metafields', 'copy');
     }
 }

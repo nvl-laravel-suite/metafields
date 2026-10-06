@@ -26,8 +26,8 @@ final readonly class MetafieldTenancyScenario
     /** Adopt Metafields plus its canonical owner fixture. */
     public static function install(bool $catalogCopies = false): self
     {
-        expect(config('tenancy.enabled'))->toBeTrue()
-            ->and(config('tenancy.sharing.metafields'))->toBe($catalogCopies ? 'copy' : 'none');
+        expect(config('nvl-tenancy.enabled'))->toBeTrue()
+            ->and(config('nvl-tenancy.sharing.metafields'))->toBe($catalogCopies ? 'copy' : 'none');
         app(TenantResourceRegistry::class)->get('test.metafield-owners');
 
         $operation = new PlatformOperation('fixture.adoption', 'test', 'fixture');

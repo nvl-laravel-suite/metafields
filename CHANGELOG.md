@@ -4,6 +4,13 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+### Changed
+
+- Prepare lockstep major 5 with required and development NVL peer floors of `^5.0`. This candidate has not been tagged or published.
+- Preserve host routing through a gated plain provider and namespaced route families.
+- Use Laravel morph identity for owner values without changing host morph maps.
+- Review [UPGRADING.md](UPGRADING.md) before adopting the new names and infrastructure boundaries.
+
 ## [2.2.1] - 2026-09-26
 
 ### Documentation

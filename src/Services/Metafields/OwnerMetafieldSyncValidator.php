@@ -43,8 +43,8 @@ final readonly class OwnerMetafieldSyncValidator
         throw ValidationException::withMessages([
             'items' => [
                 $definitionIds === []
-                    ? trans('metafields::owner-metafields/validation.custom.items.required')
-                    : trans('metafields::owner-metafields/validation.custom.items.distinct'),
+                    ? trans('nvl-metafields::owner-metafields/validation.custom.items.required')
+                    : trans('nvl-metafields::owner-metafields/validation.custom.items.distinct'),
             ],
         ]);
     }
@@ -65,7 +65,7 @@ final readonly class OwnerMetafieldSyncValidator
 
         throw ValidationException::withMessages([
             'items' => [
-                trans('metafields::owner-metafields/validation.custom.items.assigned', [
+                trans('nvl-metafields::owner-metafields/validation.custom.items.assigned', [
                     'definitions' => implode(', ', $missingDefinitionIds),
                 ]),
             ],
@@ -131,7 +131,7 @@ final readonly class OwnerMetafieldSyncValidator
 
         throw ValidationException::withMessages([
             'items' => [
-                trans('metafields::owner-metafields/validation.custom.items.missing_required', [
+                trans('nvl-metafields::owner-metafields/validation.custom.items.missing_required', [
                     'definitions' => implode(', ', $missingRequiredDefinitions),
                 ]),
             ],
@@ -149,7 +149,7 @@ final readonly class OwnerMetafieldSyncValidator
         if (! $this->ownerRegistry->supports($ownerType, $definition->type)) {
             throw ValidationException::withMessages([
                 "items.{$index}.definitionId" => [
-                    trans('metafields::owner-metafields/validation.custom.definitionId.unsupported_type'),
+                    trans('nvl-metafields::owner-metafields/validation.custom.definitionId.unsupported_type'),
                 ],
             ]);
         }
@@ -157,7 +157,7 @@ final readonly class OwnerMetafieldSyncValidator
         if ($definition->is_translatable && ! $definition->type->supportsTranslations()) {
             throw ValidationException::withMessages([
                 "items.{$index}.translations" => [
-                    trans('metafields::owner-metafields/validation.custom.translations.reference_not_supported'),
+                    trans('nvl-metafields::owner-metafields/validation.custom.translations.reference_not_supported'),
                 ],
             ]);
         }
@@ -167,7 +167,7 @@ final readonly class OwnerMetafieldSyncValidator
         if ($invalidCustomRules !== []) {
             throw ValidationException::withMessages([
                 "items.{$index}.definitionId" => [
-                    trans('metafields::owner-metafields/validation.custom.definitionId.invalid_definition_rules', [
+                    trans('nvl-metafields::owner-metafields/validation.custom.definitionId.invalid_definition_rules', [
                         'rules' => implode(', ', $invalidCustomRules),
                     ]),
                 ],
@@ -198,7 +198,7 @@ final readonly class OwnerMetafieldSyncValidator
 
         throw ValidationException::withMessages([
             "items.{$index}.clear" => [
-                trans('metafields::owner-metafields/validation.custom.clear.required_assignment'),
+                trans('nvl-metafields::owner-metafields/validation.custom.clear.required_assignment'),
             ],
         ]);
     }
@@ -215,7 +215,7 @@ final readonly class OwnerMetafieldSyncValidator
         if ($metafield instanceof Metafield && ! is_int($expectedRevision)) {
             throw ValidationException::withMessages([
                 "items.{$index}.expectedRevision" => [
-                    trans('metafields::owner-metafields/validation.custom.expectedRevision.required'),
+                    trans('nvl-metafields::owner-metafields/validation.custom.expectedRevision.required'),
                 ],
             ]);
         }
@@ -245,7 +245,7 @@ final readonly class OwnerMetafieldSyncValidator
         if (! ($item->translations instanceof Optional) && $item->translations !== null) {
             throw ValidationException::withMessages([
                 "items.{$index}.translations" => [
-                    trans('metafields::owner-metafields/validation.custom.translations.not_allowed'),
+                    trans('nvl-metafields::owner-metafields/validation.custom.translations.not_allowed'),
                 ],
             ]);
         }
@@ -258,7 +258,7 @@ final readonly class OwnerMetafieldSyncValidator
         )) {
             throw ValidationException::withMessages([
                 "items.{$index}.value" => [
-                    trans('metafields::owner-metafields/validation.custom.value.invalid'),
+                    trans('nvl-metafields::owner-metafields/validation.custom.value.invalid'),
                 ],
             ]);
         }
@@ -277,7 +277,7 @@ final readonly class OwnerMetafieldSyncValidator
         if ($item->translations instanceof Optional || $item->translations === null || $item->translations === []) {
             throw ValidationException::withMessages([
                 "items.{$index}.translations" => [
-                    trans('metafields::owner-metafields/validation.custom.translations.required'),
+                    trans('nvl-metafields::owner-metafields/validation.custom.translations.required'),
                 ],
             ]);
         }
@@ -285,7 +285,7 @@ final readonly class OwnerMetafieldSyncValidator
         if (! ($item->value instanceof Optional) && $item->value !== null) {
             throw ValidationException::withMessages([
                 "items.{$index}.value" => [
-                    trans('metafields::owner-metafields/validation.custom.value.translatable_forbidden'),
+                    trans('nvl-metafields::owner-metafields/validation.custom.value.translatable_forbidden'),
                 ],
             ]);
         }
@@ -294,7 +294,7 @@ final readonly class OwnerMetafieldSyncValidator
             if ($locale === '' || ! $this->locales->supports($locale)) {
                 throw ValidationException::withMessages([
                     "items.{$index}.translations" => [
-                        trans('metafields::owner-metafields/validation.custom.translations.locale_key'),
+                        trans('nvl-metafields::owner-metafields/validation.custom.translations.locale_key'),
                     ],
                 ]);
             }
@@ -303,7 +303,7 @@ final readonly class OwnerMetafieldSyncValidator
                 throw ValidationException::withMessages([
                     "items.{$index}.translations.{$locale}" => [
                         trans(
-                            'metafields::owner-metafields/validation.custom.translations.null_not_allowed',
+                            'nvl-metafields::owner-metafields/validation.custom.translations.null_not_allowed',
                         ),
                     ],
                 ]);
@@ -317,7 +317,7 @@ final readonly class OwnerMetafieldSyncValidator
             )) {
                 throw ValidationException::withMessages([
                     "items.{$index}.translations.{$locale}" => [
-                        trans('metafields::owner-metafields/validation.custom.translations.invalid'),
+                        trans('nvl-metafields::owner-metafields/validation.custom.translations.invalid'),
                     ],
                 ]);
             }

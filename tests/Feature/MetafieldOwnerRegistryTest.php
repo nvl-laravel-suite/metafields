@@ -14,7 +14,7 @@ use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwnerChild;
 
 beforeEach(function (): void {
     config([
-        'metafields.owners' => [
+        'nvl-metafields.owners' => [
             'articles' => [
                 'model' => TestMetafieldOwner::class,
                 'label' => 'Articles',
@@ -43,7 +43,7 @@ it('supports arbitrary application-defined owner aliases', function (): void {
 });
 
 it('rejects ambiguous aliases for the same owner model', function (): void {
-    config()->set('metafields.owners.archives.model', TestMetafieldOwner::class);
+    config()->set('nvl-metafields.owners.archives.model', TestMetafieldOwner::class);
 
     expect(fn () => app(MetafieldOwnerRegistry::class)->all())
         ->toThrow(InvalidArgumentException::class, 'already registered');
@@ -64,22 +64,22 @@ it('rejects application morph-map conflicts before changing the global map', fun
 });
 
 it('rejects inheritance-ambiguous owner registrations', function (): void {
-    config()->set('metafields.owners.articles.model', TestMetafieldOwnerBase::class);
-    config()->set('metafields.owners.archives.model', TestMetafieldOwnerChild::class);
+    config()->set('nvl-metafields.owners.articles.model', TestMetafieldOwnerBase::class);
+    config()->set('nvl-metafields.owners.archives.model', TestMetafieldOwnerChild::class);
 
     expect(fn () => app(MetafieldOwnerRegistry::class)->all())
         ->toThrow(InvalidArgumentException::class, 'inheritance makes owner resolution ambiguous');
 });
 
 it('requires one stable string alias per reference model', function (): void {
-    config()->set('metafields.reference_models', [
+    config()->set('nvl-metafields.reference_models', [
         TestMetafieldOwner::class,
     ]);
 
     expect(fn () => MetafieldReferenceModelRegistry::all())
         ->toThrow(InvalidArgumentException::class, 'stable string alias');
 
-    config()->set('metafields.reference_models', [
+    config()->set('nvl-metafields.reference_models', [
         'alternate-articles' => TestMetafieldOwner::class,
     ]);
 
@@ -88,7 +88,7 @@ it('requires one stable string alias per reference model', function (): void {
 });
 
 it('reports invalid reference aliases through the doctor', function (): void {
-    config()->set('metafields.reference_models', [
+    config()->set('nvl-metafields.reference_models', [
         TestMetafieldOwner::class,
     ]);
 

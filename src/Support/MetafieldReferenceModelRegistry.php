@@ -26,7 +26,7 @@ final class MetafieldReferenceModelRegistry
     {
         $models = [];
         $modelAliases = [];
-        $owners = config('metafields.owners', []);
+        $owners = config('nvl-metafields.owners', []);
 
         if (! is_array($owners)) {
             throw new InvalidArgumentException('The [metafields.owners] configuration must be an array.');
@@ -52,7 +52,7 @@ final class MetafieldReferenceModelRegistry
             }
         }
 
-        $configuredReferences = config('metafields.reference_models', []);
+        $configuredReferences = config('nvl-metafields.reference_models', []);
 
         if (! is_array($configuredReferences)) {
             throw new InvalidArgumentException('The [metafields.reference_models] configuration must be an array.');

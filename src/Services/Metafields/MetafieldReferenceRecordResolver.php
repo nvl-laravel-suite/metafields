@@ -33,7 +33,7 @@ final readonly class MetafieldReferenceRecordResolver
         }
         $model = new $class;
         $query = $model->newQueryWithoutScopes()->whereKey($id);
-        if ($this->configuration->get('tenancy.enabled') === true) {
+        if ($this->configuration->get('nvl-tenancy.enabled') === true) {
             $resource = $this->resources->forModel($model);
             $this->boundary->query($query, $resource->key);
         }

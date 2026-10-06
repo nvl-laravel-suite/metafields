@@ -44,7 +44,7 @@ final class SyncOwnerMetafieldsPayload extends Data
                 'array',
                 'min:1',
                 'max:'.MetafieldConfiguration::positiveInteger(
-                    'metafields.limits.maximum_sync_items',
+                    'nvl-metafields.limits.maximum_sync_items',
                     100,
                 ),
             ],
@@ -62,7 +62,7 @@ final class SyncOwnerMetafieldsPayload extends Data
      */
     public static function messages(): array
     {
-        return self::translatedMessages('metafields::owner-metafields');
+        return self::translatedMessages('nvl-metafields::owner-metafields');
     }
 
     /**
@@ -70,6 +70,6 @@ final class SyncOwnerMetafieldsPayload extends Data
      */
     public static function attributes(): array
     {
-        return self::translatedAttributes('metafields::owner-metafields');
+        return self::translatedAttributes('nvl-metafields::owner-metafields');
     }
 }

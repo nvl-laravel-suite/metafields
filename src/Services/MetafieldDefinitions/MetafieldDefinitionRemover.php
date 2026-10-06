@@ -18,7 +18,7 @@ final class MetafieldDefinitionRemover
         if (! $deleteValues && $definition->metafields()->exists()) {
             throw ValidationException::withMessages([
                 'deleteValues' => [
-                    trans('metafields::metafields/validation.custom.definition.active_values_delete'),
+                    trans('nvl-metafields::metafields/validation.custom.definition.active_values_delete'),
                 ],
             ]);
         }

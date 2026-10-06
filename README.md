@@ -11,11 +11,11 @@ See the [installation and publishing guide](https://github.com/nvl-laravel-suite
 
 | Item | Value |
 |---|---|
-| Installed through | `composer require nvl/metafields:^2.0` |
+| Installed through | `composer require nvl/metafields:^5.0` |
 | Module identifier | `nvl/metafields` |
 | PHP namespace | `Nvl\Metafields` |
 | Service provider | `Nvl\Metafields\Providers\MetafieldsServiceProvider` |
-| Configuration | `config/metafields.php` |
+| Configuration | `config/nvl-metafields.php` |
 
 Typed, validated, queryable, and optionally localized custom fields for
 registered Eloquent owners.
@@ -46,26 +46,26 @@ stable application keys.
 ## Installation
 
 ```bash
-composer require nvl/metafields:^2.0
+composer require nvl/metafields:^5.0
 php artisan migrate
-php artisan vendor:publish --tag=metafields-config
+php artisan vendor:publish --tag=nvl-metafields-config
 ```
 
 Package discovery registers `MetafieldsServiceProvider`. Migrations load
-automatically unless `metafields.migrations.enabled` is false. Optional
+automatically unless `nvl-metafields.migrations.enabled` is false. Optional
 resources are published with:
 
 ```bash
-php artisan vendor:publish --tag=metafields-translations
-php artisan vendor:publish --tag=metafields-skills
+php artisan vendor:publish --tag=nvl-metafields-translations
+php artisan vendor:publish --tag=nvl-metafields-skills
 ```
 
 Choose exactly one migration owner. For automatic vendor loading, leave
-`metafields.migrations.enabled=true` and do not publish
-`metafields-migrations`. For host-owned migrations, publish
-`metafields-migrations` with
-`php artisan vendor:publish --tag=metafields-migrations`, set
-`metafields.migrations.enabled=false` before the first migration, and maintain
+`nvl-metafields.migrations.enabled=true` and do not publish
+`nvl-metafields-migrations`. For host-owned migrations, publish
+`nvl-metafields-migrations` with
+`php artisan vendor:publish --tag=nvl-metafields-migrations`, set
+`nvl-metafields.migrations.enabled=false` before the first migration, and maintain
 the copied files as application migrations.
 Never run both sources; Laravel retimestamps published migrations.
 
@@ -196,7 +196,7 @@ cannot use unrestricted custom JSON paths. Non-JSON types may add only
 allowlisted Laravel validation rules. The same structured-value limits apply
 to array defaults, localized presentation properties, and assignment UI
 configuration. Bulk owner synchronization accepts at most
-`metafields.limits.maximum_sync_items` items per request (100 by default).
+`nvl-metafields.limits.maximum_sync_items` items per request (100 by default).
 
 References are checked for allowed alias, identifier shape, record existence,
 and consumer authorization before persistence. Raw configurable validation
@@ -280,7 +280,7 @@ All optional HTTP operations call `MetafieldAuthorization`. Every reference
 write calls `MetafieldReferenceAuthorization`.
 `ConfiguredMetafieldAuthorization` fails closed unless named Gate abilities are
 configured. `ConfiguredMetafieldReferenceAuthorization` also fails closed until
-`metafields.authorization.reference_ability` is configured. Owner mutations may
+`nvl-metafields.authorization.reference_ability` is configured. Owner mutations may
 fall back to the owner's `update` policy only after the owner has been resolved
 from its registered alias.
 
@@ -329,14 +329,14 @@ Routes are disabled by default. To enable them:
 ```php
 'routes' => [
     'enabled' => true,
-    'prefix' => 'api/v1',
+    'prefix' => 'nvl/api/v1',
     'middleware' => ['api'],
-    'management_middleware' => ['auth', 'throttle:metafields-management'],
+    'management_middleware' => ['auth', 'throttle:nvl.metafields.management'],
     'rate_limit_per_minute' => 60,
 ],
 ```
 
-The resulting surface is `/api/v1/metafields/...` with route names under
+The resulting surface is `/nvl/api/v1/metafields/...` with route names under
 `nvl.metafields.management.*`. It covers definitions, archive/delete,
 registered owners, list/read, bulk synchronization, and value deletion.
 Every operation is authorized. No UI is included.
@@ -352,7 +352,7 @@ inherit the canonical owner's tenant. A configured class is not authority:
 owners and every reference target must resolve through a registered tenant
 resource, and unknown classifications fail closed.
 
-With `tenancy.sharing.metafields=copy`, a platform grant exposes only an exact
+With `nvl-tenancy.sharing.metafields=copy`, a platform grant exposes only an exact
 scalar definition snapshot. Import requires exact grant/source revisions, an
 idempotency fingerprint, an explicit collision-free target handle, and a total
 reference map. It creates an ordinary independent tenant definition with copied
@@ -452,20 +452,20 @@ Released under the [MIT License](LICENSE).
 Declare a model once in `config/nvl-core.php`:
 
 ```php
-'owners' => ['article' => Article::class],
+'owners' => [Article::class],
 ```
 
-Enable this package capability separately in `config/metafields.php`:
+Enable this package capability separately in `config/nvl-metafields.php`:
 
 ```php
 'owners' => [
-    'article' => ['label' => 'Articles', 'sections' => ['content'], 'runtime_status' => 'live'],
+    'article' => ['model' => Article::class, 'label' => 'Articles', 'sections' => ['content'], 'runtime_status' => 'live'],
 ],
 ```
 
-The omitted model defaults to the shared alias matching the capability key. An explicit model may also reference an alias. Preserve supported types, sections, planned/live status, and mutation authorization. Core registration does not add the model to this package's allowlist.
+Declare the model class explicitly; the capability key remains its application-facing API key. Preserve supported types, sections, planned/live status, and mutation authorization. Core registration does not add the model to this package's allowlist.
 
-Existing package class/resolver/handler registrations remain accepted for one major cycle. Run `php artisan nvl:doctor --strict --format=json` to inspect compatibility diagnostics. See [UPGRADING.md](UPGRADING.md) before changing a persisted morph type.
+Laravel's `getMorphClass()` determines stored identity. These class declarations do not install host morph maps. Keep resolvers, handlers and authorization independent; use `nvl:doctor --strict --format=json` to review legacy alias mismatches or stored identity drift. See [UPGRADING.md](UPGRADING.md) before changing the host's morph map.
 
 ## Shared consumer diagnostics
 
@@ -473,7 +473,7 @@ Run `php artisan nvl:doctor --strict --format=json` to combine the read-only che
 
 ## Next major: isolated schema identities
 
-Use `metafields.tables.<logical-key>` for every table and `metafields.connection` for its database connection. Null connection inherits `nvl-core.connection`, then Laravel's default. Tables are resolved at runtime by the package table definition helper.
+Use `nvl-metafields.tables.<logical-key>` for every table and `nvl-metafields.connection` for its database connection. Null connection inherits `nvl-core.connection`, then Laravel's default. Tables are resolved at runtime by the package table definition helper.
 
 | Logical key | New default | Previous name |
 | --- | --- | --- |
@@ -486,4 +486,8 @@ Use `metafields.tables.<logical-key>` for every table and `metafields.connection
 | `tenant_grant_locks` | `nvl_metafields_tenant_grant_locks` | `metafield_definition_tenant_grant_locks` |
 | `tenant_adoption_copies` | `nvl_metafields_tenant_adoption_copies` | `metafield_definition_tenant_adoption_copies` |
 
-Migration filenames contain `nvl_metafields_`. Existing installations must complete the upgrade in `UPGRADING.md` before running new migrations. A pending creator rejects an existing target before any migration in the batch runs; legacy storage with old history needs an ownership decision.
+Migration filenames contain `nvl_metafields_`. Existing installations must complete the upgrade in `UPGRADING.md` before running new migrations. A pending creator rejects an existing target before that owned migration runs; use `nvl:schema:preflight` for an explicit whole-batch check; legacy storage with old history needs an ownership decision.
+
+## Canonical configuration ownership
+
+Use `nvl-metafields` settings in `config/nvl-metafields.php` and canonical package environment names. Old generic roots are foreign unless an upgrading NVL host explicitly selects them in Core's default-off compatibility. Canonical false/null/empty values win; no old roots are populated or written back. Keep logical package/resource IDs unchanged. Review [Core's rename inventory and cache/worker cutover](https://github.com/nvl-laravel-suite/core/blob/main/UPGRADING.md#major-5-canonical-configuration-and-environment).

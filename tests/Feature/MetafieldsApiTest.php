@@ -16,12 +16,12 @@ use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
 
 beforeEach(function (): void {
     config([
-        'translatable.locales' => ['en', 'bg'],
-        'translatable.fallback_locales' => ['en'],
-        'metafields.routes.enabled' => true,
-        'metafields.routes.middleware' => ['api'],
-        'metafields.routes.management_middleware' => [],
-        'metafields.owners' => [
+        'nvl-translatable.locales' => ['en', 'bg'],
+        'nvl-translatable.fallback_locales' => ['en'],
+        'nvl-metafields.routes.enabled' => true,
+        'nvl-metafields.routes.middleware' => ['api'],
+        'nvl-metafields.routes.management_middleware' => [],
+        'nvl-metafields.owners' => [
             'products' => [
                 'model' => TestMetafieldOwner::class,
                 'label' => 'Products',
@@ -40,7 +40,7 @@ beforeEach(function (): void {
                 'runtime_status' => 'planned',
             ],
         ],
-        'metafields.reference_models' => [
+        'nvl-metafields.reference_models' => [
             'products' => TestMetafieldOwner::class,
         ],
     ]);
@@ -78,7 +78,7 @@ beforeEach(function (): void {
 });
 
 it('creates and patches definitions through separate revision-aware contracts', function (): void {
-    $created = $this->postJson('/api/v1/metafields/definitions', [
+    $created = $this->postJson('/nvl/api/v1/metafields/definitions', [
         'namespace' => 'content',
         'key' => 'summary',
         'type' => 'string',
@@ -98,7 +98,7 @@ it('creates and patches definitions through separate revision-aware contracts', 
     $definitionId = $created->json('data.id');
     $revision = $created->json('data.revision');
 
-    $this->putJson("/api/v1/metafields/definitions/{$definitionId}", [
+    $this->putJson("/nvl/api/v1/metafields/definitions/{$definitionId}", [
         'namespace' => 'content',
         'key' => 'summary',
         'type' => 'string',
@@ -112,7 +112,7 @@ it('creates and patches definitions through separate revision-aware contracts', 
     ])->assertUnprocessable()
         ->assertJsonValidationErrors('expectedRevision');
 
-    $this->putJson("/api/v1/metafields/definitions/{$definitionId}", [
+    $this->putJson("/nvl/api/v1/metafields/definitions/{$definitionId}", [
         'namespace' => 'content',
         'key' => 'summary',
         'type' => 'string',
@@ -130,13 +130,13 @@ it('creates and patches definitions through separate revision-aware contracts', 
 });
 
 it('exposes only live owner aliases without application model classes', function (): void {
-    $this->getJson('/api/v1/metafields/owners')
+    $this->getJson('/nvl/api/v1/metafields/owners')
         ->assertSuccessful()
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.type', 'products')
         ->assertJsonMissing(['model' => TestMetafieldOwner::class]);
 
-    $this->getJson('/api/v1/metafields/owners/planned-users/1')
+    $this->getJson('/nvl/api/v1/metafields/owners/planned-users/1')
         ->assertNotFound();
 });
 
@@ -151,7 +151,7 @@ it('requires expected revisions when updating and deleting owner values', functi
         ->forOwnerType('products')
         ->create();
 
-    $created = $this->putJson("/api/v1/metafields/owners/products/{$owner->getKey()}", [
+    $created = $this->putJson("/nvl/api/v1/metafields/owners/products/{$owner->getKey()}", [
         'items' => [[
             'definitionId' => $definition->id,
             'value' => 'First',
@@ -161,7 +161,7 @@ it('requires expected revisions when updating and deleting owner values', functi
 
     $revision = $created->json('data.items.0.revision');
 
-    $this->putJson("/api/v1/metafields/owners/products/{$owner->getKey()}", [
+    $this->putJson("/nvl/api/v1/metafields/owners/products/{$owner->getKey()}", [
         'items' => [[
             'definitionId' => $definition->id,
             'value' => 'Blind overwrite',
@@ -169,7 +169,7 @@ it('requires expected revisions when updating and deleting owner values', functi
     ])->assertUnprocessable()
         ->assertJsonValidationErrors('items.0.expectedRevision');
 
-    $updated = $this->putJson("/api/v1/metafields/owners/products/{$owner->getKey()}", [
+    $updated = $this->putJson("/nvl/api/v1/metafields/owners/products/{$owner->getKey()}", [
         'items' => [[
             'definitionId' => $definition->id,
             'value' => 'Second',
@@ -179,12 +179,12 @@ it('requires expected revisions when updating and deleting owner values', functi
         ->assertJsonPath('data.items.0.value', 'Second');
 
     $this->deleteJson(
-        "/api/v1/metafields/owners/products/{$owner->getKey()}/{$definition->id}",
+        "/nvl/api/v1/metafields/owners/products/{$owner->getKey()}/{$definition->id}",
     )->assertUnprocessable()
         ->assertJsonValidationErrors('expectedRevision');
 
     $this->deleteJson(
-        "/api/v1/metafields/owners/products/{$owner->getKey()}/{$definition->id}",
+        "/nvl/api/v1/metafields/owners/products/{$owner->getKey()}/{$definition->id}",
         ['expectedRevision' => $updated->json('data.items.0.revision')],
     )->assertSuccessful()
         ->assertJsonPath('data.deleted', true);
@@ -204,7 +204,7 @@ it('serializes reference lists as identifiers without referenced model state', f
         ->forOwnerType('products')
         ->create();
 
-    $response = $this->putJson("/api/v1/metafields/owners/products/{$owner->getKey()}", [
+    $response = $this->putJson("/nvl/api/v1/metafields/owners/products/{$owner->getKey()}", [
         'items' => [[
             'definitionId' => $definition->id,
             'value' => [(string) $targetOne->getKey(), (string) $targetTwo->getKey()],
@@ -242,5 +242,5 @@ it('renders authorization failures as forbidden API responses', function (): voi
         },
     );
 
-    $this->getJson('/api/v1/metafields/definitions')->assertForbidden();
+    $this->getJson('/nvl/api/v1/metafields/definitions')->assertForbidden();
 });

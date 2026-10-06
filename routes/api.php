@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 use Nvl\Metafields\Http\Controllers\Api\MetafieldsApiController;
 
 $middleware = array_values(array_filter(
-    (array) config('metafields.routes.management_middleware', ['auth']),
+    (array) config('nvl-metafields.routes.management_middleware', ['auth']),
     static fn (mixed $value): bool => is_string($value) && $value !== '',
 ));
 

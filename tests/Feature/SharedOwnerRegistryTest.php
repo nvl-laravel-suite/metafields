@@ -16,7 +16,7 @@ afterEach(function (): void {
 
 it('keeps metafield behavior when the owner model is a shared alias reference', function (): void {
     config()->set('nvl-core.owners', ['article' => TestMetafieldOwner::class]);
-    config()->set('metafields.owners', ['article' => [
+    config()->set('nvl-metafields.owners', ['article' => [
         'label' => 'Articles',
         'sections' => ['content'],
         'runtime_status' => 'planned',

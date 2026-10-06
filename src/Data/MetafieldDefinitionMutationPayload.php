@@ -99,7 +99,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
                 'array',
                 'list',
                 'max:'.MetafieldConfiguration::positiveInteger(
-                    'metafields.limits.maximum_schema_properties',
+                    'nvl-metafields.limits.maximum_schema_properties',
                     100,
                 ),
             ],
@@ -135,7 +135,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
      */
     public static function messages(): array
     {
-        return self::translatedMessages('metafields::metafields');
+        return self::translatedMessages('nvl-metafields::metafields');
     }
 
     /**
@@ -143,7 +143,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
      */
     public static function attributes(): array
     {
-        return self::translatedAttributes('metafields::metafields');
+        return self::translatedAttributes('nvl-metafields::metafields');
     }
 
     /**
@@ -174,7 +174,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
             if ($referencedModelType === null) {
                 $validator->errors()->add(
                     'referencedModelType',
-                    (string) trans('metafields::metafields/validation.custom.referencedModelType.required_if'),
+                    (string) trans('nvl-metafields::metafields/validation.custom.referencedModelType.required_if'),
                 );
 
                 return;
@@ -186,7 +186,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
 
             $validator->errors()->add(
                 'referencedModelType',
-                (string) trans('metafields::metafields/validation.custom.referencedModelType.not_allowed'),
+                (string) trans('nvl-metafields::metafields/validation.custom.referencedModelType.not_allowed'),
             );
         });
 
@@ -203,7 +203,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
                 $validator->errors()->add(
                     'isTranslatable',
                     (string) trans(
-                        'metafields::metafields/validation.custom.isTranslatable.unsupported_type',
+                        'nvl-metafields::metafields/validation.custom.isTranslatable.unsupported_type',
                     ),
                 );
             }
@@ -217,7 +217,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
                 : (is_string($typeInput) ? MetafieldTypeEnum::tryFrom($typeInput) : null);
             $ownerType = data_get($payload, 'assignment.ownerType');
             $section = data_get($payload, 'assignment.section');
-            $owners = config('metafields.owners', []);
+            $owners = config('nvl-metafields.owners', []);
             $owner = is_array($owners) && is_string($ownerType)
                 ? ($owners[$ownerType] ?? null)
                 : null;
@@ -236,7 +236,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
                 $validator->errors()->add(
                     'assignment.ownerType',
                     (string) trans(
-                        'metafields::metafields/validation.custom.assignment.ownerType.unsupported_type',
+                        'nvl-metafields::metafields/validation.custom.assignment.ownerType.unsupported_type',
                     ),
                 );
             }
@@ -249,7 +249,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
                 $validator->errors()->add(
                     'assignment.section',
                     (string) trans(
-                        'metafields::metafields/validation.custom.assignment.section.unsupported',
+                        'nvl-metafields::metafields/validation.custom.assignment.section.unsupported',
                     ),
                 );
             }
@@ -276,7 +276,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
                 $validator->errors()->add(
                     'defaultValue',
                     (string) trans(
-                        'metafields::metafields/validation.custom.defaultValue.nonlocalized_storage',
+                        'nvl-metafields::metafields/validation.custom.defaultValue.nonlocalized_storage',
                     ),
                 );
 
@@ -314,7 +314,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
                     )) {
                     $validator->errors()->add(
                         'defaultValue',
-                        (string) trans('metafields::metafields/validation.custom.defaultValue.invalid_type'),
+                        (string) trans('nvl-metafields::metafields/validation.custom.defaultValue.invalid_type'),
                     );
                 }
 
@@ -332,7 +332,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
 
             $validator->errors()->add(
                 'defaultValue',
-                (string) trans('metafields::metafields/validation.custom.defaultValue.invalid_type'),
+                (string) trans('nvl-metafields::metafields/validation.custom.defaultValue.invalid_type'),
             );
         });
 
@@ -370,7 +370,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
                     $validator->errors()->add(
                         "translations.{$locale}.defaultValue",
                         (string) trans(
-                            'metafields::metafields/validation.custom.translations.defaultValue.localized_storage',
+                            'nvl-metafields::metafields/validation.custom.translations.defaultValue.localized_storage',
                         ),
                     );
 
@@ -386,7 +386,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
                     $validator->errors()->add(
                         "translations.{$locale}.defaultValue",
                         (string) trans(
-                            'metafields::metafields/validation.custom.defaultValue.invalid_type',
+                            'nvl-metafields::metafields/validation.custom.defaultValue.invalid_type',
                         ),
                     );
                 }
@@ -418,7 +418,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
             foreach ($invalidCustomRules as $index => $invalidCustomRule) {
                 $validator->errors()->add(
                     "validationRules.{$index}",
-                    (string) trans('metafields::metafields/validation.custom.validationRules.invalid_rule', [
+                    (string) trans('nvl-metafields::metafields/validation.custom.validationRules.invalid_rule', [
                         'rule' => $invalidCustomRule,
                     ]),
                 );
@@ -437,14 +437,14 @@ abstract class MetafieldDefinitionMutationPayload extends Data
             if ($type === MetafieldTypeEnum::Json && $jsonPropertySchema === []) {
                 $validator->errors()->add(
                     'jsonPropertySchema',
-                    (string) trans('metafields::metafields/validation.custom.jsonPropertySchema.required_for_json'),
+                    (string) trans('nvl-metafields::metafields/validation.custom.jsonPropertySchema.required_for_json'),
                 );
             }
 
             if ($type !== MetafieldTypeEnum::Json && $jsonPropertySchema !== []) {
                 $validator->errors()->add(
                     'jsonPropertySchema',
-                    (string) trans('metafields::metafields/validation.custom.jsonPropertySchema.only_for_json'),
+                    (string) trans('nvl-metafields::metafields/validation.custom.jsonPropertySchema.only_for_json'),
                 );
             }
 
@@ -453,7 +453,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
                 && $validationRules !== []) {
                 $validator->errors()->add(
                     'validationRules',
-                    (string) trans('metafields::metafields/validation.custom.validationRules.forbidden_for_json'),
+                    (string) trans('nvl-metafields::metafields/validation.custom.validationRules.forbidden_for_json'),
                 );
             }
 
@@ -467,7 +467,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
             if (count($keys) !== count(array_unique($keys))) {
                 $validator->errors()->add(
                     'jsonPropertySchema',
-                    (string) trans('metafields::metafields/validation.custom.jsonPropertySchema.unique_keys'),
+                    (string) trans('nvl-metafields::metafields/validation.custom.jsonPropertySchema.unique_keys'),
                 );
             }
         });
@@ -481,7 +481,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
                 if (is_array($value) && ! MetafieldPayloadLimits::accepts($value)) {
                     $validator->errors()->add(
                         $path,
-                        (string) trans('metafields::metafields/validation.custom.structured_limit'),
+                        (string) trans('nvl-metafields::metafields/validation.custom.structured_limit'),
                     );
                 }
             }
@@ -503,7 +503,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
                     if (is_array($value) && ! MetafieldPayloadLimits::accepts($value)) {
                         $validator->errors()->add(
                             "translations.{$locale}.{$field}",
-                            (string) trans('metafields::metafields/validation.custom.structured_limit'),
+                            (string) trans('nvl-metafields::metafields/validation.custom.structured_limit'),
                         );
                     }
                 }
@@ -537,7 +537,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
         )) {
             $validator->errors()->add(
                 'defaultValue',
-                (string) trans('metafields::metafields/validation.custom.defaultValue.invalid_type'),
+                (string) trans('nvl-metafields::metafields/validation.custom.defaultValue.invalid_type'),
             );
 
             return;
@@ -549,7 +549,7 @@ abstract class MetafieldDefinitionMutationPayload extends Data
 
         $validator->errors()->add(
             'defaultValue',
-            (string) trans('metafields::metafields/validation.custom.defaultValue.invalid_reference'),
+            (string) trans('nvl-metafields::metafields/validation.custom.defaultValue.invalid_reference'),
         );
     }
 

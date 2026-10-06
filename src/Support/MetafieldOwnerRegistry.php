@@ -55,7 +55,7 @@ final class MetafieldOwnerRegistry
      */
     public function all(): array
     {
-        $owners = config('metafields.owners', []);
+        $owners = config('nvl-metafields.owners', []);
 
         if (! is_array($owners)) {
             throw new InvalidArgumentException('The [metafields.owners] configuration must be an array.');

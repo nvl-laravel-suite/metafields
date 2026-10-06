@@ -29,7 +29,7 @@ final class ConfiguredMetafieldReferenceAuthorization implements MetafieldRefere
         MetafieldDefinition $definition,
         Model $reference,
     ): void {
-        $configuredAbility = config('metafields.authorization.reference_ability');
+        $configuredAbility = config('nvl-metafields.authorization.reference_ability');
 
         if (! is_string($configuredAbility) || $configuredAbility === '') {
             throw new AuthorizationException(

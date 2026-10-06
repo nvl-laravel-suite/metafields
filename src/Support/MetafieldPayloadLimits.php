@@ -23,7 +23,7 @@ final class MetafieldPayloadLimits
         }
 
         if (strlen($encoded) > MetafieldConfiguration::positiveInteger(
-            'metafields.limits.maximum_json_bytes',
+            'nvl-metafields.limits.maximum_json_bytes',
             262_144,
         )) {
             return false;
@@ -36,11 +36,11 @@ final class MetafieldPayloadLimits
             depth: 0,
             items: $items,
             maximumDepth: MetafieldConfiguration::positiveInteger(
-                'metafields.limits.maximum_json_depth',
+                'nvl-metafields.limits.maximum_json_depth',
                 16,
             ),
             maximumItems: MetafieldConfiguration::positiveInteger(
-                'metafields.limits.maximum_json_items',
+                'nvl-metafields.limits.maximum_json_items',
                 1_000,
             ),
         );

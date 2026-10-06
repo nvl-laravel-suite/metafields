@@ -49,7 +49,7 @@ final class MetafieldDefinitionMutationGuard
 
         foreach ($blockedChanges as $field => $label) {
             $messages[$field] = [
-                (string) trans('metafields::metafields/validation.custom.definition.active_values_shape_change', [
+                (string) trans('nvl-metafields::metafields/validation.custom.definition.active_values_shape_change', [
                     'field' => $label,
                 ]),
             ];
@@ -83,7 +83,7 @@ final class MetafieldDefinitionMutationGuard
             if (! is_string($title) || trim($title) === '') {
                 $errors["translations.{$locale}.title"] = [
                     (string) trans(
-                        'metafields::metafields/validation.custom.translations.new_locale_title',
+                        'nvl-metafields::metafields/validation.custom.translations.new_locale_title',
                     ),
                 ];
             }
@@ -111,7 +111,7 @@ final class MetafieldDefinitionMutationGuard
             if ($targetIsTranslatable) {
                 $this->throwDefaultValidation(
                     'defaultValue',
-                    'metafields::metafields/validation.custom.defaultValue.nonlocalized_storage',
+                    'nvl-metafields::metafields/validation.custom.defaultValue.nonlocalized_storage',
                 );
             }
 
@@ -124,7 +124,7 @@ final class MetafieldDefinitionMutationGuard
             )) {
                 $this->throwDefaultValidation(
                     'defaultValue',
-                    'metafields::metafields/validation.custom.defaultValue.invalid_type',
+                    'nvl-metafields::metafields/validation.custom.defaultValue.invalid_type',
                 );
             }
         }
@@ -142,7 +142,7 @@ final class MetafieldDefinitionMutationGuard
             )) {
             $this->throwDefaultValidation(
                 'defaultValue',
-                'metafields::metafields/validation.custom.defaultValue.invalid_type',
+                'nvl-metafields::metafields/validation.custom.defaultValue.invalid_type',
             );
         }
 
@@ -172,7 +172,7 @@ final class MetafieldDefinitionMutationGuard
                     && $this->hasDefaultValue($translation['defaultValue'])) {
                     $this->throwDefaultValidation(
                         "translations.{$locale}.defaultValue",
-                        'metafields::metafields/validation.custom.translations.defaultValue.localized_storage',
+                        'nvl-metafields::metafields/validation.custom.translations.defaultValue.localized_storage',
                     );
                 }
             }
@@ -196,7 +196,7 @@ final class MetafieldDefinitionMutationGuard
             )) {
                 $this->throwDefaultValidation(
                     "translations.{$locale}.defaultValue",
-                    'metafields::metafields/validation.custom.defaultValue.invalid_type',
+                    'nvl-metafields::metafields/validation.custom.defaultValue.invalid_type',
                 );
             }
         }

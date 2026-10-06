@@ -19,8 +19,8 @@ return new class extends Migration
     /** Add nullable adoption columns without changing legacy visibility. */
     public function up(): void
     {
-        $partitioned = config('tenancy.sharing.metafields') === 'copy'
-            || config('tenancy.resources.metafields') === 'platform';
+        $partitioned = config('nvl-tenancy.sharing.metafields') === 'copy'
+            || config('nvl-tenancy.resources.metafields') === 'platform';
 
         $this->expand(MetafieldsTables::get(MetafieldsTables::Definitions), static function (Blueprint $table) use ($partitioned): void {
             $table->uuid('tenant_id')->nullable()->index('metafield_definitions_tenant_idx');
