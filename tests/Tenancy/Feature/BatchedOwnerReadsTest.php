@@ -14,9 +14,12 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
 use Nvl\Metafields\Models\MetafieldTranslation;
+use Nvl\Metafields\Services\Metafields\OwnerMetafieldQueryAdapter;
 use Nvl\Metafields\Tests\Fixtures\BatchMetafieldPolicy;
+use Nvl\Metafields\Tests\Fixtures\BatchSoftDeletingMetafieldOwner;
 use Nvl\Metafields\Tests\Fixtures\MetafieldTenancyScenario;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
+use Nvl\Support\Tenancy\Contracts\TenantBoundary;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 
 beforeEach(function (): void {
@@ -86,3 +89,42 @@ it('admits only canonical current-tenant owners and keeps values and host filter
     $matches = $scenario->run($scenario::A, fn () => TestMetafieldOwner::query()->withoutGlobalScopes()->whereNvlMetafield($definitionA->handle, 'local', $policy)->pluck('id')->all());
     expect($matches)->toBe([$ownerA->getKey()]);
 });
+
+it('keeps adopted live owners and caller OR predicates inside active tenant host filters', function (bool $direct): void {
+    $scenario = MetafieldTenancyScenario::install();
+    $definitionA = $scenario->definition($scenario::A);
+    $definitionB = $scenario->definition($scenario::B);
+    $owners = [];
+    foreach ([$scenario::A, $scenario::B] as $tenant) {
+        $definition = $tenant === $scenario::A ? $definitionA : $definitionB;
+        $owners[$tenant] = $scenario->run($tenant, static function () use ($definition): array {
+            $definition->update(['is_filterable' => true]);
+            $definition->assignments()->update(['owner_type' => 'live-owner']);
+            $owners = [];
+            foreach (['Live', 'Deleted', 'Unmatched'] as $name) {
+                $owner = new BatchSoftDeletingMetafieldOwner(['name' => $name]);
+                $owner->forceFill(app(TenantBoundary::class)->attributes('test.live-metafield-owners'))->save();
+                app(SetMetafieldAction::class)->execute($owner, $definition->handle, $name === 'Unmatched' ? 'other' : 'match');
+                if ($name === 'Deleted') {
+                    $owner->delete();
+                }
+                $owners[] = $owner;
+            }
+
+            return $owners;
+        });
+    }
+    $policy = new BatchMetafieldPolicy;
+    $ids = array_map(static fn (BatchSoftDeletingMetafieldOwner $owner): int => $owner->getKey(), [...$owners[$scenario::A], ...$owners[$scenario::B]]);
+    $matches = $scenario->run($scenario::A, static function () use ($direct, $policy, $definitionA, $ids): array {
+        $query = BatchSoftDeletingMetafieldOwner::query()->withoutGlobalScopes()->select(['id', 'name'])
+            ->where('id', $ids[2])->orWhereIn('id', $ids);
+        $filtered = $direct
+            ? app(OwnerMetafieldQueryAdapter::class)->apply($query, $definitionA->handle, 'match', $policy)
+            : $query->whereNvlMetafield($definitionA->handle, 'match', $policy);
+
+        return $filtered->get()->map(static fn (BatchSoftDeletingMetafieldOwner $owner): array => $owner->getAttributes())->all();
+    });
+
+    expect($matches)->toBe([['id' => $owners[$scenario::A][0]->getKey(), 'name' => 'Live']]);
+})->with([false, true]);

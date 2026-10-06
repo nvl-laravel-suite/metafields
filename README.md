@@ -286,6 +286,11 @@ getter runs in the batch projection.
 
 `HasMetafields::whereNvlMetafield($handle, $value, $policy, $operator = '=')` adds
 a correlated **stored-value-only** filter retaining caller columns and scopes.
+It admits live owners only: native `SoftDeletes` columns remain mandatory even
+after `withoutGlobalScopes()` or `withTrashed()`, including custom deleted-at columns.
+Models without `SoftDeletes` retain their existing behavior. Caller OR predicates
+are grouped inside the live-owner, active-tenant and stored-value guards, including
+direct adapter calls. Changed storage shapes and UNION queries fail before definition SQL.
 Missing and default-only fields never match. Definitions must be active, assigned
 and filterable. Operators are `=`, `!=`, `<`, `<=`, `>` and `>=`; null permits only
 `=` and `!=`. Numeric types compare numerically. Localized, reference and structured

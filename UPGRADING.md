@@ -16,7 +16,11 @@ fail closed. Assignment aliases and existing single-owner APIs retain their sema
 Respect the 100-input, 100-definition-per-type, 10,000-value, 1,000-reference and
 ten-locale ceilings. `whereNvlMetafield` compares stored scalar values only;
 missing/default-only fields never match. Legacy filters remain available. New host
-filters require active assigned filterable definitions and an explicit SQL policy;
+filters admit live owners only. Removing global scopes or using `withTrashed()`
+does not remove native `SoftDeletes` exclusion; custom deleted-at columns are honored.
+Non-SoftDeletes owners retain their existing behavior. Caller OR predicates stay
+inside the mandatory guards, and UNION queries fail before definition lookup.
+Host filters require active assigned filterable definitions and an explicit SQL policy;
 localized/reference/structured comparisons reject unsupported adapters. SQLite
 execution and PostgreSQL/MySQL/MariaDB SQL generation are covered; native execution
 on supported versions remains a family release gate.

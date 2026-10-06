@@ -20,6 +20,11 @@ final class MetafieldTenancyFixtureServiceProvider extends ServiceProvider
             'test.metafield-owners',
             TestMetafieldOwner::class,
         ));
+        $resources->register(new TenantResourceDefinition(
+            'test.live-metafield-owners',
+            'test.live-metafield-owners',
+            BatchSoftDeletingMetafieldOwner::class,
+        ));
         $adoptions->register('resource-fixture-owners', TenancyOwnerAdoptionAdapter::class);
     }
 }

@@ -25,6 +25,11 @@ disabled Tenancy adds one cold probe and each reference class adds one query.
 Use `whereNvlMetafield($handle, $value, $policy, $operator = '=')` for active assigned
 filterable nonlocalized scalar fields. It compares stored values; missing/default-only
 fields never match. Its host policy must express owner/definition/value visibility.
+The host filter admits live owners only. Preserve the native SoftDeletes predicate
+through `getQualifiedDeletedAtColumn()` even after removed scopes or `withTrashed()`;
+honor custom deleted-at columns and leave non-SoftDeletes models unchanged. Group
+pre-existing caller OR predicates before adding mandatory guards, including direct
+adapter use, and reject UNION/storage drift before definition SQL.
 Keep the prior boolean scopes unchanged.
 
 Batch projections must use admitted preloaded rows with `TranslationResolver` and

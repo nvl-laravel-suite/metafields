@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Nvl\Data\Providers\DataServiceProvider;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Providers\MetafieldsServiceProvider;
+use Nvl\Metafields\Tests\Fixtures\BatchSoftDeletingMetafieldOwner;
 use Nvl\Metafields\Tests\Fixtures\MetafieldTenancyDirectory;
 use Nvl\Metafields\Tests\Fixtures\MetafieldTenancyFixtureServiceProvider;
 use Nvl\Metafields\Tests\Fixtures\MetafieldTenancyMaintenanceMode;
@@ -22,6 +23,7 @@ use Nvl\Tenancy\Providers\TenancyServiceProvider;
 use Nvl\Translatable\Providers\TranslatableServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use ReflectionClass;
+use RuntimeException;
 
 /** Boots Metafields' non-transactional tenancy adoption fixture. */
 abstract class MetafieldTenancyTestCase extends Orchestra
@@ -73,6 +75,16 @@ abstract class MetafieldTenancyTestCase extends Orchestra
                 'runtime_status' => 'live',
             ],
             'nvl-metafields.reference_models.test-owner' => TestMetafieldOwner::class,
+            'nvl-metafields.owners.live-owner' => [
+                'model' => BatchSoftDeletingMetafieldOwner::class,
+                'label' => 'Live owners',
+                'supported_types' => array_map(
+                    static fn (MetafieldTypeEnum $type): string => $type->value,
+                    MetafieldTypeEnum::cases(),
+                ),
+                'sections' => ['general'],
+                'runtime_status' => 'live',
+            ],
             'nvl-translatable.locales' => ['en', 'bg'],
             'nvl-translatable.fallback_locales' => ['en'],
             'nvl-tenancy.enabled' => true,
@@ -91,6 +103,10 @@ abstract class MetafieldTenancyTestCase extends Orchestra
     protected function defineDatabaseMigrationsAfterDatabaseRefreshed(): void
     {
         $provider = new ReflectionClass(TenancyServiceProvider::class);
-        $this->loadMigrationsFrom(dirname($provider->getFileName()).'/../../database/migrations/tenancy');
+        $providerPath = $provider->getFileName();
+        if ($providerPath === false) {
+            throw new RuntimeException('The Tenancy fixture requires a file-backed package provider.');
+        }
+        $this->loadMigrationsFrom(dirname($providerPath).'/../../database/migrations/tenancy');
     }
 }

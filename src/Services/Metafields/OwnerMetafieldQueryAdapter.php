@@ -7,6 +7,7 @@ namespace Nvl\Metafields\Services\Metafields;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Nvl\Metafields\Contracts\MetafieldBatchAuthorization;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Exceptions\MetafieldBatchReadException;
@@ -48,10 +49,18 @@ final readonly class OwnerMetafieldQueryAdapter
         $prototype = new ($owner::class);
         if ($owner->getConnection() !== (new Metafield)->getConnection() || $query->getConnection() !== $owner->getConnection()
             || $prototype->getTable() !== $owner->getTable() || $prototype->getConnection() !== $owner->getConnection()
-            || $query->getQuery()->from !== $owner->getTable()) {
-            throw new TenantBoundaryViolation('whereNvlMetafield requires the canonical owner table and package connection.');
+            || $query->getQuery()->from !== $owner->getTable() || $query->getQuery()->unions !== null) {
+            throw new TenantBoundaryViolation('whereNvlMetafield requires the canonical owner table and package connection without unions.');
         }
         $alias = $this->registry->resolveOwnerType($owner);
+        $this->groupCallerPredicates($query);
+        if (in_array(SoftDeletes::class, class_uses_recursive($prototype), true) && method_exists($prototype, 'getQualifiedDeletedAtColumn')) {
+            $column = $prototype->getQualifiedDeletedAtColumn();
+            if (! is_string($column) || $column === '') {
+                throw new TenantBoundaryViolation('A canonical Metafield owner requires a valid soft-delete column.');
+            }
+            $query->whereNull($column);
+        }
         if ($this->configuration->get('nvl-tenancy.enabled') === true) {
             $this->boundary->query($query, $this->resources->forModel($prototype)->key);
         }
@@ -92,5 +101,24 @@ final readonly class OwnerMetafieldQueryAdapter
         }
 
         return $query->whereExists($values->selectRaw('1')->toBase());
+    }
+
+    /** Keep caller OR clauses inside every subsequently added mandatory owner guard.
+     * @template T of Model
+     *
+     * @param  Builder<T>  $query
+     */
+    private function groupCallerPredicates(Builder $query): void
+    {
+        $base = $query->getQuery();
+        if ($base->wheres === []) {
+            return;
+        }
+        $nested = $base->forNestedWhere();
+        $nested->wheres = $base->wheres;
+        $nested->setBindings($base->getRawBindings()['where'], 'where');
+        $base->wheres = [];
+        $base->setBindings([], 'where');
+        $base->addNestedWhereQuery($nested);
     }
 }

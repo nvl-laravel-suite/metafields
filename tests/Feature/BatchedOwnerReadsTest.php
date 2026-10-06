@@ -21,8 +21,10 @@ use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
 use Nvl\Metafields\Models\MetafieldTranslation;
 use Nvl\Metafields\Providers\MetafieldsServiceProvider;
+use Nvl\Metafields\Services\Metafields\OwnerMetafieldQueryAdapter;
 use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Tests\Fixtures\BatchMetafieldPolicy;
+use Nvl\Metafields\Tests\Fixtures\BatchSoftDeletingMetafieldOwner;
 use Nvl\Metafields\Tests\Fixtures\BatchStringMetafieldOwner;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
@@ -38,6 +40,7 @@ beforeEach(function (): void {
         'nvl-metafields.owners' => [
             'products' => ['model' => TestMetafieldOwner::class, 'label' => 'Products'],
             'strings' => ['model' => BatchStringMetafieldOwner::class, 'label' => 'Strings'],
+            'live-products' => ['model' => BatchSoftDeletingMetafieldOwner::class, 'label' => 'Live products'],
         ],
         'nvl-metafields.reference_models' => ['products' => TestMetafieldOwner::class],
     ]);
@@ -249,6 +252,69 @@ it('compares stored scalar values through the prefixed host scope while preservi
     $query = BatchStringMetafieldOwner::query()->select(['id', 'name'])->whereNvlMetafield($definition->handle, true, $policy);
     expect($query->getQuery()->columns)->toBe(['id', 'name'])
         ->and($query->get()->pluck('id')->all())->toBe(['ABC']);
+});
+
+it('keeps deleted host owners outside stored value filters after global scopes are removed', function (): void {
+    $policy = batchMetafieldPolicy();
+    $owner = BatchStringMetafieldOwner::query()->create(['id' => 'deleted-owner', 'name' => 'Visible']);
+    $definition = batchMetafieldDefinition(MetafieldTypeEnum::Boolean, alias: 'strings');
+    $definition->update(['is_filterable' => true]);
+    Metafield::factory()->forDefinition($definition)->forOwner($owner)->withValue('1')->create();
+    $owner->delete();
+
+    expect(BatchStringMetafieldOwner::query()->withoutGlobalScopes()->whereNvlMetafield($definition->handle, true, $policy)->pluck('id')->all())->toBe([]);
+});
+
+it('rejects host unions before definition storage access', function (): void {
+    $policy = batchMetafieldPolicy();
+    $query = BatchStringMetafieldOwner::query()->union(BatchStringMetafieldOwner::query());
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+
+    expect(fn () => $query->whereNvlMetafield('details.enabled', true, $policy))->toThrow(TenantBoundaryViolation::class);
+    expect(DB::getQueryLog())->toBe([]);
+    DB::disableQueryLog();
+});
+
+it('keeps caller OR predicates inside mandatory live owner and stored value guards', function (bool $direct): void {
+    $policy = batchMetafieldPolicy();
+    $unmatched = BatchStringMetafieldOwner::query()->create(['id' => 'unmatched', 'name' => 'Unmatched']);
+    $matched = BatchStringMetafieldOwner::query()->create(['id' => 'matched', 'name' => 'Matched']);
+    $deleted = BatchStringMetafieldOwner::query()->create(['id' => 'deleted', 'name' => 'Deleted']);
+    $definition = batchMetafieldDefinition(MetafieldTypeEnum::Boolean, alias: 'strings');
+    $definition->update(['is_filterable' => true]);
+    foreach ([$matched, $deleted] as $owner) {
+        Metafield::factory()->forDefinition($definition)->forOwner($owner)->withValue('1')->create();
+    }
+    $deleted->delete();
+    $query = BatchStringMetafieldOwner::query()->withoutGlobalScopes()
+        ->whereKey($unmatched->getKey())->orWhere('id', $matched->getKey())->orWhere('id', $deleted->getKey());
+    $filtered = $direct
+        ? app(OwnerMetafieldQueryAdapter::class)->apply($query, $definition->handle, true, $policy)
+        : $query->whereNvlMetafield($definition->handle, true, $policy);
+
+    expect($filtered->pluck('id')->all())->toBe([$matched->getKey()]);
+})->with([false, true]);
+
+it('retains a canonical custom soft delete column in host stored value filters', function (): void {
+    Schema::create((new BatchSoftDeletingMetafieldOwner)->getTable(), static function (Blueprint $table): void {
+        $table->id();
+        $table->string('name');
+        $table->timestamps();
+        $table->softDeletes(BatchSoftDeletingMetafieldOwner::DELETED_AT);
+    });
+    $policy = batchMetafieldPolicy();
+    $live = BatchSoftDeletingMetafieldOwner::query()->create(['name' => 'Live']);
+    $deleted = BatchSoftDeletingMetafieldOwner::query()->create(['name' => 'Deleted']);
+    $definition = batchMetafieldDefinition(MetafieldTypeEnum::Boolean, alias: 'live-products');
+    $definition->update(['is_filterable' => true]);
+    foreach ([$live, $deleted] as $owner) {
+        Metafield::factory()->forDefinition($definition)->forOwner($owner)->withValue('1')->create();
+    }
+    $deleted->delete();
+
+    expect(BatchSoftDeletingMetafieldOwner::query()->withoutGlobalScopes()
+        ->whereNvlMetafield($definition->handle, true, $policy)->pluck('id')->all())->toBe([$live->getKey()]);
 });
 
 it('loads stored and default reference targets once for a complete batch', function (int $size): void {

@@ -18,7 +18,7 @@ final readonly class TenancyOwnerAdoptionAdapter implements TenantAdoptionAdapte
     /** @return list<string> */
     public function resources(): array
     {
-        return ['test.metafield-owners'];
+        return ['test.metafield-owners', 'test.live-metafield-owners'];
     }
 
     /** Create the owner table with direct tenant identity. */
@@ -34,6 +34,16 @@ final readonly class TenancyOwnerAdoptionAdapter implements TenantAdoptionAdapte
                 $table->unique(['tenant_id', 'id'], 'test_metafield_owners_tenant_id_unique');
             });
         }
+        if (! $schema->hasTable((new BatchSoftDeletingMetafieldOwner)->getTable())) {
+            $schema->create((new BatchSoftDeletingMetafieldOwner)->getTable(), static function (Blueprint $table): void {
+                $table->id();
+                $table->uuid('tenant_id');
+                $table->string('name');
+                $table->timestamps();
+                $table->softDeletes(BatchSoftDeletingMetafieldOwner::DELETED_AT);
+                $table->unique(['tenant_id', 'id'], 'test_live_metafield_owners_tenant_id_unique');
+            });
+        }
     }
 
     /** Require every fixture owner to retain its reviewed tenant identity. */
@@ -41,6 +51,9 @@ final readonly class TenancyOwnerAdoptionAdapter implements TenantAdoptionAdapte
     {
         if ($this->connection()->table((new TestMetafieldOwner)->getTable())->whereNull('tenant_id')->exists()) {
             throw new RuntimeException('Metafield owner fixture adoption found an unmapped owner.');
+        }
+        if ($this->connection()->table((new BatchSoftDeletingMetafieldOwner)->getTable())->whereNull('tenant_id')->exists()) {
+            throw new RuntimeException('Live Metafield owner fixture adoption found an unmapped owner.');
         }
 
         return new TenantBackfillResult(null, 0);
@@ -57,6 +70,13 @@ final readonly class TenancyOwnerAdoptionAdapter implements TenantAdoptionAdapte
         }
         if (! $schema->hasIndex($table, ['tenant_id', 'id'], 'unique')) {
             $errors[] = 'test.metafield-owners.identity';
+        }
+        $liveTable = (new BatchSoftDeletingMetafieldOwner)->getTable();
+        if (! $schema->hasColumns($liveTable, ['id', 'tenant_id', 'name', 'created_at', 'updated_at', BatchSoftDeletingMetafieldOwner::DELETED_AT])) {
+            $errors[] = 'test.live-metafield-owners.columns';
+        }
+        if (! $schema->hasIndex($liveTable, ['tenant_id', 'id'], 'unique')) {
+            $errors[] = 'test.live-metafield-owners.identity';
         }
 
         return new TenantVerification($errors);
