@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -40,13 +41,34 @@ beforeEach(function (): void {
         ],
         'nvl-metafields.reference_models' => ['products' => TestMetafieldOwner::class],
     ]);
-    Schema::create('test_batch_string_metafield_owners', function (Blueprint $table): void {
-        $table->string('id')->primary();
-        $table->string('name');
-        $table->timestamps();
-        $table->softDeletes();
-    });
+    $driver = Schema::getConnection()->getDriverName();
+    Schema::create('test_batch_string_metafield_owners', static fn (Blueprint $table) => batchStringMetafieldOwnerSchema($table, $driver));
 });
+
+function batchStringMetafieldOwnerSchema(Blueprint $table, string $driver): void
+{
+    $id = $table->string('id')->primary();
+    if (in_array($driver, ['mysql', 'mariadb'], true)) {
+        $id->collation('utf8mb4_bin');
+    }
+    $table->string('name');
+    $table->timestamps();
+    $table->softDeletes();
+}
+
+/** @param list<array{query: string}> $queries */
+function batchMetafieldStorageQueries(array $queries): Collection
+{
+    $tables = [
+        (new Metafield)->getTable(),
+        (new MetafieldDefinition)->getTable(),
+        (new MetafieldDefinitionAssignment)->getTable(),
+        (new MetafieldDefinitionTranslation)->getTable(),
+        (new MetafieldTranslation)->getTable(),
+    ];
+
+    return collect($queries)->filter(static fn (array $query): bool => Str::contains($query['query'], $tables));
+}
 
 function batchMetafieldDefinition(MetafieldTypeEnum $type = MetafieldTypeEnum::String, string $namespace = 'details', string $alias = 'products'): MetafieldDefinition
 {
@@ -174,8 +196,37 @@ it('rejects scoped-out and deleted owners before package queries', function (str
     DB::enableQueryLog();
     DB::flushQueryLog();
     expect(fn () => app(ListAuthorizedOwnersMetafieldsContract::class)->execute([$owner]))->toThrow(TenantBoundaryViolation::class);
-    expect(collect(DB::getQueryLog())->filter(static fn (array $query): bool => str_contains($query['query'], '"nvl_metafield')))->toHaveCount(0);
+    expect(batchMetafieldStorageQueries(DB::getQueryLog()))->toHaveCount(0);
 })->with(['hidden', 'deleted']);
+
+it('detects forbidden package reads regardless of SQL identifier quoting', function (string $quote): void {
+    $packageSql = 'select * from '.$quote.(new Metafield)->getTable().$quote;
+    $queries = [['query' => $packageSql], ['query' => 'select * from '.$quote.'test_metafield_owners'.$quote]];
+
+    expect(batchMetafieldStorageQueries($queries))->toHaveCount(1)
+        ->and(batchMetafieldStorageQueries($queries)->first()['query'])->toBe($packageSql);
+})->with(['"', '`', '']);
+
+it('generates an exact string owner key while preserving case-insensitive table defaults', function (string $driver): void {
+    config(['database.connections.fixture_ddl' => [
+        'driver' => $driver,
+        'host' => 'localhost',
+        'database' => 'unused',
+        'username' => 'unused',
+        'password' => 'unused',
+        'charset' => 'utf8mb4',
+        'collation' => 'utf8mb4_unicode_ci',
+    ]]);
+    $connection = DB::connection('fixture_ddl');
+    $connection->useDefaultSchemaGrammar();
+    $blueprint = new Blueprint($connection, 'test_batch_string_metafield_owners');
+    $blueprint->create();
+    batchStringMetafieldOwnerSchema($blueprint, $driver);
+    $sql = implode("\n", $blueprint->toSql());
+
+    expect($sql)->toContain('`id` varchar(255) collate \'utf8mb4_bin\'')
+        ->and($sql)->toContain('default character set utf8mb4 collate \'utf8mb4_unicode_ci\'');
+})->with(['mysql', 'mariadb']);
 
 it('fails unsupported imperative policies with an actionable package exception', function (): void {
     $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
@@ -261,7 +312,8 @@ it('rejects definition overflow before loading related definition or translation
 
     expect(fn () => app(ListAuthorizedOwnersMetafieldsContract::class)->execute([$owner]))
         ->toThrow(MetafieldBatchReadException::class, '100 active definitions');
-    expect(collect(DB::getQueryLog())->filter(static fn (array $query): bool => str_contains($query['query'], 'i18n')))->toHaveCount(0);
+    $translationTables = [(new MetafieldDefinitionTranslation)->getTable(), (new MetafieldTranslation)->getTable()];
+    expect(collect(DB::getQueryLog())->filter(static fn (array $query): bool => Str::contains($query['query'], $translationTables)))->toHaveCount(0);
 });
 
 it('validates complete input and declared connections before any storage SQL', function (string $case): void {
@@ -349,7 +401,7 @@ it('rejects duplicate active values and bounds corrupt current rows before trans
     expect(fn () => app(ListAuthorizedOwnersMetafieldsContract::class)->execute([$owner]))
         ->toThrow($overflow ? MetafieldBatchReadException::class : MetafieldIntegrityException::class);
     if ($overflow) {
-        expect(collect(DB::getQueryLog())->filter(static fn (array $query): bool => str_contains($query['query'], 'nvl_metafields_i18n')))->toHaveCount(0);
+        expect(collect(DB::getQueryLog())->filter(static fn (array $query): bool => str_contains($query['query'], (new MetafieldTranslation)->getTable())))->toHaveCount(0);
     }
 })->with([false, true]);
 

@@ -3,11 +3,17 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Nvl\Metafields\Actions\Metafields\SetMetafieldAction;
 use Nvl\Metafields\Contracts\ListAuthorizedOwnersMetafieldsContract;
 use Nvl\Metafields\Contracts\MetafieldBatchAuthorization;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Exceptions\MetafieldBatchReadException;
+use Nvl\Metafields\Models\Metafield;
+use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
+use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
+use Nvl\Metafields\Models\MetafieldTranslation;
 use Nvl\Metafields\Tests\Fixtures\BatchMetafieldPolicy;
 use Nvl\Metafields\Tests\Fixtures\MetafieldTenancyScenario;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
@@ -67,8 +73,14 @@ it('admits only canonical current-tenant owners and keeps values and host filter
     $forged = clone $ownerB;
     $forged->setAttribute('tenant_id', $scenario::A);
 
-    expect(fn () => $scenario->run($scenario::A, fn () => app(ListAuthorizedOwnersMetafieldsContract::class)->execute([$ownerA, $forged])))
+    expect(fn () => $scenario->run($scenario::A, function () use ($ownerA, $forged): void {
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        app(ListAuthorizedOwnersMetafieldsContract::class)->execute([$ownerA, $forged]);
+    }))
         ->toThrow(TenantBoundaryViolation::class);
+    $packageTables = [(new Metafield)->getTable(), (new MetafieldDefinition)->getTable(), (new MetafieldDefinitionAssignment)->getTable(), (new MetafieldDefinitionTranslation)->getTable(), (new MetafieldTranslation)->getTable()];
+    expect(collect(DB::getQueryLog())->filter(static fn (array $query): bool => Str::contains($query['query'], $packageTables)))->toHaveCount(0);
     $result = $scenario->run($scenario::A, fn () => app(ListAuthorizedOwnersMetafieldsContract::class)->execute([$ownerA]));
     expect($result->owners->{TestMetafieldOwner::class}->{(string) $ownerA->getKey()}->fields[0]->value)->toBe('local');
     $matches = $scenario->run($scenario::A, fn () => TestMetafieldOwner::query()->withoutGlobalScopes()->whereNvlMetafield($definitionA->handle, 'local', $policy)->pluck('id')->all());
