@@ -13,6 +13,13 @@ use Nvl\Metafields\Tests\Fixtures\MetafieldTenancyScenario;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 
+beforeEach(function (): void {
+    $expectedDriver = getenv('NVL_C1_TEST_DRIVER');
+    if (is_string($expectedDriver) && $expectedDriver !== '') {
+        expect(DB::connection()->getDriverName())->toBe($expectedDriver);
+    }
+});
+
 it('keeps a fixed localized query budget under the real active tenant boundary', function (int $size): void {
     $scenario = MetafieldTenancyScenario::install();
     $definition = $scenario->definition($scenario::A);

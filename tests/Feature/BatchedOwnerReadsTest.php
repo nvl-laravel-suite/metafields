@@ -27,6 +27,10 @@ use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 
 beforeEach(function (): void {
+    $expectedDriver = getenv('NVL_C1_TEST_DRIVER');
+    if (is_string($expectedDriver) && $expectedDriver !== '') {
+        expect(DB::connection()->getDriverName())->toBe($expectedDriver);
+    }
     config([
         'nvl-translatable.locales' => ['en', 'bg'],
         'nvl-translatable.fallback_locales' => ['en'],
@@ -360,15 +364,12 @@ it('bounds stored and default reference identifiers before target SQL', function
 
 it('admits the maximum one thousand references through one bounded target query', function (): void {
     batchMetafieldPolicy();
-    $targets = [];
-    for ($id = 1; $id <= 1000; $id++) {
-        $targets[] = ['id' => $id, 'name' => 'allowed-reference'];
-    }
-    DB::table('test_metafield_owners')->insert($targets);
+    DB::table('test_metafield_owners')->insert(array_fill(0, 1000, ['name' => 'allowed-reference']));
+    $targetIds = TestMetafieldOwner::query()->orderBy('id')->pluck('id')->all();
     $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
-    for ($group = 0; $group < 10; $group++) {
+    foreach (array_chunk($targetIds, 100) as $ids) {
         $definition = batchMetafieldDefinition(MetafieldTypeEnum::ReferenceList);
-        $definition->update(['referenced_model_type' => 'products', 'default_value' => json_encode(range($group * 100 + 1, ($group + 1) * 100))]);
+        $definition->update(['referenced_model_type' => 'products', 'default_value' => json_encode($ids)]);
     }
     DB::enableQueryLog();
     DB::flushQueryLog();
