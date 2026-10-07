@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -13,6 +12,7 @@ use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
+use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
 use Nvl\Translatable\Services\TranslationWriter;
 
 test('metafield controllers remain final and delegate persistence queries', function (): void {
@@ -77,10 +77,11 @@ test('metafield values and definitions resolve through the shared translation co
 });
 
 test('definition settings expose assignment data through the typed payload contract', function (): void {
+    config()->set('nvl-metafields.owners.test-owner', ['model' => TestMetafieldOwner::class, 'label' => 'Test owner']);
     $definition = MetafieldDefinition::factory()->create();
     $assignment = MetafieldDefinitionAssignment::factory()
         ->forDefinition($definition)
-        ->forOwnerType('products')
+        ->forOwnerType('test-owner')
         ->create();
 
     $settings = MetafieldDefinitionSettings::fromModel($definition);
@@ -88,16 +89,17 @@ test('definition settings expose assignment data through the typed payload contr
     expect($settings->assignment)
         ->toBeInstanceOf(MetafieldDefinitionAssignmentPayload::class)
         ->and($settings->assignment->definitionId)->toBe($definition->id)
-        ->and($settings->assignment->ownerType)->toBe('products')
+        ->and($settings->assignment->ownerType)->toBe('test-owner')
         ->and($settings->assignment->displayOrder)->toBe($assignment->display_order);
 });
 
 test('the metafield factory is standalone and can be overridden with a real owner', function (): void {
     $definition = MetafieldDefinition::factory()->create();
-    $metafield = Metafield::factory()->forDefinition($definition)->create();
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Factory owner']);
+    $metafield = Metafield::factory()->forDefinition($definition)->forOwner($owner)->create();
 
     expect($metafield->metafieldable_id)->toBeString()->toMatch('/^.+$/')
-        ->and($metafield->metafieldable_type)->toBe(Model::class);
+        ->and($metafield->metafieldable_type)->toBe($owner->getMorphClass());
 });
 
 test('definition namespace scope is available across supported Laravel versions', function (): void {

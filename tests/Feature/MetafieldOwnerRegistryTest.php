@@ -49,14 +49,13 @@ it('rejects ambiguous aliases for the same owner model', function (): void {
         ->toThrow(InvalidArgumentException::class, 'already registered');
 });
 
-it('rejects application morph-map conflicts before changing the global map', function (): void {
+it('keeps capability aliases independent of a host owned morph-map entry', function (): void {
     $existingMorphMap = Relation::morphMap();
 
     try {
         Relation::morphMap(['articles' => User::class], false);
 
-        expect(fn () => app(MetafieldOwnerRegistry::class)->all())
-            ->toThrow(InvalidArgumentException::class, 'conflicts with the existing morph-map model')
+        expect(app(MetafieldOwnerRegistry::class)->all()['articles']['model'])->toBe(TestMetafieldOwner::class)
             ->and(Relation::morphMap()['articles'])->toBe(User::class);
     } finally {
         Relation::morphMap($existingMorphMap, false);
