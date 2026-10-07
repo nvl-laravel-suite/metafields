@@ -45,8 +45,6 @@ use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Support\MetafieldValidationRuleCompiler;
 use Nvl\Metafields\Support\OwnerMetafieldBooleanFilter;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
-use Nvl\Support\Events\ConnectionCommitCallbacks;
-use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Tenancy\Contracts\TenantInstallationState;
 
 function metafieldTestOwner(): TestMetafieldOwner
@@ -1394,9 +1392,6 @@ it('reports a healthy standalone schema through the machine-readable doctor', fu
 });
 
 it('publishes stored metafield morph identity and the native integer sync owner key without model payloads', function (): void {
-    /** RefreshDatabase replaces the migration-time native transaction manager. */
-    app()->forgetInstance(ConnectionCommitCallbacks::class);
-    app()->forgetInstance(DomainEventDispatcher::class);
     $setEvents = [];
     $syncEvents = [];
     Event::listen(MetafieldSet::class, function (MetafieldSet $event) use (&$setEvents): void {
