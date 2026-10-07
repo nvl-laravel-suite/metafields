@@ -117,7 +117,7 @@ final class MetafieldsServiceProvider extends ServiceProvider
 
         $this->registerTranslations();
         $this->registerConfig();
-        $this->registerOwnerMorphMap($owners);
+        $this->registerOwnerCapabilities($owners);
         $this->registerRateLimiter();
         if ((bool) config('nvl-metafields.migrations.enabled', true)) {
             $this->loadMigrationsFrom(__DIR__.'/../../database/migrations');
@@ -229,9 +229,9 @@ final class MetafieldsServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register stable owner aliases in Laravel's polymorphic relation map.
+     * Validate Metafields capabilities without installing host morph aliases.
      */
-    private function registerOwnerMorphMap(MetafieldOwnerRegistry $owners): void
+    private function registerOwnerCapabilities(MetafieldOwnerRegistry $owners): void
     {
         $owners->all();
     }
