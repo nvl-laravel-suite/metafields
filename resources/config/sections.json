@@ -2,7 +2,6 @@
     "schema_version": 1,
     "configs": {
         "nvl-metafields": {
-            "required": [],
             "common": [
                 "authorization.definition_ability",
                 "authorization.owner_ability",
