@@ -38,6 +38,7 @@ final class MetafieldDefinitionTranslation extends Model
 
     /** @use HasFactory<MetafieldDefinitionTranslationFactory> */
     use HasFactory;
+
     use HasUuids;
 
     public const string TABLE = MetafieldsTables::DefinitionsI18n;

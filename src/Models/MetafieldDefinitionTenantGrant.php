@@ -34,6 +34,7 @@ final class MetafieldDefinitionTenantGrant extends Model
 
     /** @use HasFactory<MetafieldDefinitionTenantGrantFactory> */
     use HasFactory;
+
     use HasUuids;
 
     public const string TABLE = MetafieldsTables::TenantGrants;
