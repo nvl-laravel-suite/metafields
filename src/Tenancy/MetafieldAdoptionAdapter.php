@@ -181,7 +181,7 @@ final readonly class MetafieldAdoptionAdapter implements TenantAdoptionAdapter, 
     public function activate(TenantAdoptionPlan $plan): void
     {
         $this->assertVerified($plan, 'Metafield tenant schema did not verify before activation.');
-        $path = dirname(__DIR__, 2).'/database/tenancy/2026_09_16_110003_nvl_metafields_constrain_metafield_tenant_ownership.php';
+        $path = dirname(__DIR__, 2).'/database/tenancy/current/2026_09_16_110003_nvl_metafields_constrain_metafield_tenant_ownership.php';
         $this->migrator->usingConnection($plan->connection, fn () => $this->migrator->run([$path], ['force' => true]));
         $this->assertVerified($plan, 'Metafield tenant schema did not verify after activation.');
     }
