@@ -33,7 +33,6 @@ use Nvl\Metafields\Enums\MetafieldAbility;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Events\MetafieldSet;
 use Nvl\Metafields\Events\MetafieldsSynced;
-use Nvl\Metafields\Events\MetafieldsSyncedEvent;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
@@ -158,7 +157,7 @@ it('casts every supported metafield type through its declared storage contract',
 });
 
 it('synchronizes typed owner values and emits a commit-aware event', function (): void {
-    Event::fake([MetafieldsSyncedEvent::class]);
+    Event::fake([MetafieldsSynced::class]);
     $definition = MetafieldDefinition::factory()->create([
         'namespace' => 'product',
         'key' => 'material',
@@ -189,9 +188,10 @@ it('synchronizes typed owner values and emits a commit-aware event', function ()
         ]);
 
     Event::assertDispatched(
-        MetafieldsSyncedEvent::class,
-        fn (MetafieldsSyncedEvent $event): bool => $event->owner->is(metafieldTestOwner())
-            && $event->metafields->sole()->is($metafield),
+        MetafieldsSynced::class,
+        fn (MetafieldsSynced $event): bool => $event->ownerType === 'products'
+            && (string) $event->ownerId === (string) metafieldTestOwner()->getKey()
+            && $event->metafieldIds === [$metafield->getKey()],
     );
 });
 
