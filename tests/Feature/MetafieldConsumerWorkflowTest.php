@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Query\Grammars\PostgresGrammar;
 use Illuminate\Support\Facades\DB;
@@ -39,12 +40,14 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
 use Nvl\Metafields\Models\MetafieldTranslation;
+use Nvl\Metafields\Providers\MetafieldsServiceProvider;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionCatalog;
 use Nvl\Metafields\Services\Metafields\OwnerMetafieldRecordFinder;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Support\MetafieldValidationRuleCompiler;
 use Nvl\Metafields\Support\OwnerMetafieldBooleanFilter;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
+use Nvl\Support\OwnerRegistry;
 use Nvl\Support\Tenancy\Contracts\TenantInstallationState;
 
 function metafieldTestOwner(): TestMetafieldOwner
@@ -1416,4 +1419,22 @@ it('publishes stored metafield morph identity and the native integer sync owner 
         ->and($syncEvents[0]->ownerId)->toBe($owner->getKey())->toBeInt()
         ->and($syncEvents[0]->metafieldIds)->toBe([$stored->id])
         ->and(serialize([$setEvents[0], $syncEvents[0]]))->not->toContain('private-value', TestMetafieldOwner::class.'":');
+});
+
+it('keeps capability keys independent from the host morph map during boot writes and reads', function (): void {
+    Relation::morphMap(['host-product' => TestMetafieldOwner::class, 'products' => MetafieldDefinition::class], false);
+    $map = Relation::morphMap();
+    $provider = new MetafieldsServiceProvider(app());
+    app()->call([$provider, 'boot']);
+    $definition = MetafieldDefinition::factory()->create(['namespace' => 'product', 'key' => 'host_identity', 'type' => MetafieldTypeEnum::String]);
+    assignMetafieldTestDefinition($definition);
+    $owner = metafieldTestOwner();
+    $record = app(SetMetafieldAction::class)->execute($owner, 'product.host_identity', 'host-value');
+    $values = app(ListOwnerMetafieldsAction::class)->execute($owner);
+    expect($record->metafieldable_type)->toBe('host-product')
+        ->and($values->pluck('definitionId')->all())->toContain($definition->id)
+        ->and($values->firstWhere('definitionId', $definition->id)->value)->toBe('host-value')
+        ->and(app(MetafieldOwnerRegistry::class)->resolveOwnerType($owner))->toBe('products')
+        ->and(app(OwnerRegistry::class)->errors())->toBe([])
+        ->and(Relation::morphMap())->toBe($map);
 });

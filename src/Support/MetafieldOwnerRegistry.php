@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Support;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\Relation;
 use InvalidArgumentException;
 use Nvl\Metafields\Data\MetafieldOwner;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
@@ -66,7 +65,6 @@ final class MetafieldOwnerRegistry
         $owners = [...$owners, ...$this->registered];
         $normalized = [];
         $registeredModels = [];
-        $existingMorphMap = Relation::morphMap();
 
         foreach ($owners as $type => $configuration) {
             if (! is_string($type) || trim($type) === '') {
@@ -79,10 +77,6 @@ final class MetafieldOwnerRegistry
 
             $normalized[$type] = $this->normalizeConfiguration($type, $configuration);
             $modelClass = $normalized[$type]['model'];
-
-            if (is_string($configuration['model'] ?? null) && is_a($configuration['model'], Model::class, true)) {
-                $this->assertMorphMapCompatibility($type, $modelClass, $existingMorphMap);
-            }
 
             if (isset($registeredModels[$modelClass])) {
                 throw new InvalidArgumentException(
@@ -110,38 +104,10 @@ final class MetafieldOwnerRegistry
                 throw new InvalidArgumentException("The metafield owner [{$type}] requires a string owner reference.");
             }
 
-            $this->identities->reference($reference, "metafields.owners.{$type}.model", $type, is_a($reference, Model::class, true));
+            $this->identities->reference($reference, "metafields.owners.{$type}.model");
         }
 
         return $normalized;
-    }
-
-    /**
-     * Reject aliases that would overwrite or duplicate the application's morph map.
-     *
-     * @param  class-string<Model>  $modelClass
-     * @param  array<string, class-string<Model>>  $existingMorphMap
-     */
-    private function assertMorphMapCompatibility(
-        string $type,
-        string $modelClass,
-        array $existingMorphMap,
-    ): void {
-        $mappedModel = $existingMorphMap[$type] ?? null;
-
-        if (is_string($mappedModel) && $mappedModel !== $modelClass) {
-            throw new InvalidArgumentException(
-                "The metafield owner alias [{$type}] conflicts with the existing morph-map model [{$mappedModel}].",
-            );
-        }
-
-        $mappedAlias = array_search($modelClass, $existingMorphMap, true);
-
-        if (is_string($mappedAlias) && $mappedAlias !== $type) {
-            throw new InvalidArgumentException(
-                "The metafield owner model [{$modelClass}] already uses morph-map alias [{$mappedAlias}] instead of [{$type}].",
-            );
-        }
     }
 
     /**
