@@ -70,7 +70,7 @@ final class FactoryGuard
         if ($prototype->getConnection() !== $child->getConnection()) {
             throw new InvalidArgumentException('Factory owners require the fixture connection.');
         }
-        $owner = $prototype->newQuery()->findOrFail($key);
+        $owner = $prototype->newQueryWithoutScopes()->findOrFail($key);
         self::parent($owner, $child);
         if ($owner->getMorphClass() !== $type) {
             throw new InvalidArgumentException('Factory owners require their native morph identity.');

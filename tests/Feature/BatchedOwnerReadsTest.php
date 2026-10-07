@@ -148,7 +148,7 @@ it('has a fixed localized SQL budget at one, twenty-five and one hundred owners'
             ->and($byId[$localized->id]->value)->toBe('English value');
     }
 
-    expect($budget)->toBe(8);
+    expect($budget)->toBe(7);
 })->with([1, 25, 100]);
 
 it('uses canonical owners and exact type-key pairs for equal and crossed integer/string keys', function (bool $equal): void {
@@ -181,7 +181,7 @@ it('applies SQL visibility before loading defaults, values and references and co
     $private->update(['referenced_model_type' => 'products', 'default_referenced_id' => '9999']);
     Metafield::factory()->forDefinition($visible)->forOwner($owner)->withValue('hidden')->create();
     Metafield::factory()->forDefinition($hidden)->forOwner($owner)->withValue('secret')->create();
-    Metafield::factory()->forDefinition($visible)->state(['metafieldable_type' => 'unrequested', 'metafieldable_id' => '9999', 'value' => 'foreign'])->create();
+    Metafield::query()->create(['definition_id' => $visible->id, 'metafieldable_type' => 'unrequested', 'metafieldable_id' => '9999', 'value' => 'foreign']);
 
     $result = app(ListAuthorizedOwnersMetafieldsContract::class)->execute([$owner]);
 
@@ -334,7 +334,7 @@ it('loads stored and default reference targets once for a complete batch', funct
     DB::flushQueryLog();
     $result = app(ListAuthorizedOwnersMetafieldsContract::class)->execute($owners);
     $budget = count(DB::getQueryLog());
-    expect($budget)->toBe(9);
+    expect($budget)->toBe(8);
     foreach ($result->owners->{TestMetafieldOwner::class} as $fields) {
         $byId = collect($fields->fields)->keyBy('definitionId');
         expect($byId[$stored->id]->value)->toBe((string) $target->getKey())
