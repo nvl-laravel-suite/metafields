@@ -56,7 +56,7 @@ settings engine, or secret store.
 ## Requirements and dependencies
 
 - PHP 8.4 or newer
-- Laravel 13
+- Laravel 12–13
 - `nvl/core`
 - `nvl/tenancy`
 - `nvl/translatable`
