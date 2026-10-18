@@ -7,7 +7,8 @@ namespace Nvl\Metafields\Services\MetafieldDefinitions;
 use Nvl\Metafields\Data\MetafieldDefinitionMutationPayload;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\MetafieldDefinition;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
+use Nvl\Support\Ownership\Contracts\OwnershipWriter;
 use Nvl\Translatable\Services\TranslationWriter;
 use Spatie\LaravelData\Optional;
 
@@ -21,7 +22,7 @@ final readonly class MetafieldDefinitionWriter
      */
     public function __construct(
         private TranslationWriter $translations,
-        private TenantBoundary $boundary,
+        private OwnershipWriter $ownershipWriter,
     ) {}
 
     /**
@@ -39,13 +40,14 @@ final readonly class MetafieldDefinitionWriter
      */
     public function createImported(MetafieldDefinitionMutationPayload $data, array $provenance): MetafieldDefinition
     {
-        $definition = new MetafieldDefinition($this->payload($data, true));
-        $definition->forceFill([
-            ...$this->boundary->attributes('metafields.definitions'),
-            ...$provenance,
-        ]);
-        $this->syncDefaultValue($definition, $data);
-        $definition->save();
+        $definition = $this->ownershipWriter->create(MetafieldModelRegistry::modelClass(), function (array $ownership) use ($data, $provenance): MetafieldDefinition {
+            $definition = MetafieldModelRegistry::newInstance($this->payload($data, true));
+            $definition->forceFill([...$provenance, ...$ownership]);
+            $this->syncDefaultValue($definition, $data);
+            $definition->save();
+
+            return $definition;
+        });
         $this->syncTranslations($definition, $data);
 
         return $definition->load('translations');

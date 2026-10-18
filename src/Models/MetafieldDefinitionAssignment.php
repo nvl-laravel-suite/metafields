@@ -12,7 +12,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Nvl\Metafields\Database\Factories\MetafieldDefinitionAssignmentFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Support\Config\PackageStorage;
+use Nvl\Support\Ownership\Contracts\Ownable;
+use Nvl\Support\Ownership\Traits\HasOwnership;
 
 /**
  * @property string $id
@@ -29,13 +32,14 @@ use Nvl\Support\Config\PackageStorage;
  *
  * @api
  */
-class MetafieldDefinitionAssignment extends Model
+class MetafieldDefinitionAssignment extends Model implements Ownable
 {
     use GuardsTenantOwnership;
 
     /** @use HasFactory<MetafieldDefinitionAssignmentFactory> */
     use HasFactory;
 
+    use HasOwnership;
     use HasUuids;
     use SoftDeletes;
 
@@ -76,7 +80,7 @@ class MetafieldDefinitionAssignment extends Model
      */
     public function definition(): BelongsTo
     {
-        return $this->belongsTo(MetafieldDefinition::class, 'definition_id');
+        return $this->belongsTo(MetafieldModelRegistry::modelClass(), 'definition_id');
     }
 
     /** Resolve the configured package storage table. */

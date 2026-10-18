@@ -9,6 +9,7 @@ use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Support\ModelIdentifier;
+use Nvl\Support\Ownership\Contracts\OwnershipWriter;
 use Nvl\Translatable\Enums\TranslationSyncMode;
 use Nvl\Translatable\Services\TranslationWriter;
 
@@ -22,6 +23,7 @@ final readonly class OwnerMetafieldRecordWriter
      */
     public function __construct(
         private TranslationWriter $translations,
+        private OwnershipWriter $ownershipWriter,
     ) {}
 
     /**
@@ -114,10 +116,14 @@ final readonly class OwnerMetafieldRecordWriter
                 'metafieldable_type' => $owner->getMorphClass(),
             ]);
             $tenant = $owner->getAttribute('tenant_id');
-            if (is_string($tenant) && $tenant !== '') {
+            if (config('nvl-tenancy.enabled') === true && is_string($tenant) && $tenant !== '') {
                 $metafield->forceFill(['tenant_id' => $tenant]);
             }
-            $metafield->save();
+            $this->ownershipWriter->create(Metafield::class, static function (array $ownership) use ($metafield): Metafield {
+                $metafield->forceFill($ownership)->save();
+
+                return $metafield;
+            });
 
             return $metafield;
         }

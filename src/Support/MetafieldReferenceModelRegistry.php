@@ -8,6 +8,7 @@ use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
+use Nvl\Support\OwnerRegistry;
 
 /**
  * Resolves and validates model classes that reference metafields may target.
@@ -40,6 +41,7 @@ final class MetafieldReferenceModelRegistry
             $modelClass = $configuration['model'] ?? null;
 
             if (is_string($modelClass) && self::isResolvableModelClass($modelClass)) {
+                $modelClass = Container::getInstance()->make(OwnerRegistry::class)->reference($modelClass, "metafields.references.{$alias}.model");
                 if (isset($modelAliases[$modelClass]) && $modelAliases[$modelClass] !== $alias) {
                     throw new InvalidArgumentException(
                         "The metafield reference model [{$modelClass}] is already registered as [{$modelAliases[$modelClass]}].",
@@ -70,6 +72,7 @@ final class MetafieldReferenceModelRegistry
             }
 
             $normalizedAlias = trim($alias);
+            $modelClass = Container::getInstance()->make(OwnerRegistry::class)->reference($modelClass, "metafields.references.{$normalizedAlias}.model");
 
             if (isset($models[$normalizedAlias]) && $models[$normalizedAlias] !== $modelClass) {
                 throw new InvalidArgumentException(

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\Metafields;
 
-use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Metafields\Contracts\MetafieldBatchAuthorization;
@@ -13,12 +12,12 @@ use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Exceptions\MetafieldBatchReadException;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Ownership\MetafieldOwnership;
 use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
 use Nvl\Support\Owners\OwnerBatch;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
 /** Canonical bounded reference facts retain host scopes and target SQL visibility. */
 final readonly class MetafieldBatchReferenceLoader
@@ -26,9 +25,7 @@ final readonly class MetafieldBatchReferenceLoader
     /** Retain scoped boundary and query-free policy dependencies. */
     public function __construct(
         private MetafieldBatchAuthorization $policy,
-        private Repository $configuration,
-        private TenantResourceRegistry $resources,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
     ) {}
 
     /**
@@ -61,8 +58,8 @@ final readonly class MetafieldBatchReferenceLoader
             }
             $query = $prototype->newQuery()->withoutEagerLoads();
             MetafieldOwnerPredicate::identifiers($query, $prototype->getQualifiedKeyName(), array_map(strval(...), array_keys($ids)));
-            if ($this->configuration->get('nvl-tenancy.enabled') === true) {
-                $this->boundary->query($query, $this->resources->forModel($prototype)->key);
+            if (MetafieldOwnership::active()) {
+                $this->boundary->query($query, MetafieldOwnership::resource($prototype));
             }
             $query->where(fn (Builder $nested) => $this->policy->scopeReferenceTargets($nested, $alias, $owners));
             foreach ($query->get() as $target) {

@@ -11,11 +11,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Nvl\Metafields\Database\Factories\MetafieldDefinitionTranslationFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Support\Config\PackageStorage;
+use Nvl\Support\Ownership\Contracts\Ownable;
+use Nvl\Support\Ownership\Traits\HasOwnership;
 
 /**
  * Stores localized definition copy and defaults for one metafield locale.
  *
+ * @property string|null $owner_scope_key Canonical technical partition when adopted
  * @property string $id
  * @property string|null $tenant_id Canonical definition tenant UUID
  * @property string|null $ownership_key Canonical definition partition identity
@@ -32,13 +36,14 @@ use Nvl\Support\Config\PackageStorage;
  *
  * @nvl-consumer-read id
  */
-final class MetafieldDefinitionTranslation extends Model
+final class MetafieldDefinitionTranslation extends Model implements Ownable
 {
     use GuardsTenantOwnership;
 
     /** @use HasFactory<MetafieldDefinitionTranslationFactory> */
     use HasFactory;
 
+    use HasOwnership;
     use HasUuids;
 
     public const string TABLE = MetafieldsTables::DefinitionsI18n;
@@ -74,7 +79,7 @@ final class MetafieldDefinitionTranslation extends Model
      */
     public function definition(): BelongsTo
     {
-        return $this->belongsTo(MetafieldDefinition::class, 'metafield_definition_id');
+        return $this->belongsTo(MetafieldModelRegistry::modelClass(), 'metafield_definition_id');
     }
 
     /** Resolve the configured package storage table. */

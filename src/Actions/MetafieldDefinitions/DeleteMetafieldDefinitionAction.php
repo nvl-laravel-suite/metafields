@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Actions\MetafieldDefinitions;
 
-use Illuminate\Support\Facades\DB;
 use Nvl\Metafields\Contracts\DeleteMetafieldDefinitionContract;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionRemover;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 
 /**
  * DeleteMetafieldDefinitionAction
@@ -31,11 +31,11 @@ final class DeleteMetafieldDefinitionAction implements DeleteMetafieldDefinition
         int $expectedRevision,
         bool $deleteValues = false,
     ): bool {
-        return DB::transaction(function () use ($definition, $deleteValues, $expectedRevision): bool {
+        return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($definition, $deleteValues, $expectedRevision): bool {
             $definitionId = $definition instanceof MetafieldDefinition
                 ? $definition->id
                 : $definition;
-            $definition = MetafieldDefinition::query()
+            $definition = MetafieldModelRegistry::query()
                 ->lockForUpdate()
                 ->findOrFail($definitionId);
 

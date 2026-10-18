@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 
 /**
  * MetafieldDefinitionCatalog
@@ -23,7 +24,7 @@ final class MetafieldDefinitionCatalog
     public function list(): Collection
     {
         /** @var Collection<int, MetafieldDefinition> $definitions */
-        $definitions = MetafieldDefinition::query()
+        $definitions = MetafieldModelRegistry::query()
             ->active()
             ->whereHas('assignments', static function (Builder $query): void {
                 $query->whereRaw('is_active = ?', [true]);
@@ -45,7 +46,7 @@ final class MetafieldDefinitionCatalog
     public function findByHandle(string $handle): ?MetafieldDefinition
     {
         /** @var MetafieldDefinition|null $definition */
-        $definition = MetafieldDefinition::query()
+        $definition = MetafieldModelRegistry::query()
             ->active()
             ->with('translations')
             ->where('active_handle', $handle)
@@ -68,7 +69,7 @@ final class MetafieldDefinitionCatalog
         }
 
         /** @var Collection<string, string> $definitionIdsByHandle */
-        $definitionIdsByHandle = MetafieldDefinition::query()
+        $definitionIdsByHandle = MetafieldModelRegistry::query()
             ->active()
             ->whereIn('active_handle', $handles)
             ->pluck('id', 'active_handle');

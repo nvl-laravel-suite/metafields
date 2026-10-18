@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Actions\MetafieldDefinitions;
 
-use Illuminate\Support\Facades\DB;
 use Nvl\Metafields\Contracts\UpdateMetafieldDefinitionContract;
 use Nvl\Metafields\Data\UpdateMetafieldDefinitionPayload;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
@@ -12,6 +11,7 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionAssignmentSyncer;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionMutationGuard;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionWriter;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 
 /**
  * UpdateMetafieldDefinitionAction
@@ -35,11 +35,11 @@ final class UpdateMetafieldDefinitionAction implements UpdateMetafieldDefinition
         MetafieldDefinition|string $definition,
         UpdateMetafieldDefinitionPayload $data,
     ): MetafieldDefinition {
-        return DB::transaction(function () use ($definition, $data): MetafieldDefinition {
+        return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($definition, $data): MetafieldDefinition {
             $definitionId = $definition instanceof MetafieldDefinition
                 ? $definition->id
                 : $definition;
-            $definition = MetafieldDefinition::query()
+            $definition = MetafieldModelRegistry::query()
                 ->lockForUpdate()
                 ->findOrFail($definitionId);
 

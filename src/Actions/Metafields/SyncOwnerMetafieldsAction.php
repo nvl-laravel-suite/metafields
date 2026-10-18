@@ -14,6 +14,7 @@ use Nvl\Metafields\Events\MetafieldsSynced;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Services\Metafields\MetafieldOwnerModelResolver;
 use Nvl\Metafields\Services\Metafields\OwnerMetafieldAssignmentCatalog;
 use Nvl\Metafields\Services\Metafields\OwnerMetafieldRecordFinder;
@@ -86,7 +87,7 @@ final class SyncOwnerMetafieldsAction implements SyncOwnerMetafieldsContract
             $ownerDefinitionIds = $ownerAssignments->keys()->all();
             sort($ownerDefinitionIds);
 
-            MetafieldDefinition::query()
+            MetafieldModelRegistry::query()
                 ->active()
                 ->whereKey($ownerDefinitionIds)
                 ->orderBy('id')

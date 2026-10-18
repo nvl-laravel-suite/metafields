@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Models;
 
+use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,11 @@ use Illuminate\Support\Carbon;
 use Nvl\Metafields\Database\Factories\MetafieldDefinitionTenantGrantFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
+use Nvl\Metafields\Tenancy\LegacyMetafieldGrantPersistence;
 use Nvl\Support\Config\PackageStorage;
+use Nvl\Support\Ownership\Contracts\Ownable;
+use Nvl\Support\Ownership\Traits\HasOwnership;
 
 /**
  * Records revocable permission for one tenant to copy one platform definition.
@@ -28,14 +33,23 @@ use Nvl\Support\Config\PackageStorage;
  *
  * @api
  */
-final class MetafieldDefinitionTenantGrant extends Model
+class MetafieldDefinitionTenantGrant extends Model implements Ownable
 {
     use GuardsTenantOwnership;
 
     /** @use HasFactory<MetafieldDefinitionTenantGrantFactory> */
     use HasFactory;
 
+    use HasOwnership { save as private saveOwned; }
     use HasUuids;
+
+    /** Preserve the bounded V1 platform grant workflow and enforce every adopted write.
+     * @param  array<string,mixed>  $options
+     */
+    public function save(array $options = []): bool
+    {
+        return Container::getInstance()->make(LegacyMetafieldGrantPersistence::class)->save($this, fn (): bool => parent::save($options), fn (): bool => $this->saveOwned($options));
+    }
 
     public const string TABLE = MetafieldsTables::TenantGrants;
 
@@ -47,7 +61,7 @@ final class MetafieldDefinitionTenantGrant extends Model
     /** @return BelongsTo<MetafieldDefinition, $this> */
     public function definition(): BelongsTo
     {
-        return $this->belongsTo(MetafieldDefinition::class, 'definition_id')->withTrashed();
+        return $this->belongsTo(MetafieldModelRegistry::modelClass(), 'definition_id')->withTrashed();
     }
 
     /** @return array<string, string> */

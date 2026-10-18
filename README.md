@@ -697,3 +697,28 @@ The table lists enum discriminators, including any successful codes retained for
 Released under the [MIT License](LICENSE).
 
 Owner capability relations `metafields()`, `comments()`, `nvlMediaAssociations()` and `termables()` are enforced statically, not at runtime. They remain ordinary Eloquent relations for package internals. Enable `vendor/nvl/core/support/consumer-audit.neon` in the host PHPStan configuration, and use public workflow contracts and batch readers in consumer code. The static rules do not replace runtime authorization.
+
+### Optional ownership and model replacement
+
+Configure `nvl-metafields.models.definition` with a concrete `MetafieldDefinition` subclass.
+The base remains unscoped. An owning subclass returns `OwnershipDefinition::column(Company::class,
+'company_id')` or an exclusive native `OwnershipDefinition::pivot(...)`. Supply that native FK or
+pivot in a host migration, and list canonical host resource keys such as `app.subjects` in
+`nvl-metafields.ownership.owner_resources`. Values inherit their actual host; assignments and
+locale rows inherit their canonical parent. Definitions and references must satisfy the same
+owner boundary. Base-class capability declarations resolve through Core's native identity registry.
+
+Use the optional `nvl/ownership` runtime and the reviewed `metafields` adapter for existing data.
+It preserves legacy identities, checks reference/default ownership, restores canonical foreign keys
+from released tenancy schemas, and activates native constraints only after complete verification.
+Removing the runtime or disabling enforcement never makes adopted rows global. Definition Actions
+transact on the package's actual source connection, including translations and assignments.
+
+Central schemas require an owning subclass that explicitly returns `true` from
+`allowsCentralCatalog()`. Bind `MetafieldCatalogAccess` for grant administration; its default denies.
+`MetafieldOwnerCatalog::grant()` targets the admitted recipient and exact source revision.
+Inspect and import only that grant through the existing import DTO/Action or `persist()` inside the
+actual source transaction. Imports recheck revocation, revision, tuple and idempotency, create
+independent copies, and require complete recipient reference mappings. A later revocation blocks
+new copies and retains committed ones. Historical Tenancy APIs remain a compatibility boundary
+until an explicit ownership cutover.

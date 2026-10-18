@@ -16,9 +16,16 @@ use Nvl\Metafields\Database\Factories\MetafieldFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
+use Nvl\Metafields\Ownership\MetafieldGraphOwnership;
+use Nvl\Metafields\Ownership\MetafieldOwnership;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
 use Nvl\Support\Config\PackageStorage;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\Ownable;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipModelPersistence;
+use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
+use Nvl\Support\Ownership\Traits\HasOwnership;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 use Nvl\Translatable\Contracts\TranslatableModel;
 use Nvl\Translatable\Enums\TranslationMutationPolicy;
@@ -31,6 +38,7 @@ use Nvl\Translatable\Translatable;
  * Stores the actual value of a metafield for a specific entity.
  * Supports translatable and non-translatable values, including references.
  *
+ * @property string|null $owner_scope_key Canonical technical partition when adopted
  * @property string $id UUID primary key
  * @property string $tenant_id Canonical tenant UUID inherited from the owner
  * @property string $definition_id Linked definition UUID
@@ -54,16 +62,32 @@ use Nvl\Translatable\Translatable;
  * @nvl-consumer-read created_at
  * @nvl-consumer-read updated_at
  */
-class Metafield extends Model implements TranslatableModel
+class Metafield extends Model implements Ownable, TranslatableModel
 {
     use GuardsTenantOwnership;
 
     /** @use HasFactory<MetafieldFactory> */
     use HasFactory;
 
+    use HasOwnership { save as private saveOwned; }
     use HasUuids;
     use SoftDeletes;
     use Translatable;
+
+    /** Keep graph validation inside the canonical persistence lease, including quiet writes.
+     * @param  array<string,mixed>  $options
+     */
+    public function save(array $options = []): bool
+    {
+        return Container::getInstance()->make(OwnershipModelPersistence::class)->save($this, function () use ($options): bool {
+            $guard = Container::getInstance()->make(MetafieldGraphOwnership::class);
+            $guard->assertWrite($this);
+            $saved = parent::save($options);
+            $guard->assertWrite($this);
+
+            return $saved;
+        });
+    }
 
     public const string TABLE = MetafieldsTables::Metafields;
 
@@ -131,7 +155,7 @@ class Metafield extends Model implements TranslatableModel
      */
     public function definition(): BelongsTo
     {
-        return $this->belongsTo(MetafieldDefinition::class, 'definition_id');
+        return $this->belongsTo(MetafieldModelRegistry::modelClass(), 'definition_id');
     }
 
     /**
@@ -201,9 +225,27 @@ class Metafield extends Model implements TranslatableModel
     /** Reject mismatched loaded parent and locale rows before exposing values. */
     private function assertLoadedGraphOwnership(): void
     {
-        Container::getInstance()->make(TenantBoundary::class)->assertRecord($this, 'metafields.values');
+        Container::getInstance()->make(OwnershipBoundary::class)->assertRecord($this, 'metafields.values');
+        if (MetafieldOwnership::declared()) {
+            $boundary = Container::getInstance()->make(OwnershipBoundary::class);
+            $boundary->assertRecord($this->definition, 'metafields.definitions');
+            if ($this->definition->id !== $this->definition_id) {
+                throw new OwnershipViolation('A loaded Metafield definition differs from its persisted schema.');
+            }
+            if ($this->relationLoaded('translations')) {
+                foreach ($this->translations as $translation) {
+                    $boundary->assertRecord($translation, 'metafields.value-translations');
+                    if ($translation->getAttribute('metafield_id') !== $this->id) {
+                        throw new OwnershipViolation('A loaded locale row differs from its canonical value.');
+                    }
+                }
+            }
+        }
+        if (MetafieldOwnership::declared()) {
+            return;
+        }
         $tenant = $this->getAttribute('tenant_id');
-        Container::getInstance()->make(TenantBoundary::class)->assertRecord($this->definition, 'metafields.definitions');
+        Container::getInstance()->make(OwnershipBoundary::class)->assertRecord($this->definition, 'metafields.definitions');
         if (is_string($tenant) && $this->definition->getAttribute('tenant_id') !== $tenant) {
             throw new TenantBoundaryViolation('A Metafield definition belongs to another tenant.');
         }
@@ -220,6 +262,12 @@ class Metafield extends Model implements TranslatableModel
     private function assertReferenceOwnership(?Model $reference): void
     {
         if (! $reference instanceof Model) {
+            return;
+        }
+        if (MetafieldOwnership::declared()) {
+            Container::getInstance()->make(OwnershipBoundary::class)->assertRecord($reference, MetafieldOwnership::resource($reference));
+        }
+        if (MetafieldOwnership::declared()) {
             return;
         }
         $tenant = $this->getAttribute('tenant_id');

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use InvalidArgumentException;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 
 /**
@@ -50,7 +51,7 @@ final class MetafieldDefinitionAssignmentFactory extends Factory
                 throw new InvalidArgumentException('Definition assignment fixtures require a live owner section.');
             }
             if ($model->getAttribute('definition_id') !== null) {
-                $parent = MetafieldDefinition::query()->findOrFail(FactoryGuard::identifier($model->getAttribute('definition_id')));
+                $parent = MetafieldModelRegistry::query()->findOrFail(FactoryGuard::identifier($model->getAttribute('definition_id')));
                 FactoryGuard::parent($parent, $model);
                 FactoryGuard::inherit($model, $parent, true);
             }

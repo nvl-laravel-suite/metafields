@@ -7,6 +7,7 @@ namespace Nvl\Metafields\Database\Factories;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 
 /**
  * Builds native package fixture rows and declared parents.
@@ -18,6 +19,12 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 final class MetafieldDefinitionFactory extends Factory
 {
     protected $model = MetafieldDefinition::class;
+
+    /** @return class-string<MetafieldDefinition> */
+    public function modelName(): string
+    {
+        return MetafieldModelRegistry::modelClass();
+    }
 
     /**
      * Prepare native parent and owner facts after Laravel expands relationships.

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\Metafields;
 
-use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -13,12 +12,13 @@ use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Exceptions\MetafieldBatchReadException;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Ownership\MetafieldOwnership;
 use Nvl\Metafields\Relations\NumericMetafieldComparison;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
 /** Compares stored scalar values with exact correlated owner identities. */
 final readonly class OwnerMetafieldQueryAdapter
@@ -26,9 +26,7 @@ final readonly class OwnerMetafieldQueryAdapter
     /** Retain explicit capability and active ownership dependencies. */
     public function __construct(
         private MetafieldOwnerRegistry $registry,
-        private Repository $configuration,
-        private TenantResourceRegistry $resources,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
     ) {}
 
     /**
@@ -61,10 +59,10 @@ final readonly class OwnerMetafieldQueryAdapter
             }
             $query->whereNull($column);
         }
-        if ($this->configuration->get('nvl-tenancy.enabled') === true) {
-            $this->boundary->query($query, $this->resources->forModel($prototype)->key);
+        if (MetafieldOwnership::active()) {
+            $this->boundary->query($query, MetafieldOwnership::resource($prototype));
         }
-        $definition = MetafieldDefinition::query()->active()->where('active_handle', $handle)->where('is_filterable', true)->first();
+        $definition = MetafieldModelRegistry::query()->active()->where('active_handle', $handle)->where('is_filterable', true)->first();
         if (! $definition instanceof MetafieldDefinition) {
             throw new MetafieldBatchReadException('whereNvlMetafield requires an active filterable definition.');
         }

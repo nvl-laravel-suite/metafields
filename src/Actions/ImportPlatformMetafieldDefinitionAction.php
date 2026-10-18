@@ -9,8 +9,8 @@ use Nvl\Metafields\Data\ImportPlatformMetafieldDefinitionData;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionCatalogReader;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionImporter;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Support\Tenancy\Services\EffectiveTenantConnection;
 
 /**
  * Imports a granted platform definition as one independent tenant schema.
@@ -23,7 +23,6 @@ final readonly class ImportPlatformMetafieldDefinitionAction implements ImportPl
     public function __construct(
         private MetafieldDefinitionCatalogReader $reader,
         private MetafieldDefinitionImporter $importer,
-        private EffectiveTenantConnection $connections,
     ) {}
 
     /** Import the exact requested grant/source revision atomically. */
@@ -35,7 +34,7 @@ final readonly class ImportPlatformMetafieldDefinitionAction implements ImportPl
             throw new TenantBoundaryViolation('The requested Metafield catalog revision is stale.');
         }
 
-        return $this->connections->core()->transaction(
+        return MetafieldModelRegistry::newInstance()->getConnection()->transaction(
             fn (): MetafieldDefinition => $this->importer->persist($snapshot, $data),
         );
     }

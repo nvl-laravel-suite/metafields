@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Actions\MetafieldDefinitions;
 
-use Illuminate\Support\Facades\DB;
 use Nvl\Metafields\Contracts\CreateMetafieldDefinitionContract;
 use Nvl\Metafields\Data\CreateMetafieldDefinitionPayload;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionAssignmentSyncer;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionWriter;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 
 /**
  * CreateMetafieldDefinitionAction
@@ -30,7 +30,7 @@ final class CreateMetafieldDefinitionAction implements CreateMetafieldDefinition
      */
     public function execute(CreateMetafieldDefinitionPayload $data): MetafieldDefinition
     {
-        return DB::transaction(function () use ($data) {
+        return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($data) {
             $definition = $this->writer->create($data);
             $this->assignmentSyncer->sync($definition, $data->assignment);
 

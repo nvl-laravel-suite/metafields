@@ -12,6 +12,8 @@ use Nvl\Metafields\Database\Factories\MetafieldTranslationFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
 use Nvl\Support\Config\PackageStorage;
+use Nvl\Support\Ownership\Contracts\Ownable;
+use Nvl\Support\Ownership\Traits\HasOwnership;
 
 /**
  * MetafieldTranslation Model
@@ -29,13 +31,14 @@ use Nvl\Support\Config\PackageStorage;
  *
  * @nvl-consumer-read id
  */
-class MetafieldTranslation extends Model
+class MetafieldTranslation extends Model implements Ownable
 {
     use GuardsTenantOwnership;
 
     /** @use HasFactory<MetafieldTranslationFactory> */
     use HasFactory;
 
+    use HasOwnership;
     use HasUuids;
 
     public const string TABLE = MetafieldsTables::I18n;

@@ -4,22 +4,22 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\Metafields;
 
-use Illuminate\Contracts\Config\Repository;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use Nvl\Metafields\Models\Metafield;
+use Nvl\Metafields\Ownership\MetafieldOwnership;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
 /** Resolves reference records through their registered canonical tenant boundary. */
 final readonly class MetafieldReferenceRecordResolver
 {
     /** Create the canonical reference resolver. */
     public function __construct(
-        private TenantResourceRegistry $resources,
-        private TenantBoundary $boundary,
-        private Repository $configuration,
+        private OwnershipBoundary $boundary,
     ) {}
 
     /** Resolve an exact reference alias and identifier or fail closed. */
@@ -27,15 +27,20 @@ final readonly class MetafieldReferenceRecordResolver
     {
         $models = MetafieldReferenceModelRegistry::all();
         $class = is_string($alias) ? ($models[$alias] ?? null) : null;
-        $id = is_string($identifier) || is_int($identifier) ? trim((string) $identifier) : '';
+        $id = is_string($identifier) || is_int($identifier) ? (MetafieldOwnership::declared() ? (string) $identifier : trim((string) $identifier)) : '';
         if (! is_string($class) || $id === '') {
             return null;
         }
         $model = new $class;
-        $query = $model->newQueryWithoutScopes()->whereKey($id);
-        if ($this->configuration->get('nvl-tenancy.enabled') === true) {
-            $resource = $this->resources->forModel($model);
-            $this->boundary->query($query, $resource->key);
+        $traits = class_uses_recursive($model);
+        if ((in_array(HasUuids::class, $traits, true) && ! Str::isUuid($id))
+            || (in_array(HasUlids::class, $traits, true) && ! Str::isUlid($id))) {
+            return null;
+        }
+        $query = $model->newQuery()->whereKey($id);
+        if (MetafieldOwnership::active()) {
+            $resource = MetafieldOwnership::resource($model);
+            $this->boundary->query($query, $resource);
         }
         if ($lock) {
             $query->lockForUpdate();
@@ -43,6 +48,13 @@ final readonly class MetafieldReferenceRecordResolver
         $reference = $query->first();
         if ($reference instanceof Model && $reference->getConnection() !== (new Metafield)->getConnection()) {
             throw new TenantBoundaryViolation('Metafield references must use the canonical tenant connection.');
+        }
+
+        if (MetafieldOwnership::declared() && $reference instanceof Model) {
+            $key = $reference->getKey();
+            if ((! is_int($key) && ! is_string($key)) || (string) $key !== $id) {
+                return null;
+            }
         }
 
         return $reference;

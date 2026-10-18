@@ -7,6 +7,7 @@ namespace Nvl\Metafields\Database\Factories;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 
 /**
  * Builds MetafieldDefinitionTranslation fixture rows and their declared package parents.
@@ -38,7 +39,7 @@ final class MetafieldDefinitionTranslationFactory extends Factory
             }
 
             if ($model->getAttribute('metafield_definition_id') !== null) {
-                $parent = MetafieldDefinition::query()->findOrFail(FactoryGuard::identifier($model->getAttribute('metafield_definition_id')));
+                $parent = MetafieldModelRegistry::query()->findOrFail(FactoryGuard::identifier($model->getAttribute('metafield_definition_id')));
                 FactoryGuard::parent($parent, $model);
                 FactoryGuard::inherit($model, $parent, true);
             }

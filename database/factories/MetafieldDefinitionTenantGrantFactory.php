@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use InvalidArgumentException;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Support\Tenancy\ValueObjects\TenantId;
 
 /**
@@ -40,7 +41,7 @@ final class MetafieldDefinitionTenantGrantFactory extends Factory
             }
 
             if ($model->getAttribute('definition_id') !== null) {
-                $parent = MetafieldDefinition::query()->findOrFail(FactoryGuard::identifier($model->getAttribute('definition_id')));
+                $parent = MetafieldModelRegistry::query()->findOrFail(FactoryGuard::identifier($model->getAttribute('definition_id')));
                 FactoryGuard::parent($parent, $model);
                 if ($model->source_revision !== $parent->revision) {
                     throw new InvalidArgumentException('Fixture source revisions must match their exact persisted parent.');
@@ -67,7 +68,7 @@ final class MetafieldDefinitionTenantGrantFactory extends Factory
         return [
             'definition_id' => MetafieldDefinition::factory(),
             'tenant_id' => null,
-            'source_revision' => fn (array $attributes): int => $attributes['definition_id'] === null ? 1 : MetafieldDefinition::query()->findOrFail(FactoryGuard::identifier($attributes['definition_id']))->revision,
+            'source_revision' => fn (array $attributes): int => $attributes['definition_id'] === null ? 1 : MetafieldModelRegistry::query()->findOrFail(FactoryGuard::identifier($attributes['definition_id']))->revision,
             'revision' => 1,
             'enabled' => true,
         ];

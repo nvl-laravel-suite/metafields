@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Actions\MetafieldDefinitions;
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Nvl\Metafields\Contracts\ArchiveMetafieldDefinitionContract;
 use Nvl\Metafields\Data\ArchiveMetafieldDefinitionPayload;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 
 /**
  * Archives or restores a definition while preserving historical values.
@@ -25,11 +25,11 @@ final class ArchiveMetafieldDefinitionAction implements ArchiveMetafieldDefiniti
         MetafieldDefinition|string $definition,
         ArchiveMetafieldDefinitionPayload $data,
     ): MetafieldDefinition {
-        return DB::transaction(function () use ($definition, $data): MetafieldDefinition {
+        return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($definition, $data): MetafieldDefinition {
             $definitionId = $definition instanceof MetafieldDefinition
                 ? $definition->id
                 : $definition;
-            $definition = MetafieldDefinition::query()
+            $definition = MetafieldModelRegistry::query()
                 ->lockForUpdate()
                 ->findOrFail($definitionId);
 
@@ -40,7 +40,7 @@ final class ArchiveMetafieldDefinitionAction implements ArchiveMetafieldDefiniti
                 );
             }
 
-            if (! $data->archived && MetafieldDefinition::query()
+            if (! $data->archived && MetafieldModelRegistry::query()
                 ->active()
                 ->where('active_handle', $definition->handle)
                 ->where('id', '!=', $definition->id)

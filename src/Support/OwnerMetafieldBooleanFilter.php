@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model as EloquentModel;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 
 /**
  * Applies owner metafield boolean constraints using Metafields storage rules.
@@ -70,7 +71,7 @@ final class OwnerMetafieldBooleanFilter
      */
     private static function booleanDefinition(string $handle): ?MetafieldDefinition
     {
-        return MetafieldDefinition::query()
+        return MetafieldModelRegistry::query()
             ->active()
             ->where('active_handle', $handle)
             ->where('type', MetafieldTypeEnum::Boolean->value)

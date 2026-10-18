@@ -31,7 +31,7 @@ final readonly class RevokeMetafieldDefinitionTenantGrantAction implements Revok
         }
 
         return (new MetafieldDefinitionTenantGrant)->getConnection()->transaction(function () use ($grantId, $expectedRevision): MetafieldDefinitionTenantGrant {
-            $identity = MetafieldDefinitionTenantGrant::withoutGlobalScope('tenant')->whereKey($grantId)->first(['tenant_id', 'definition_id']);
+            $identity = MetafieldDefinitionTenantGrant::withoutGlobalScopes()->whereKey($grantId)->first(['tenant_id', 'definition_id']);
             if (! $identity instanceof MetafieldDefinitionTenantGrant) {
                 throw new TenantBoundaryViolation('The Metafield grant revision is unavailable.');
             }
@@ -45,7 +45,7 @@ final readonly class RevokeMetafieldDefinitionTenantGrantAction implements Revok
                 ->where('tenant_id', $identity->tenant_id)
                 ->where('definition_id', $identity->definition_id)
                 ->lockForUpdate()->first();
-            $grant = MetafieldDefinitionTenantGrant::withoutGlobalScope('tenant')->whereKey($grantId)->lockForUpdate()->first();
+            $grant = MetafieldDefinitionTenantGrant::withoutGlobalScopes()->whereKey($grantId)->lockForUpdate()->first();
             if (! $grant instanceof MetafieldDefinitionTenantGrant || ! $grant->enabled || $grant->revision !== $expectedRevision) {
                 throw new TenantBoundaryViolation('The Metafield grant revision is unavailable.');
             }

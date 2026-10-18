@@ -15,6 +15,9 @@ use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
+use Nvl\Metafields\Ownership\MetafieldOwnerCatalog;
+use Nvl\Metafields\Ownership\MetafieldOwnership;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
 use Nvl\Support\Tenancy\Contracts\TenantContext;
 use Nvl\Support\Tenancy\Contracts\TenantDirectory;
@@ -35,11 +38,15 @@ final readonly class MetafieldDefinitionImporter
         private TenantContext $context,
         private TenantDirectory $directory,
         private EffectiveTenantConnection $connections,
+        private MetafieldOwnerCatalog $catalog,
     ) {}
 
     /** Persist one authorized definition copy in the caller's transaction. */
     public function persist(MetafieldDefinitionCatalogSnapshot $source, ImportPlatformMetafieldDefinitionData $data): MetafieldDefinition
     {
+        if (MetafieldOwnership::declared()) {
+            return $this->catalog->persist($source, $data);
+        }
         $connection = $this->connection();
         $tenant = $this->context->requireTenant();
         if ($connection->transactionLevel() < 1 || ! Str::isUuid($data->idempotencyKey)
@@ -62,9 +69,9 @@ final readonly class MetafieldDefinitionImporter
             ->where('tenant_id', $tenant->value)
             ->where('definition_id', $source->sourceId)
             ->lockForUpdate()->first();
-        $grant = MetafieldDefinitionTenantGrant::withoutGlobalScope('tenant')
+        $grant = MetafieldDefinitionTenantGrant::withoutGlobalScopes()
             ->whereKey($source->grantId)->where('tenant_id', $tenant->value)->lockForUpdate()->first();
-        $platform = MetafieldDefinition::withoutGlobalScope('tenant')
+        $platform = MetafieldModelRegistry::query()->withoutGlobalScopes()
             ->whereKey($source->sourceId)->whereNull('tenant_id')->where('ownership_key', 'platform')->lockForUpdate()->first();
         $connection->table(MetafieldsTables::get(MetafieldsTables::DefinitionAssignments))
             ->where('definition_id', $source->sourceId)->orderBy('id')->lockForUpdate()->get();
@@ -90,7 +97,7 @@ final readonly class MetafieldDefinitionImporter
             $data->assignment->toArray(),
             $referenceHash,
         ], JSON_THROW_ON_ERROR));
-        $existing = MetafieldDefinition::query()->where('catalog_import_key', $data->idempotencyKey)->lockForUpdate()->first();
+        $existing = MetafieldModelRegistry::query()->where('catalog_import_key', $data->idempotencyKey)->lockForUpdate()->first();
         if ($existing instanceof MetafieldDefinition) {
             if ($existing->catalog_source_id !== $source->sourceId
                 || $existing->catalog_source_revision !== $source->sourceRevision
@@ -103,7 +110,7 @@ final readonly class MetafieldDefinitionImporter
         }
         $mappedDefault = $this->mappedDefault($source, $sourceReferenceIds, $referenceHash);
         $handle = MetafieldDefinition::generateHandle($data->namespace, $data->key);
-        if (MetafieldDefinition::query()->active()->where('active_handle', $handle)->exists()) {
+        if (MetafieldModelRegistry::query()->active()->where('active_handle', $handle)->exists()) {
             throw new TenantBoundaryViolation('The requested Metafield definition handle is already in use.');
         }
 

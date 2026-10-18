@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\Metafields;
 
-use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -19,16 +18,17 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
 use Nvl\Metafields\Models\MetafieldTranslation;
+use Nvl\Metafields\Ownership\MetafieldOwnership;
 use Nvl\Metafields\Relations\ExactOwnerTextColumn;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Support\Contracts\LocaleCatalog;
 use Nvl\Support\Owners\OwnerBatch;
 use Nvl\Support\Owners\OwnerIdentity;
 use Nvl\Support\Owners\OwnerResultMap;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
 /** Grouped owner admission and bounded SQL-visible assigned field projection. */
 final readonly class OwnerMetafieldBatchReader
@@ -38,9 +38,7 @@ final readonly class OwnerMetafieldBatchReader
         private MetafieldOwnerRegistry $registry,
         private MetafieldBatchAuthorization $policy,
         private MetafieldBatchReferenceLoader $references,
-        private Repository $configuration,
-        private TenantResourceRegistry $resources,
-        private TenantBoundary $boundary,
+        private OwnershipBoundary $boundary,
         private LocaleCatalog $locales,
     ) {}
 
@@ -51,8 +49,8 @@ final readonly class OwnerMetafieldBatchReader
         if ($input->isEmpty()) {
             return $this->result($input, []);
         }
-        $locale = $this->locales->assertSupported($locale ?? (new MetafieldDefinition)->getCurrentLocale());
-        $chain = (new MetafieldDefinition)->translationDefinition()->localeChain($locale, $this->locales->supported());
+        $locale = $this->locales->assertSupported($locale ?? (MetafieldModelRegistry::newInstance())->getCurrentLocale());
+        $chain = (MetafieldModelRegistry::newInstance())->translationDefinition()->localeChain($locale, $this->locales->supported());
         if (count($chain) > 10) {
             throw new MetafieldBatchReadException('Metafield batch reads allow at most ten requested and fallback locales.');
         }
@@ -152,8 +150,8 @@ final readonly class OwnerMetafieldBatchReader
             $prototype = new $class;
             $query = $prototype->newQuery()->withoutEagerLoads();
             MetafieldOwnerPredicate::identifiers($query, $prototype->getQualifiedKeyName(), $ids);
-            if ($this->configuration->get('nvl-tenancy.enabled') === true) {
-                $this->boundary->query($query, $this->resources->forModel($prototype)->key);
+            if (MetafieldOwnership::active()) {
+                $this->boundary->query($query, MetafieldOwnership::resource($prototype));
             }
             foreach ($query->get() as $owner) {
                 $identity = OwnerIdentity::fromModel($owner);

@@ -230,26 +230,32 @@ it('keeps owner reads lock-free while allowing mutation lookups to request row l
     $originalGrammar = $connection->getQueryGrammar();
     $connection->setQueryGrammar(new PostgresGrammar($connection));
 
+    $captured = [];
+    $capturing = true;
+    $table = 'from "'.(new Metafield)->getTable().'"';
+    $connection->beforeExecuting(static function (string $sql) use (&$captured, &$capturing, $table): void {
+        if ($capturing && str_contains($sql, $table)) {
+            $captured[] = $sql;
+            throw new RuntimeException('captured-metafield-lock-sql');
+        }
+    });
     try {
-        $readQueries = $connection->pretend(
-            fn (): mixed => app(OwnerMetafieldRecordFinder::class)->mapCurrentByDefinitionIds(
-                $owner,
-                [$definition->id],
-            ),
-        );
-        $mutationQueries = $connection->pretend(
-            fn (): mixed => app(OwnerMetafieldRecordFinder::class)->mapCurrentByDefinitionIds(
-                $owner,
-                [$definition->id],
-                lockForUpdate: true,
-            ),
-        );
+        foreach ([false, true] as $lock) {
+            try {
+                app(OwnerMetafieldRecordFinder::class)->mapCurrentByDefinitionIds($owner, [$definition->id], lockForUpdate: $lock);
+            } catch (RuntimeException $exception) {
+                if ($exception->getMessage() !== 'captured-metafield-lock-sql') {
+                    throw $exception;
+                }
+            }
+        }
     } finally {
+        $capturing = false;
         $connection->setQueryGrammar($originalGrammar);
     }
-
-    expect(collect($readQueries)->pluck('query')->implode(' '))->not->toContain('for update')
-        ->and(collect($mutationQueries)->pluck('query')->implode(' '))->toContain('for update');
+    expect($captured)->toHaveCount(2)
+        ->and($captured[0])->not->toContain('for update')
+        ->and($captured[1])->toContain('for update');
 });
 
 it('keeps owner field projection queries independent of assigned field count', function (): void {

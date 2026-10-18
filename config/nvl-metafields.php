@@ -1,9 +1,13 @@
 <?php
 
 declare(strict_types=1);
+use Nvl\Metafields\Models\MetafieldDefinition;
 
 /** Complete runtime defaults; publication sections are declared in ../resources/config/sections.json. */
 return [
+    'models' => ['definition' => MetafieldDefinition::class],
+    'ownership' => ['owner_resources' => []],
+
     'name' => 'Metafields',
 
     /*

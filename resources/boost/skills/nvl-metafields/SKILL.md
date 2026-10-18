@@ -137,3 +137,25 @@ Inject the supported focused interfaces and preserve host bindings. Returned mod
 Read docs/events.md and the package README error table. Domain events use schemaVersion=1, model-free facts and actual source-connection commit callbacks; only six declared old Event suffix aliases remain for major 5. Migrate exact listeners/fakes and suffix wildcards, drain old queued payloads, rebuild event cache and restart workers. Delivery is not a durable outbox. The Core exception renderer is opt-in, JSON-only for respondable failures, with exactly message/code/context and host-selected locale. Do not expose diagnostics or reinterpret missing bindings as authorization denial.
 
 Core package logging uses nvl/normal with CSV quiet by default, stable message keys and bounded context; incidents survive quiet. Do not mutate global logger context or log raw row/provider/content/credential payloads. Run only authorized project checks and report new acceptance as pending until actual output exists.
+
+## Optional ownership and configured definitions
+
+Set `nvl-metafields.models.definition` to a concrete base-model subclass declaring a native owner
+column or exclusive primary pivot. Supply native host schema separately, then allowlist canonical
+host resource keys in `nvl-metafields.ownership.owner_resources`. Keep values inherited from their
+host and translations/assignments inherited from their exact parent. Use `MetafieldModelRegistry`
+for package root construction, queries and bindings; Core preserves native morph identities when
+base-class capabilities resolve to configured subclasses. Roots retain required casts, primary
+keys and persistence hooks. No ownership declaration leaves ordinary applications unscoped.
+
+For existing data, use the reviewed package adoption adapter. Verify every root/child mapping,
+reference and default before activation. It restores the released tenancy schema's canonical FKs
+before native owner constraints. Never interpret retained tenant columns as the new authority.
+Definition Actions use the actual source transaction so translation/assignment failures roll back.
+
+Central-copy catalogs require explicit `allowsCentralCatalog()`, host `MetafieldCatalogAccess`
+and recipient-bound `MetafieldOwnerCatalog` grants. Lock and recheck source/grant revisions during
+import; match the complete snapshot/request and total reference map, preserve independent copies
+and immutable provenance, and reject revoked capabilities before replaying. Events capture scalar
+owner/generation envelopes in their constructors. Mixed owned/unscoped deployments still require
+admission; never manufacture a disabled envelope to escape an owned graph.

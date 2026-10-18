@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\Metafields;
 
-use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use Nvl\Metafields\Models\Metafield;
+use Nvl\Metafields\Ownership\MetafieldOwnership;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
-use Nvl\Support\Tenancy\Contracts\TenantBoundary;
+use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
-use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
 /**
  * Resolves configured metafield owner models without leaking persistence into controllers.
@@ -25,9 +24,7 @@ final class MetafieldOwnerModelResolver
      */
     public function __construct(
         private readonly MetafieldOwnerRegistry $ownerRegistry,
-        private readonly TenantResourceRegistry $resources,
-        private readonly TenantBoundary $boundary,
-        private readonly Repository $configuration,
+        private readonly OwnershipBoundary $boundary,
     ) {}
 
     /**
@@ -60,21 +57,21 @@ final class MetafieldOwnerModelResolver
         if ($owner->getConnection() !== (new Metafield)->getConnection()) {
             throw new TenantBoundaryViolation('Metafield owners must use the canonical tenant connection.');
         }
-        if ($this->configuration->get('nvl-tenancy.enabled') !== true && ! $lock) {
+        if (! MetafieldOwnership::active() && ! $lock) {
             return $owner;
         }
 
-        $query = $owner->newQueryWithoutScopes()->whereKey($owner->getKey());
-        if ($this->configuration->get('nvl-tenancy.enabled') === true) {
-            $definition = $this->resources->forModel($owner);
-            $this->boundary->query($query, $definition->key);
+        $query = (new ($owner::class))->newQuery()->whereKey($owner->getKey());
+        if (MetafieldOwnership::active()) {
+            $resource = MetafieldOwnership::resource($owner);
+            $this->boundary->query($query, $resource);
         }
         if ($lock) {
             $query->lockForUpdate();
         }
         $canonical = $query->first();
         if (! $canonical instanceof Model) {
-            if ($this->configuration->get('nvl-tenancy.enabled') === true) {
+            if (MetafieldOwnership::active()) {
                 throw new TenantBoundaryViolation('The metafield owner is unavailable in the current tenant boundary.');
             }
 

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 
 /**
  * Builds native package fixture rows and declared parents.
@@ -41,7 +42,7 @@ final class MetafieldFactory extends Factory
             $owner = FactoryGuard::owner($model, 'metafieldable_type', 'metafieldable_id');
             FactoryGuard::inherit($model, $owner);
             if ($model->getAttribute('definition_id') !== null) {
-                $parent = MetafieldDefinition::query()->findOrFail(FactoryGuard::identifier($model->getAttribute('definition_id')));
+                $parent = MetafieldModelRegistry::query()->findOrFail(FactoryGuard::identifier($model->getAttribute('definition_id')));
                 FactoryGuard::parent($parent, $model);
                 FactoryGuard::inherit($model, $parent);
             }

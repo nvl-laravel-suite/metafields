@@ -6,11 +6,11 @@ namespace Nvl\Metafields\Tenancy;
 
 use Illuminate\Contracts\Config\Repository;
 use Nvl\Metafields\Models\Metafield;
-use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
 use Nvl\Metafields\Models\MetafieldTranslation;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Support\Tenancy\Enums\TenantResourceKind;
 use Nvl\Support\Tenancy\Exceptions\TenantConfigurationInvalid;
 use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
@@ -35,7 +35,7 @@ final readonly class MetafieldTenancyResources
         $platform = $mode === 'platform';
         $resources->registerParentResolver('metafields.values', MetafieldTenantParentResolver::class);
         foreach ([
-            new TenantResourceDefinition('metafields.definitions', 'metafields', MetafieldDefinition::class, allowsPlatformCatalog: $mixed, allowsPlatformRows: $platform),
+            new TenantResourceDefinition('metafields.definitions', 'metafields', MetafieldModelRegistry::modelClass(), allowsPlatformCatalog: $mixed, allowsPlatformRows: $platform),
             new TenantResourceDefinition('metafields.definition-assignments', 'metafields', MetafieldDefinitionAssignment::class, TenantResourceKind::Inherited, 'metafields.definitions', 'definition'),
             new TenantResourceDefinition('metafields.definition-translations', 'metafields', MetafieldDefinitionTranslation::class, TenantResourceKind::Inherited, 'metafields.definitions', 'definition'),
             new TenantResourceDefinition('metafields.values', 'metafields', Metafield::class, TenantResourceKind::Inherited, null, 'metafieldable'),

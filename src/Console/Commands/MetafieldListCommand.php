@@ -6,6 +6,7 @@ namespace Nvl\Metafields\Console\Commands;
 
 use Illuminate\Console\Command;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 
 /**
  * MetafieldListCommand
@@ -35,7 +36,7 @@ final class MetafieldListCommand extends Command
     {
         $namespace = $this->argument('namespace');
 
-        $query = MetafieldDefinition::query()->active();
+        $query = MetafieldModelRegistry::query()->active();
         if ($namespace) {
             $query->where('namespace', $namespace);
         }

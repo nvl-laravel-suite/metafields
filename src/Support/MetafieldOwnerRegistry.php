@@ -211,6 +211,8 @@ final class MetafieldOwnerRegistry
             );
         }
 
+        $modelClass = $this->identities->reference($modelClass, "metafields.owners.{$type}.model");
+
         $label = $configuration['label'] ?? $type;
 
         if (! is_string($label) || trim($label) === '') {

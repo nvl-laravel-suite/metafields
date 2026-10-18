@@ -7,6 +7,7 @@ namespace Nvl\Metafields\Console\Commands;
 use Illuminate\Console\Command;
 use Nvl\Metafields\Actions\MetafieldDefinitions\DeleteMetafieldDefinitionAction;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 
 /**
  * Removes a metafield definition and optionally clears all owner values.
@@ -36,7 +37,7 @@ final class MetafieldDefinitionRemoveCommand extends Command
     public function handle(DeleteMetafieldDefinitionAction $action): int
     {
         $handle = (string) $this->argument('handle');
-        $definition = MetafieldDefinition::query()
+        $definition = MetafieldModelRegistry::query()
             ->active()
             ->where('active_handle', $handle)
             ->first();

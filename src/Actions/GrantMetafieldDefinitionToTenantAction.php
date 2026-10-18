@@ -10,6 +10,7 @@ use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Events\MetafieldDefinitionCatalogGrantAudited;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
+use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Tenancy\Contracts\TenantContext;
 use Nvl\Support\Tenancy\Contracts\TenantDirectory;
@@ -47,7 +48,7 @@ final readonly class GrantMetafieldDefinitionToTenantAction implements GrantMeta
                 ->where('tenant_id', $recipient->value)
                 ->where('definition_id', $definitionId)
                 ->lockForUpdate()->first();
-            $source = MetafieldDefinition::withoutGlobalScope('tenant')
+            $source = MetafieldModelRegistry::query()->withoutGlobalScopes()
                 ->whereKey($definitionId)
                 ->whereNull('tenant_id')
                 ->where('ownership_key', 'platform')
@@ -56,7 +57,7 @@ final readonly class GrantMetafieldDefinitionToTenantAction implements GrantMeta
             if (! $source instanceof MetafieldDefinition || $source->revision !== $sourceRevision) {
                 throw new TenantBoundaryViolation('The platform Metafield definition revision is unavailable.');
             }
-            $grant = MetafieldDefinitionTenantGrant::withoutGlobalScope('tenant')
+            $grant = MetafieldDefinitionTenantGrant::withoutGlobalScopes()
                 ->where('tenant_id', $recipient->value)
                 ->where('definition_id', $source->id)
                 ->lockForUpdate()->first();
@@ -70,7 +71,7 @@ final readonly class GrantMetafieldDefinitionToTenantAction implements GrantMeta
                 ])->save();
                 $operation = 'refreshed';
             } else {
-                $grant = MetafieldDefinitionTenantGrant::withoutGlobalScope('tenant')->forceCreate([
+                $grant = MetafieldDefinitionTenantGrant::withoutGlobalScopes()->forceCreate([
                     'id' => (string) Str::uuid(),
                     'tenant_id' => $recipient->value,
                     'definition_id' => $source->id,

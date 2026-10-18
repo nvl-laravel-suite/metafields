@@ -12,7 +12,6 @@ use Nvl\Metafields\Contracts\MetafieldAuthorization;
 use Nvl\Metafields\Contracts\MetafieldReferenceAuthorization;
 use Nvl\Metafields\Data\MetafieldDoctorCheckData;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
-use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
 use Nvl\Support\Tenancy\Contracts\TenantInstallationState;
@@ -199,7 +198,7 @@ final readonly class MetafieldDoctor
             }
         }
 
-        $connectionMatches = (new MetafieldDefinition)->getConnection() === $this->tenantConnections->core();
+        $connectionMatches = (MetafieldModelRegistry::newInstance())->getConnection() === $this->tenantConnections->core();
         $checks[] = new MetafieldDoctorCheckData(
             key: 'tenancy.connection',
             severity: 'error',
