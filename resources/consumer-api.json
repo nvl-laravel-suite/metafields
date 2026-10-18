@@ -614,6 +614,7 @@
             "methods": [
                 "definition",
                 "filterable",
+                "modelName",
                 "ofType",
                 "required",
                 "translatable",
@@ -782,6 +783,7 @@
             "file": "src/Events/MetafieldDefinitionCatalogGrantAudited.php",
             "methods": [
                 "__construct",
+                "ownershipJobEnvelope",
                 "schemaVersion"
             ],
             "properties": [
@@ -800,6 +802,7 @@
             "file": "src/Events/MetafieldSet.php",
             "methods": [
                 "__construct",
+                "ownershipJobEnvelope",
                 "schemaVersion"
             ],
             "properties": [
@@ -817,6 +820,7 @@
             "file": "src/Events/MetafieldSetEvent.php",
             "methods": [
                 "__construct",
+                "ownershipJobEnvelope",
                 "schemaVersion"
             ],
             "properties": [
@@ -835,6 +839,7 @@
             "file": "src/Events/MetafieldsSynced.php",
             "methods": [
                 "__construct",
+                "ownershipJobEnvelope",
                 "schemaVersion"
             ],
             "properties": [
@@ -850,6 +855,7 @@
             "file": "src/Events/MetafieldsSyncedEvent.php",
             "methods": [
                 "__construct",
+                "ownershipJobEnvelope",
                 "schemaVersion"
             ],
             "properties": [

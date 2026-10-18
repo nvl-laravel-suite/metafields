@@ -4,6 +4,7 @@ declare(strict_types=1);
 use Illuminate\Config\Repository;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Services\MetafieldDoctor;
 use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
@@ -52,5 +53,13 @@ it('resolves base-class owner and reference declarations through configured nati
     app(OwnershipRunner::class)->run(OwnershipCompany::findOrFail(7), OwnershipActor::firstOrFail(), function (): void {
         $definition = OwnershipMetafieldScenario::definition();
         expect(app(MetafieldReferenceRecordResolver::class)->resolve('schemas', $definition->id)::class)->toBe(OwnershipMetafieldDefinition::class);
+    });
+});
+
+it('reports native ownership schema readiness on the configured source', function (): void {
+    app(OwnershipRunner::class)->run(OwnershipCompany::findOrFail(7), OwnershipActor::firstOrFail(), function (): void {
+        $checks = app(MetafieldDoctor::class)->inspect();
+        $errors = array_filter($checks, static fn ($check) => ! $check->passed && (str_starts_with($check->key, 'schema.') || str_starts_with($check->key, 'index.')));
+        expect(array_map(static fn ($check) => $check->key, array_values($errors)))->toBe([]);
     });
 });

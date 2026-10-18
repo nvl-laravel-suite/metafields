@@ -18,5 +18,8 @@ it('rolls the complete definition workflow back on its actual source connection'
         });
         expect(fn () => OwnershipMetafieldScenario::definition())->toThrow(RuntimeException::class, 'veto-source-assignment');
         expect(MetafieldModelRegistry::query()->count())->toBe(0)->and(MetafieldDefinitionTranslation::query()->count())->toBe(0);
+        $checks = app(\Nvl\Metafields\Services\MetafieldDoctor::class)->inspect();
+        $schemaErrors = array_filter($checks, static fn ($check) => ! $check->passed && str_starts_with($check->key, 'schema.'));
+        expect(array_values($schemaErrors))->toBe([]);
     });
 });

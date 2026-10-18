@@ -5,15 +5,17 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Services;
 
 use Illuminate\Contracts\Container\Container;
+use Illuminate\Database\Schema\Builder;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Nvl\Metafields\Contracts\MetafieldAuthorization;
 use Nvl\Metafields\Contracts\MetafieldReferenceAuthorization;
 use Nvl\Metafields\Data\MetafieldDoctorCheckData;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
+use Nvl\Metafields\Ownership\MetafieldOwnership;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
+use Nvl\Support\Ownership\Contracts\OwnershipReadiness;
 use Nvl\Support\Tenancy\Contracts\TenantInstallationState;
 use Nvl\Support\Tenancy\Services\EffectiveTenantConnection;
 use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
@@ -30,6 +32,7 @@ final readonly class MetafieldDoctor
         private TenantInstallationState $tenantInstallation,
         private EffectiveTenantConnection $tenantConnections,
         private TenantResourceRegistry $tenantResources,
+        private OwnershipReadiness $readiness,
     ) {}
 
     /**
@@ -48,9 +51,13 @@ final readonly class MetafieldDoctor
         ];
     }
 
-    /**
-     * @return list<MetafieldDoctorCheckData>
-     */
+    /** Inspect the configured root's actual package source. */
+    private function schema(): Builder
+    {
+        return MetafieldModelRegistry::newInstance()->getConnection()->getSchemaBuilder();
+    }
+
+    /** @return list<MetafieldDoctorCheckData> */
     private function schemaChecks(): array
     {
         $tables = [
@@ -76,7 +83,7 @@ final readonly class MetafieldDoctor
         $checks = [];
 
         foreach ($tables as $table => $columns) {
-            $exists = Schema::hasTable($table);
+            $exists = $this->schema()->hasTable($table);
             $checks[] = new MetafieldDoctorCheckData(
                 key: "schema.table.{$table}",
                 severity: 'error',
@@ -90,7 +97,7 @@ final readonly class MetafieldDoctor
 
             $missing = array_values(array_filter(
                 $columns,
-                static fn (string $column): bool => ! Schema::hasColumn($table, $column),
+                fn (string $column): bool => ! $this->schema()->hasColumn($table, $column),
             ));
             $checks[] = new MetafieldDoctorCheckData(
                 key: "schema.columns.{$table}",
@@ -142,6 +149,18 @@ final readonly class MetafieldDoctor
             ],
         ];
 
+        if (MetafieldOwnership::declared()) {
+            $indexes[0] = [MetafieldModelRegistry::newInstance()->getTable(), 'metafields_owner_active_handle_unique', ['owner_scope_key', 'active_handle'], true];
+            $ready = true;
+            try {
+                foreach (['metafields.definitions', 'metafields.definition-assignments', 'metafields.definition-translations', 'metafields.values', 'metafields.value-translations', 'metafields.catalog-grants'] as $resource) {
+                    $this->readiness->assertActive($resource);
+                }
+            } catch (Throwable) {
+                $ready = false;
+            }
+            $checks[] = new MetafieldDoctorCheckData(key: 'schema.ownership', severity: 'error', passed: $ready, message: $ready ? 'Native ownership storage is active.' : 'Native ownership storage is not ready.');
+        }
         foreach ($indexes as [$table, $name, $columns, $unique]) {
             $checks[] = $this->indexCheck($table, $name, $columns, $unique);
         }
@@ -213,7 +232,7 @@ final readonly class MetafieldDoctor
             MetafieldsTables::get(MetafieldsTables::Definitions),
             MetafieldsTables::get(MetafieldsTables::DefinitionAssignments),
             MetafieldsTables::get(MetafieldsTables::DefinitionsI18n),
-        ])->every(static fn (string $table): bool => Schema::hasColumn($table, 'ownership_key'));
+        ])->every(fn (string $table): bool => $this->schema()->hasColumn($table, 'ownership_key'));
         $checks[] = new MetafieldDoctorCheckData(
             key: 'tenancy.schema.partition',
             severity: 'error',
@@ -222,8 +241,8 @@ final readonly class MetafieldDoctor
                 ? 'Metafield ownership columns match the configured partition mode.'
                 : 'Metafield catalog sharing or platform mode requires the adopted mixed ownership schema.',
         );
-        $grantReady = Schema::hasTable(MetafieldsTables::get(MetafieldsTables::TenantGrants))
-            && Schema::hasTable(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks));
+        $grantReady = $this->schema()->hasTable(MetafieldsTables::get(MetafieldsTables::TenantGrants))
+            && $this->schema()->hasTable(MetafieldsTables::get(MetafieldsTables::TenantGrantLocks));
         $checks[] = new MetafieldDoctorCheckData(
             key: 'tenancy.schema.catalog_grants',
             severity: 'error',
@@ -275,7 +294,7 @@ final readonly class MetafieldDoctor
         array $columns,
         bool $unique,
     ): MetafieldDoctorCheckData {
-        if (! Schema::hasTable($table)) {
+        if (! $this->schema()->hasTable($table)) {
             return new MetafieldDoctorCheckData(
                 key: "schema.index.{$name}",
                 severity: 'error',
@@ -285,7 +304,7 @@ final readonly class MetafieldDoctor
         }
 
         /** @var array<int, array{name: string, columns: list<string>, unique: bool}> $indexes */
-        $indexes = Schema::getIndexes($table);
+        $indexes = $this->schema()->getIndexes($table);
         $index = collect($indexes)->firstWhere('name', $name);
         $passed = is_array($index)
             && $index['columns'] === $columns
