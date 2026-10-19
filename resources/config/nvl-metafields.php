@@ -2,7 +2,11 @@
 
 declare(strict_types=1);
 
+use Nvl\Metafields\Models\MetafieldDefinition;
+
 return [
+    'models' => ['definition' => MetafieldDefinition::class],
+    'ownership' => ['owner_resources' => []],
     /*
     |--------------------------------------------------------------------------
     | Optional HTTP API
