@@ -6,7 +6,6 @@ namespace Nvl\Metafields\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -25,6 +24,7 @@ use Nvl\Metafields\Actions\Metafields\ListOwnerMetafieldsAction;
 use Nvl\Metafields\Actions\Metafields\SetMetafieldAction;
 use Nvl\Metafields\Actions\Metafields\SyncOwnerMetafieldsAction;
 use Nvl\Metafields\Actions\RevokeMetafieldDefinitionTenantGrantAction;
+use Nvl\Metafields\Compatibility\LegacyMetafieldsIntegration;
 use Nvl\Metafields\Console\Commands\MetafieldDefinitionAddCommand;
 use Nvl\Metafields\Console\Commands\MetafieldDefinitionRemoveCommand;
 use Nvl\Metafields\Console\Commands\MetafieldDoctorCommand;
@@ -52,9 +52,6 @@ use Nvl\Metafields\Events\MetafieldSetEvent;
 use Nvl\Metafields\Events\MetafieldsSynced;
 use Nvl\Metafields\Events\MetafieldsSyncedEvent;
 use Nvl\Metafields\Models\Metafield;
-use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
-use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
-use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
 use Nvl\Metafields\Models\MetafieldTranslation;
 use Nvl\Metafields\Ownership\MetafieldAdoptionAdapter as OwnershipMetafieldAdoptionAdapter;
 use Nvl\Metafields\Ownership\MetafieldOwnership;
@@ -71,20 +68,15 @@ use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
 use Nvl\Metafields\Services\UnsupportedMetafieldBatchAuthorization;
 use Nvl\Metafields\Support\MetafieldConfiguration;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
-use Nvl\Metafields\Tenancy\MetafieldAdoptionAdapter;
-use Nvl\Metafields\Tenancy\MetafieldTenancyResources;
 use Nvl\Ownership\Services\OwnershipAdoptionRegistry;
 use Nvl\Support\Doctor\PackageDoctorContributor;
 use Nvl\Support\Events\EventAliases;
 use Nvl\Support\Globals\GlobalNames;
-use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Ownership\Contracts\OwnershipIntegratedProvider;
 use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
 use Nvl\Support\Providers\SupportServiceProvider;
-use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 use Nvl\Support\Traits\MergesPackageConfiguration;
 use Nvl\Support\Traits\RegistersNamespacedResources;
-use Nvl\Tenancy\Services\TenantAdoptionRegistry;
 use Nvl\Translatable\Services\TranslationResourceRegistry;
 
 /** Registers Metafields' package services, ownership graph, and optional surfaces. */
@@ -100,29 +92,21 @@ final class MetafieldsServiceProvider extends ServiceProvider implements Ownersh
         TranslationResourceRegistry $translationResources,
         TypeScriptSourceRegistry $typeScriptSources,
         MetafieldOwnerRegistry $owners,
-        MetafieldTenancyResources $tenancyResources,
-        TenantResourceRegistry $tenantResources,
-        OwnershipBoundary $tenantBoundary,
     ): void {
         $this->app->make(EventAliases::class)->register(MetafieldSet::class, MetafieldSetEvent::class);
         $this->app->make(EventAliases::class)->register(MetafieldsSynced::class, MetafieldsSyncedEvent::class);
         $typeScriptSources->register(__DIR__.'/..', 'nvl/metafields');
-        $tenancyResources->register($tenantResources);
+        $this->app->make(LegacyMetafieldsIntegration::class)->registerResources();
         $this->app->make(MetafieldResourceRegistrar::class)->register($this->app->make(OwnershipResourceRegistry::class));
         if ($this->app->bound(OwnershipAdoptionRegistry::class)) {
             $this->app->make(OwnershipAdoptionRegistry::class)->register('metafields', OwnershipMetafieldAdoptionAdapter::class);
-        }
-        if ($this->app->bound(TenantAdoptionRegistry::class)) {
-            $this->app->make(TenantAdoptionRegistry::class)->register('metafields', MetafieldAdoptionAdapter::class);
         }
         foreach ([Metafield::class, MetafieldTranslation::class] as $model) {
             $model::addGlobalScope('metafield-ownership-configuration', static function (Builder $query): void {
                 MetafieldOwnership::declared();
             });
         }
-        if (config('nvl-tenancy.enabled') === true) {
-            $this->registerTenantScopes($tenantBoundary);
-        }
+        $this->app->make(LegacyMetafieldsIntegration::class)->bootScopes();
 
         $this->publishes([
             __DIR__.'/../../resources/boost/skills' => base_path('.agents/skills'),
@@ -297,34 +281,5 @@ final class MetafieldsServiceProvider extends ServiceProvider implements Ownersh
     public function provides(): array
     {
         return [];
-    }
-
-    /** Register package ownership scopes from the injected boundary. */
-    private function registerTenantScopes(OwnershipBoundary $boundary): void
-    {
-        foreach ([
-            MetafieldModelRegistry::modelClass() => 'metafields.definitions',
-            MetafieldDefinitionAssignment::class => 'metafields.definition-assignments',
-            MetafieldDefinitionTranslation::class => 'metafields.definition-translations',
-            Metafield::class => 'metafields.values',
-            MetafieldTranslation::class => 'metafields.value-translations',
-            MetafieldDefinitionTenantGrant::class => 'metafields.catalog-grants',
-        ] as $model => $resource) {
-            $this->registerTenantScope($model, $resource, $boundary);
-        }
-    }
-
-    /**
-     * Register one model-specific tenant scope without collapsing invariant builder generics.
-     *
-     * @template TModel of Model
-     *
-     * @param  class-string<TModel>  $model
-     */
-    private function registerTenantScope(string $model, string $resource, OwnershipBoundary $boundary): void
-    {
-        $model::addGlobalScope('tenant', static function (Builder $query) use ($boundary, $resource): void {
-            $boundary->query($query, $resource);
-        });
     }
 }
