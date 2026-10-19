@@ -1,6 +1,8 @@
 <?php
 
 declare(strict_types=1);
+
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Nvl\Metafields\Actions\Metafields\SetMetafieldAction;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
