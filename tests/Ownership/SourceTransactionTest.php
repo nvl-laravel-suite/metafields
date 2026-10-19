@@ -3,6 +3,7 @@
 declare(strict_types=1);
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
+use Nvl\Metafields\Services\MetafieldDoctor;
 use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Tests\Fixtures\OwnershipActor;
 use Nvl\Metafields\Tests\Fixtures\OwnershipCompany;
@@ -18,7 +19,7 @@ it('rolls the complete definition workflow back on its actual source connection'
         });
         expect(fn () => OwnershipMetafieldScenario::definition())->toThrow(RuntimeException::class, 'veto-source-assignment');
         expect(MetafieldModelRegistry::query()->count())->toBe(0)->and(MetafieldDefinitionTranslation::query()->count())->toBe(0);
-        $checks = app(\Nvl\Metafields\Services\MetafieldDoctor::class)->inspect();
+        $checks = app(MetafieldDoctor::class)->inspect();
         $schemaErrors = array_filter($checks, static fn ($check) => ! $check->passed && str_starts_with($check->key, 'schema.'));
         expect(array_values($schemaErrors))->toBe([]);
     });
