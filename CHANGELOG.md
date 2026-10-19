@@ -5,6 +5,13 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+## [6.0.0] - 2026-10-20
+
+### Changed
+
+- Resolve configured definition/value subclasses and exact host resources; enforce canonical definition, owner and reference ownership during native adoption and reads/writes. Keep shared source catalogs explicit and reference mappings complete.
+- Align required/development NVL peers on `^6.0`, optional peer conflicts on major 6, and `dev-main` on `6.x-dev`. Review [UPGRADING.md](UPGRADING.md) before rollout.
+
 ## [5.0.1] - 2026-10-08
 
 ### Changed

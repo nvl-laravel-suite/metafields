@@ -3,12 +3,12 @@
 ## Quickstart
 
 ```sh
-composer require nvl/metafields:^5.0
+composer require nvl/metafields:^6.0
 php artisan nvl:install metafields --dry-run
 php artisan nvl:install metafields
 ```
 
-Required NVL dependencies: `nvl/core` (`^5.0`), `nvl/translatable` (`^5.0`). Register definitions and owner assignments using native morph identity. Supply a persisted authorized owner; listing does not replace host authorization.
+Required NVL dependencies: `nvl/core` (`^6.0`), `nvl/translatable` (`^6.0`). Register definitions and owner assignments using native morph identity. Supply a persisted authorized owner; listing does not replace host authorization.
 Review the published common config, select one migration owner, and run schema preflight before existing-table upgrades. The installer does not enable features or run migrations. Follow the detailed installation and capability sections below before invoking a storage/provider operation.
 
 Inject `Nvl\Metafields\Contracts\ListOwnerMetafieldsContract` in a host service. After supplying the trusted inputs described above, the first public call is:
@@ -34,7 +34,7 @@ See the [installation and publishing guide](https://github.com/nvl-laravel-suite
 
 | Item | Value |
 |---|---|
-| Installed through | `composer require nvl/metafields:^5.0` |
+| Installed through | `composer require nvl/metafields:^6.0` |
 | Module identifier | `nvl/metafields` |
 | PHP namespace | `Nvl\Metafields` |
 | Service provider | `Nvl\Metafields\Providers\MetafieldsServiceProvider` |
@@ -69,7 +69,7 @@ stable application keys.
 ## Installation
 
 ```bash
-composer require nvl/metafields:^5.0
+composer require nvl/metafields:^6.0
 php artisan migrate
 php artisan vendor:publish --tag=nvl-metafields-config
 ```
