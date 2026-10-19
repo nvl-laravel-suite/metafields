@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Ownership;
 
 use Illuminate\Database\Eloquent\Model;
+use Nvl\Metafields\Support\MetafieldOwnerRegistry;
+use Nvl\Support\Ownership\Contracts\Ownable;
 use Nvl\Support\Ownership\Contracts\OwnershipContext;
 use Nvl\Support\Ownership\Enums\OwnershipContextMode;
+use Nvl\Support\Ownership\Exceptions\OwnershipConfigurationInvalid;
 use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
 use Nvl\Support\Ownership\ValueObjects\OwnershipJobEnvelope;
 use Nvl\Support\Ownership\ValueObjects\OwnershipSnapshot;
@@ -21,7 +24,33 @@ final class MetafieldOwnership
 {
     public static function declared(): bool
     {
-        return (app(OwnershipResourceRegistry::class)->all()['metafields.definitions'] ?? null)?->ownership->strategy !== null && app(OwnershipResourceRegistry::class)->get('metafields.definitions')->ownership->strategy !== 'unscoped';
+        $resources = app(OwnershipResourceRegistry::class)->all();
+        $owned = isset($resources['metafields.definitions']) && $resources['metafields.definitions']->ownership->strategy !== 'unscoped';
+        self::assertCompatibleHosts($owned);
+
+        return $owned;
+    }
+
+    /** Reject a globally scoped value graph before an owned host can contribute data. */
+    public static function assertCompatibleHosts(bool $owned): void
+    {
+        if (! $owned) {
+            if (config('nvl-metafields.ownership.owner_resources', []) !== []) {
+                throw new OwnershipConfigurationInvalid('Native Metafield host resources require an owned definition root.');
+            }
+            $resources = app(OwnershipResourceRegistry::class)->all();
+            foreach (app(MetafieldOwnerRegistry::class)->all() as $host) {
+                $class = $host['model'];
+                if (is_a($class, Ownable::class, true) && $class::ownershipDefinition()->strategy !== 'unscoped') {
+                    throw new OwnershipConfigurationInvalid('Owned Metafield hosts require an owned definition root and inherited values.');
+                }
+                foreach ($resources as $resource) {
+                    if ($resource->model === $class && $resource->ownership->strategy !== 'unscoped') {
+                        throw new OwnershipConfigurationInvalid('Owned Metafield hosts require an owned definition root and inherited values.');
+                    }
+                }
+            }
+        }
     }
 
     public static function active(): bool

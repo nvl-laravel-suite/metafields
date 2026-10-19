@@ -69,7 +69,8 @@ class Metafield extends Model implements Ownable, TranslatableModel
     /** @use HasFactory<MetafieldFactory> */
     use HasFactory;
 
-    use HasOwnership { save as private saveOwned; }
+    use HasOwnership { save as private saveOwned;
+        delete as private deleteOwned; }
     use HasUuids;
     use SoftDeletes;
     use Translatable;
@@ -87,6 +88,14 @@ class Metafield extends Model implements Ownable, TranslatableModel
 
             return $saved;
         });
+    }
+
+    /** Reject value mutation when an owned host has no adopted value graph. */
+    public function delete(): ?bool
+    {
+        MetafieldOwnership::declared();
+
+        return $this->deleteOwned();
     }
 
     public const string TABLE = MetafieldsTables::Metafields;

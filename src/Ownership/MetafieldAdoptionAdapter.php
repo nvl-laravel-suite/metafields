@@ -84,7 +84,7 @@ final readonly class MetafieldAdoptionAdapter implements OwnershipAdoptionAdapte
             $parent = new ($this->resources->get($parentKey)->model);
             $found = false;
             foreach ($schema->getForeignKeys($child->getTable()) as $foreign) {
-                if ($foreign['columns'] === [$column] && $foreign['foreign_table'] === $parent->getTable() && $foreign['foreign_columns'] === ['id']) {
+                if ($foreign['columns'] === [$column] && $foreign['foreign_table'] === $parent->getConnection()->getTablePrefix().$parent->getTable() && $foreign['foreign_columns'] === ['id']) {
                     $found = true;
                     break;
                 }

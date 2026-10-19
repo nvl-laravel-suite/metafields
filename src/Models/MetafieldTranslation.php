@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Nvl\Metafields\Database\Factories\MetafieldTranslationFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
+use Nvl\Metafields\Ownership\MetafieldOwnership;
 use Nvl\Support\Config\PackageStorage;
 use Nvl\Support\Ownership\Contracts\Ownable;
 use Nvl\Support\Ownership\Traits\HasOwnership;
@@ -38,8 +39,25 @@ class MetafieldTranslation extends Model implements Ownable
     /** @use HasFactory<MetafieldTranslationFactory> */
     use HasFactory;
 
-    use HasOwnership;
+    use HasOwnership { save as private saveOwned;
+        delete as private deleteOwned; }
     use HasUuids;
+
+    /** @param array<string,mixed> $options */
+    public function save(array $options = []): bool
+    {
+        MetafieldOwnership::declared();
+
+        return $this->saveOwned($options);
+    }
+
+    /** Reject locale mutation when its native host graph is not configured. */
+    public function delete(): ?bool
+    {
+        MetafieldOwnership::declared();
+
+        return $this->deleteOwned();
+    }
 
     public const string TABLE = MetafieldsTables::I18n;
 

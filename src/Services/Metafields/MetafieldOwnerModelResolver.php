@@ -54,6 +54,7 @@ final class MetafieldOwnerModelResolver
     /** Reload one programmatic owner through its registered tenant resource boundary. */
     public function canonical(Model $owner, bool $lock = false): Model
     {
+        MetafieldOwnership::declared();
         if ($owner->getConnection() !== (new Metafield)->getConnection()) {
             throw new TenantBoundaryViolation('Metafield owners must use the canonical tenant connection.');
         }

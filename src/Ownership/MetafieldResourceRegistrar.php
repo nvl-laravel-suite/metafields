@@ -29,6 +29,7 @@ final readonly class MetafieldResourceRegistrar
     {
         $class = $this->models->definitionClass();
         $owned = $class::ownershipDefinition()->strategy !== 'unscoped';
+        MetafieldOwnership::assertCompatibleHosts($owned);
         $central = $owned && $class::allowsCentralCatalog();
         $parents = config('nvl-metafields.ownership.owner_resources', []);
         if (! is_array($parents) || ! array_is_list($parents)) {

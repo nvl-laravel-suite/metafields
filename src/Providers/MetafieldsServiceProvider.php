@@ -6,6 +6,7 @@ namespace Nvl\Metafields\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -56,6 +57,7 @@ use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
 use Nvl\Metafields\Models\MetafieldTranslation;
 use Nvl\Metafields\Ownership\MetafieldAdoptionAdapter as OwnershipMetafieldAdoptionAdapter;
+use Nvl\Metafields\Ownership\MetafieldOwnership;
 use Nvl\Metafields\Ownership\MetafieldResourceRegistrar;
 use Nvl\Metafields\Services\ConfiguredMetafieldAuthorization;
 use Nvl\Metafields\Services\ConfiguredMetafieldReferenceAuthorization;
@@ -112,6 +114,11 @@ final class MetafieldsServiceProvider extends ServiceProvider implements Ownersh
         }
         if ($this->app->bound(TenantAdoptionRegistry::class)) {
             $this->app->make(TenantAdoptionRegistry::class)->register('metafields', MetafieldAdoptionAdapter::class);
+        }
+        foreach ([Metafield::class, MetafieldTranslation::class] as $model) {
+            $model::addGlobalScope('metafield-ownership-configuration', static function (Builder $query): void {
+                MetafieldOwnership::declared();
+            });
         }
         if (config('nvl-tenancy.enabled') === true) {
             $this->registerTenantScopes($tenantBoundary);
@@ -310,7 +317,7 @@ final class MetafieldsServiceProvider extends ServiceProvider implements Ownersh
     /**
      * Register one model-specific tenant scope without collapsing invariant builder generics.
      *
-     * @template TModel of \Illuminate\Database\Eloquent\Model
+     * @template TModel of Model
      *
      * @param  class-string<TModel>  $model
      */

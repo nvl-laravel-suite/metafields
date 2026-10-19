@@ -704,7 +704,7 @@ Configure `nvl-metafields.models.definition` with a concrete `MetafieldDefinitio
 The base remains unscoped. An owning subclass returns `OwnershipDefinition::column(Company::class,
 'company_id')` or an exclusive native `OwnershipDefinition::pivot(...)`. Supply that native FK or
 pivot in a host migration, and list canonical host resource keys such as `app.subjects` in
-`nvl-metafields.ownership.owner_resources`. Values inherit their actual host; assignments and
+`nvl-metafields.ownership.owner_resources`. An owned host requires an owned definition root; unsafe mixed configurations fail closed, including late host registrations. Values inherit their actual host; assignments and
 locale rows inherit their canonical parent. Definitions and references must satisfy the same
 owner boundary. Base-class capability declarations resolve through Core's native identity registry.
 
@@ -717,8 +717,7 @@ transact on the package's actual source connection, including translations and a
 Central schemas require an owning subclass that explicitly returns `true` from
 `allowsCentralCatalog()`. Bind `MetafieldCatalogAccess` for grant administration; its default denies.
 `MetafieldOwnerCatalog::grant()` targets the admitted recipient and exact source revision.
-Inspect and import only that grant through the existing import DTO/Action or `persist()` inside the
-actual source transaction. Imports recheck revocation, revision, tuple and idempotency, create
+Import that grant through the existing import DTO and Action; catalog snapshot staging remains internal. Imports recheck revocation, revision, tuple and idempotency, create
 independent copies, and require complete recipient reference mappings. A later revocation blocks
 new copies and retains committed ones. Historical Tenancy APIs remain a compatibility boundary
 until an explicit ownership cutover.
