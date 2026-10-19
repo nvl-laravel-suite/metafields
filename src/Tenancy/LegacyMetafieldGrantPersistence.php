@@ -11,7 +11,11 @@ use Nvl\Support\Ownership\Services\PersistedOwnershipStorage;
 use Nvl\Support\Tenancy\Contracts\TenantContext;
 use Nvl\Support\Tenancy\Enums\TenantContextMode;
 
-/** Retains only the explicit V1 platform grant writer while rejecting adopted storage. @internal */
+/**
+ * Retains only the explicit V1 platform grant writer while rejecting adopted storage.
+ *
+ * @internal
+ */
 final readonly class LegacyMetafieldGrantPersistence
 {
     public function __construct(private TenantContext $context, private PersistedOwnershipStorage $storage) {}

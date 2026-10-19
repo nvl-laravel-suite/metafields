@@ -260,6 +260,16 @@
             "properties": [],
             "constants": []
         },
+        "Nvl\\Metafields\\Contracts\\MetafieldCatalogAccess": {
+            "kind": "interface",
+            "file": "src/Contracts/MetafieldCatalogAccess.php",
+            "methods": [
+                "assertCanGrant",
+                "assertCanRevoke"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Metafields\\Contracts\\MetafieldReferenceAuthorization": {
             "kind": "interface",
             "file": "src/Contracts/MetafieldReferenceAuthorization.php",
@@ -1015,6 +1025,29 @@
             "properties": [],
             "constants": []
         },
+        "Nvl\\Metafields\\Models\\MetafieldDefinitionOwnerGrant": {
+            "kind": "class",
+            "file": "src/Models/MetafieldDefinitionOwnerGrant.php",
+            "methods": [
+                "getKey",
+                "getKeyName",
+                "getMorphClass",
+                "getRouteKey",
+                "getRouteKeyName",
+                "is",
+                "isNot",
+                "relationLoaded"
+            ],
+            "properties": [
+                "definition_id",
+                "enabled",
+                "id",
+                "revision",
+                "revoked_at",
+                "source_revision"
+            ],
+            "constants": []
+        },
         "Nvl\\Metafields\\Models\\MetafieldDefinitionTenantGrant": {
             "kind": "class",
             "file": "src/Models/MetafieldDefinitionTenantGrant.php",
@@ -1065,6 +1098,27 @@
             "properties": [
                 "id"
             ],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Ownership\\MetafieldOwnerCatalog": {
+            "kind": "class",
+            "file": "src/Ownership/MetafieldOwnerCatalog.php",
+            "methods": [
+                "__construct",
+                "grant",
+                "revoke"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Services\\MetafieldModelRegistry": {
+            "kind": "class",
+            "file": "src/Services/MetafieldModelRegistry.php",
+            "methods": [
+                "__construct",
+                "definitionClass"
+            ],
+            "properties": [],
             "constants": []
         },
         "Nvl\\Metafields\\Support\\MetafieldOwnerRegistry": {
@@ -1132,6 +1186,27 @@
         },
         "Nvl\\Metafields\\Models\\MetafieldDefinitionAssignment": {
             "read": [],
+            "identity_methods": [
+                "getKey",
+                "getKeyName",
+                "getMorphClass",
+                "getRouteKey",
+                "getRouteKeyName",
+                "is",
+                "isNot",
+                "relationLoaded"
+            ],
+            "capability_relations": []
+        },
+        "Nvl\\Metafields\\Models\\MetafieldDefinitionOwnerGrant": {
+            "read": [
+                "definition_id",
+                "enabled",
+                "id",
+                "revision",
+                "revoked_at",
+                "source_revision"
+            ],
             "identity_methods": [
                 "getKey",
                 "getKeyName",

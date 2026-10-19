@@ -7,7 +7,11 @@ namespace Nvl\Metafields\Services;
 use Nvl\Metafields\Contracts\MetafieldCatalogAccess;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
-/** Denies central-copy grant administration until the host supplies a policy. @internal */
+/**
+ * Denies central-copy grant administration until the host supplies a policy.
+ *
+ * @internal
+ */
 final readonly class DenyMetafieldCatalogAccess implements MetafieldCatalogAccess
 {
     public function assertCanGrant(string $sourceId, int $revision): void

@@ -10,6 +10,7 @@ use Nvl\Support\Ownership\Contracts\OwnershipQueuedJob;
 use Nvl\Support\Ownership\ValueObjects\OwnershipJobEnvelope;
 
 /** Scalar-only audit fact for a committed definition grant lifecycle change. *
+ *
  * @api
  */
 final readonly class MetafieldDefinitionCatalogGrantAudited implements DomainEvent, OwnershipQueuedJob

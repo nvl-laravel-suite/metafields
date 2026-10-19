@@ -16,7 +16,11 @@ use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
 use Nvl\Support\Ownership\ValueObjects\OwnershipDefinition;
 use Nvl\Support\Ownership\ValueObjects\OwnershipResourceDefinition;
 
-/** Compiles explicit definition and canonical host-value ownership. @internal */
+/**
+ * Compiles explicit definition and canonical host-value ownership.
+ *
+ * @internal
+ */
 final readonly class MetafieldResourceRegistrar
 {
     public function __construct(private MetafieldModelRegistry $models) {}

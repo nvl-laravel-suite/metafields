@@ -12,7 +12,11 @@ use Nvl\Support\Ownership\ValueObjects\OwnershipJobEnvelope;
 use Nvl\Support\Ownership\ValueObjects\OwnershipSnapshot;
 use Nvl\Support\Tenancy\Services\TenantResourceRegistry;
 
-/** Resolves canonical metadata without retaining request admission. @internal */
+/**
+ * Resolves canonical metadata without retaining request admission.
+ *
+ * @internal
+ */
 final class MetafieldOwnership
 {
     public static function declared(): bool

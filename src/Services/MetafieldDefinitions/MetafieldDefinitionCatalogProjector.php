@@ -15,7 +15,11 @@ use Nvl\Support\Contracts\LocaleCatalog;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 use Spatie\LaravelData\DataCollection;
 
-/** Projects authorized canonical schema facts without issuing storage access. @internal */
+/**
+ * Projects authorized canonical schema facts without issuing storage access.
+ *
+ * @internal
+ */
 final readonly class MetafieldDefinitionCatalogProjector
 {
     public function __construct(private LocaleCatalog $locales) {}

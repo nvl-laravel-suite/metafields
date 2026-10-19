@@ -18,10 +18,20 @@ use Nvl\Ownership\ValueObjects\OwnershipVerification;
 use Nvl\Support\Ownership\Exceptions\OwnershipConfigurationInvalid;
 use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
 
-/** Adopts exact reviewed Metafield records without guessing primary owners from associations. @internal */
+/**
+ * Adopts exact reviewed Metafield records without guessing primary owners from associations.
+ *
+ * @internal
+ */
 final readonly class MetafieldAdoptionAdapter implements OwnershipAdoptionAdapter
 {
-    public function __construct(private OwnershipResourceRegistry $resources, private OwnershipAdoptionStore $mappings, private OwnershipSchema $schema, private OwnershipDatabaseConstraints $constraints, private MetafieldAdoptionReferences $references) {}
+    public function __construct(
+        private OwnershipResourceRegistry $resources,
+        private OwnershipAdoptionStore $mappings,
+        private OwnershipSchema $schema,
+        private OwnershipDatabaseConstraints $constraints,
+        private MetafieldAdoptionReferences $references,
+    ) {}
 
     /** @return list<string> */
     public function resources(): array
@@ -66,7 +76,8 @@ final readonly class MetafieldAdoptionAdapter implements OwnershipAdoptionAdapte
                 if ($schema->hasColumn($model->getTable(), $column)) {
                     $schema->table($model->getTable(), static fn (Blueprint $table) => ($column === 'tenant_id' ? $table->uuid($column) : $table->string($column, 44))->nullable()->change());
                 }
-            }$this->schema->prepare($key);
+            }
+            $this->schema->prepare($key);
         }
         foreach ([['metafields.definition-assignments', 'definition_id', 'metafields.definitions'], ['metafields.definition-translations', 'metafield_definition_id', 'metafields.definitions'], ['metafields.values', 'definition_id', 'metafields.definitions'], ['metafields.value-translations', 'metafield_id', 'metafields.values']] as [$childKey,$column,$parentKey]) {
             $child = new ($this->resources->get($childKey)->model);
@@ -101,7 +112,8 @@ final readonly class MetafieldAdoptionAdapter implements OwnershipAdoptionAdapte
             if ($index['unique'] && $index['columns'] === $columns) {
                 return;
             }
-        }$schema->table($model->getTable(), static fn (Blueprint $table) => $table->unique($columns, $name));
+        }
+        $schema->table($model->getTable(), static fn (Blueprint $table) => $table->unique($columns, $name));
     }
 
     /** Backfill bounded actual records from explicit immutable per-record mappings. */

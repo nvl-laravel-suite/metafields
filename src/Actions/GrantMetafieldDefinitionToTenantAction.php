@@ -27,7 +27,11 @@ use Nvl\Support\Tenancy\ValueObjects\TenantId;
 final readonly class GrantMetafieldDefinitionToTenantAction implements GrantMetafieldDefinitionToTenantContract
 {
     /** Create the platform grant action. */
-    public function __construct(private TenantContext $context, private TenantDirectory $directory, private DomainEventDispatcher $domainEvents) {}
+    public function __construct(
+        private TenantContext $context,
+        private TenantDirectory $directory,
+        private DomainEventDispatcher $domainEvents,
+    ) {}
 
     /** Grant or refresh the exact platform source revision. */
     public function execute(string $definitionId, TenantId $recipient, int $sourceRevision): MetafieldDefinitionTenantGrant

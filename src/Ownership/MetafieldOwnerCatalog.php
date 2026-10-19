@@ -29,10 +29,24 @@ use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
 use Nvl\Support\Ownership\Services\OwnershipScope;
 
-/** Copies explicitly granted central revisions into independent native-owner schemas. @api */
+/**
+ * Copies explicitly granted central revisions into independent native-owner schemas.
+ *
+ * @api
+ */
 final readonly class MetafieldOwnerCatalog
 {
-    public function __construct(private OwnershipBoundary $boundary, private OwnershipContext $context, private OwnershipReadiness $readiness, private OwnershipResourceRegistry $resources, private MetafieldCatalogAccess $access, private MetafieldDefinitionCatalogProjector $projection, private MetafieldDefinitionWriter $writer, private MetafieldDefinitionAssignmentSyncer $assignments, private MetafieldReferenceRecordResolver $references) {}
+    public function __construct(
+        private OwnershipBoundary $boundary,
+        private OwnershipContext $context,
+        private OwnershipReadiness $readiness,
+        private OwnershipResourceRegistry $resources,
+        private MetafieldCatalogAccess $access,
+        private MetafieldDefinitionCatalogProjector $projection,
+        private MetafieldDefinitionWriter $writer,
+        private MetafieldDefinitionAssignmentSyncer $assignments,
+        private MetafieldReferenceRecordResolver $references,
+    ) {}
 
     /** Grant one exact source revision to the currently admitted recipient only. */
     public function grant(string $sourceId, int $revision): MetafieldDefinitionOwnerGrant
@@ -68,7 +82,11 @@ final readonly class MetafieldOwnerCatalog
         });
     }
 
-    /** Project only one current capability without exposing general central reads. */
+    /**
+     * Project one capability for the package import workflow.
+     *
+     * @internal
+     */
     public function inspect(string $grantId): MetafieldDefinitionCatalogSnapshot
     {
         $this->admit();
@@ -76,7 +94,11 @@ final readonly class MetafieldOwnerCatalog
         return $this->snapshot($grantId, false);
     }
 
-    /** Join the actual source transaction and recheck the grant and source under locks. */
+    /**
+     * Join the actual source transaction and recheck the exact staged tuple.
+     *
+     * @internal
+     */
     public function persist(MetafieldDefinitionCatalogSnapshot $source, ImportPlatformMetafieldDefinitionData $data): MetafieldDefinition
     {
         $this->admit();

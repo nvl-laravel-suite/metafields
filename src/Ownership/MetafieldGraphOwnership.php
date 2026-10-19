@@ -12,7 +12,11 @@ use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
-/** Rechecks the concrete schema and reference graph during every native save. @internal */
+/**
+ * Rechecks the concrete schema and reference graph during every native save.
+ *
+ * @internal
+ */
 final readonly class MetafieldGraphOwnership
 {
     public function __construct(private MetafieldReferenceRecordResolver $references) {}

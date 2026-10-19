@@ -14,10 +14,19 @@ use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
 use Nvl\Support\Ownership\ValueObjects\OwnerReference;
 
-/** Verifies historical defaults and values through full native reference ownership. @internal */
+/**
+ * Verifies historical defaults and values through full native reference ownership.
+ *
+ * @internal
+ */
 final readonly class MetafieldAdoptionReferences
 {
-    public function __construct(private OwnershipResourceRegistry $resources, private OwnershipCanonicalResolver $canonical, private OwnershipRecordReader $records, private MetafieldModelRegistry $models) {}
+    public function __construct(
+        private OwnershipResourceRegistry $resources,
+        private OwnershipCanonicalResolver $canonical,
+        private OwnershipRecordReader $records,
+        private MetafieldModelRegistry $models,
+    ) {}
 
     public function verify(): void
     {
