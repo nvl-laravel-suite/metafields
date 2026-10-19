@@ -12,10 +12,12 @@ use Nvl\Support\Models\ConfiguredModelResolver;
 use Nvl\Support\OwnerRegistry;
 use Nvl\Support\Ownership\Contracts\OwnershipWriter;
 use Nvl\Support\Ownership\Exceptions\OwnershipConfigurationInvalid;
-use Nvl\Support\Ownership\Services\OwnershipScope;
-use ReflectionMethod;
 
-/** Resolves the one configured MetafieldDefinition extension through the shared native model identity. @api */
+/**
+ * Resolves the one configured MetafieldDefinition extension through the shared native model identity.
+ *
+ * @api
+ */
 final class MetafieldModelRegistry
 {
     /** @var class-string<MetafieldDefinition>|null */
@@ -24,9 +26,14 @@ final class MetafieldModelRegistry
     private bool $validated = false;
 
     /** Retain deployment configuration and the shared identity registry. */
-    public function __construct(private readonly Repository $configuration, private readonly OwnerRegistry $identities) {}
+    public function __construct(
+        private readonly Repository $configuration,
+        private readonly OwnerRegistry $identities,
+    ) {}
 
-    /** Resolve and freeze the concrete MetafieldDefinition class before resource compilation. @internal
+    /** Resolve and freeze the concrete MetafieldDefinition class before resource compilation.
+     * @internal
+     *
      * @return class-string<MetafieldDefinition>
      */
     public function prepare(): string
@@ -59,26 +66,15 @@ final class MetafieldModelRegistry
         }
         $model = new $class;
         $base = new MetafieldDefinition;
-        foreach ($base->getCasts() as $attribute => $cast) {
-            if (($model->getCasts()[$attribute] ?? null) !== $cast) {
-                throw new OwnershipConfigurationInvalid('Configured MetafieldDefinition models must retain the required casts.');
-            }
-        }
-        foreach (['save', 'delete', 'newQueryForRestoration', 'bootHasOwnership'] as $method) {
-            if ((new ReflectionMethod($class, $method))->getDeclaringClass()->getName() !== MetafieldDefinition::class) {
-                throw new OwnershipConfigurationInvalid('Configured MetafieldDefinition models must retain the canonical persistence hooks.');
-            }
-        }
-        if (! $model->hasGlobalScope(OwnershipScope::class)
-            || $model->getKeyName() !== $base->getKeyName() || $model->getKeyType() !== 'string' || $model->getIncrementing()) {
-            throw new OwnershipConfigurationInvalid('Configured MetafieldDefinition models must retain the builder, UUID and ownership capabilities.');
-        }
+        (new ConfiguredModelResolver)->assertOwnershipCapabilities($model, $base);
         $this->validated = true;
 
         return $class;
     }
 
-    /** Resolve the immutable model from native framework entry points. @internal
+    /** Resolve the immutable model from native framework entry points.
+     * @internal
+     *
      * @return class-string<MetafieldDefinition>
      */
     public static function modelClass(): string
@@ -86,7 +82,9 @@ final class MetafieldModelRegistry
         return Container::getInstance()->make(self::class)->definitionClass();
     }
 
-    /** Construct the configured root. @internal
+    /** Construct the configured root.
+     * @internal
+     *
      * @param  array<string,mixed>  $attributes
      */
     public static function newInstance(array $attributes = []): MetafieldDefinition
@@ -96,7 +94,9 @@ final class MetafieldModelRegistry
         return new $class($attributes);
     }
 
-    /** Persist a package-authored attribute map under the exact source assignment. @internal
+    /** Persist a package-authored attribute map under the exact source assignment.
+     * @internal
+     *
      * @param  array<string, mixed>  $attributes
      */
     public static function create(array $attributes): MetafieldDefinition
@@ -109,7 +109,9 @@ final class MetafieldModelRegistry
         });
     }
 
-    /** Create the exact configured query. @internal
+    /** Create the exact configured query.
+     * @internal
+     *
      * @return Builder<MetafieldDefinition>
      */
     public static function query(): Builder
