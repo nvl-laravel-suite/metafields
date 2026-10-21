@@ -8,7 +8,7 @@ use Illuminate\Container\Container;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Builder;
 use Nvl\Metafields\Models\MetafieldDefinition;
-use Nvl\Support\Models\ConfiguredModelResolver;
+use Nvl\Support\Models\ConfiguredModelRegistration;
 use Nvl\Support\OwnerRegistry;
 use Nvl\Support\Ownership\Contracts\OwnershipWriter;
 use Nvl\Support\Ownership\Exceptions\OwnershipConfigurationInvalid;
@@ -20,16 +20,27 @@ use Nvl\Support\Ownership\Exceptions\OwnershipConfigurationInvalid;
  */
 final class MetafieldModelRegistry
 {
-    /** @var class-string<MetafieldDefinition>|null */
-    private ?string $definition = null;
-
-    private bool $validated = false;
+    /** @var ConfiguredModelRegistration<MetafieldDefinition> */
+    private readonly ConfiguredModelRegistration $registration;
 
     /** Retain deployment configuration and the shared identity registry. */
     public function __construct(
-        private readonly Repository $configuration,
-        private readonly OwnerRegistry $identities,
-    ) {}
+        Repository $configuration,
+        OwnerRegistry $identities,
+    ) {
+        $this->registration = new ConfiguredModelRegistration(
+            $configuration,
+            $identities,
+            'nvl-metafields.models.definition',
+            MetafieldDefinition::class,
+            'metafields.definitions',
+            static function (string $class): void {
+                if (! in_array($class::ownershipDefinition()->strategy, ['unscoped', 'column', 'pivot'], true)) {
+                    throw new OwnershipConfigurationInvalid('MetafieldDefinition roots require a native column or concrete primary pivot.');
+                }
+            },
+        );
+    }
 
     /** Resolve and freeze the concrete MetafieldDefinition class before resource compilation.
      * @internal
@@ -38,21 +49,7 @@ final class MetafieldModelRegistry
      */
     public function prepare(): string
     {
-        if ($this->definition !== null) {
-            return $this->definition;
-        }
-        $configured = $this->configuration->get('nvl-metafields.models.definition', MetafieldDefinition::class);
-        if (! is_string($configured)) {
-            throw new OwnershipConfigurationInvalid('MetafieldDefinition model configuration must name a concrete MetafieldDefinition subclass.');
-        }
-        $class = (new ConfiguredModelResolver)->resolve($configured, MetafieldDefinition::class);
-        if (! in_array($class::ownershipDefinition()->strategy, ['unscoped', 'column', 'pivot'], true)) {
-            throw new OwnershipConfigurationInvalid('MetafieldDefinition roots require a native column or concrete primary pivot.');
-        }
-        $this->identities->registerReplacement('metafields.definitions', MetafieldDefinition::class, $class);
-        $this->definition = $class;
-
-        return $class;
+        return $this->registration->prepare();
     }
 
     /** Validate native capabilities after Laravel installs Eloquent's dispatcher.
@@ -60,16 +57,7 @@ final class MetafieldModelRegistry
      */
     public function definitionClass(): string
     {
-        $class = $this->prepare();
-        if ($this->validated) {
-            return $class;
-        }
-        $model = new $class;
-        $base = new MetafieldDefinition;
-        (new ConfiguredModelResolver)->assertOwnershipCapabilities($model, $base);
-        $this->validated = true;
-
-        return $class;
+        return $this->registration->modelClass();
     }
 
     /** Resolve the immutable model from native framework entry points.
