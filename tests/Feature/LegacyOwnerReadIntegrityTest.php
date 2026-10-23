@@ -14,9 +14,6 @@ use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Models\MetafieldTranslation;
 use Nvl\Metafields\Tests\Fixtures\BatchMetafieldPolicy;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
-use Nvl\Metafields\Tests\Fixtures\UsesLegacyMetafieldValueSchema;
-
-uses(UsesLegacyMetafieldValueSchema::class);
 
 it('rejects duplicate active values and bounds corrupt current rows before translation transfer', function (bool $overflow): void {
     expect(DB::connection()->getPdo()->inTransaction())->toBeTrue();

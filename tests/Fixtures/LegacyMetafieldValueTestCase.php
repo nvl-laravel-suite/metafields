@@ -7,10 +7,11 @@ namespace Nvl\Metafields\Tests\Fixtures;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Nvl\Metafields\Models\Metafield;
+use Nvl\Metafields\Tests\TestCase;
 use Orchestra\Testbench\Attributes\ResetRefreshDatabaseState;
 
 /** Isolate intentionally corrupt legacy storage from the ordinary unique owner fixture. */
-trait UsesLegacyMetafieldValueSchema
+abstract class LegacyMetafieldValueTestCase extends TestCase
 {
     /** Force this fixture's schema callback even after ordinary native test transactions. */
     protected function beforeRefreshingDatabase(): void
@@ -20,9 +21,13 @@ trait UsesLegacyMetafieldValueSchema
     }
 
     /** Leave the next test class responsible for restoring its ordinary unique schema. */
-    protected function tearDownUsesLegacyMetafieldValueSchema(): void
+    protected function tearDown(): void
     {
-        ResetRefreshDatabaseState::run();
+        try {
+            parent::tearDown();
+        } finally {
+            ResetRefreshDatabaseState::run();
+        }
     }
 
     /** Create legacy storage before RefreshDatabase starts its transaction. */
