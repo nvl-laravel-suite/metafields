@@ -10,6 +10,7 @@ use Illuminate\Support\Collection;
 use Nvl\Metafields\Data\OwnerMetafieldField;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
+use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 
 /**
@@ -36,16 +37,15 @@ final readonly class OwnerMetafieldFieldCatalog
         $owner = $this->ownerResolver->canonical($owner);
         $ownerType = $this->ownerRegistry->resolveOwnerType($owner);
 
-        /** @var Collection<int, MetafieldDefinitionAssignment> $assignments */
-        $assignments = MetafieldDefinitionAssignment::query()
+        $query = MetafieldDefinitionAssignment::query()
             ->with('definition.translations')
-            ->where('owner_type', $ownerType)
             ->where('is_active', true)
             ->whereHas('definition', static function (Builder $query): void {
                 $query->whereNotNull('active_handle');
             })
-            ->orderBy('display_order')
-            ->get();
+            ->orderBy('display_order');
+        MetafieldOwnerPredicate::equal($query, 'owner_type', $ownerType);
+        $assignments = $query->get();
 
         if ($assignments->isEmpty()) {
             /** @var Collection<int, OwnerMetafieldField> $empty */

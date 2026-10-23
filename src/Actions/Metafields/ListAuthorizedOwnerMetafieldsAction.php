@@ -10,6 +10,7 @@ use Nvl\Metafields\Contracts\ListAuthorizedOwnerMetafieldsContract;
 use Nvl\Metafields\Contracts\MetafieldAuthorization;
 use Nvl\Metafields\Data\OwnerMetafieldField;
 use Nvl\Metafields\Enums\MetafieldAbility;
+use Nvl\Metafields\Services\Metafields\MetafieldOwnerModelResolver;
 
 /**
  * Lists one owner's Metafield projection through the authorization boundary.
@@ -27,6 +28,7 @@ final readonly class ListAuthorizedOwnerMetafieldsAction implements ListAuthoriz
     public function __construct(
         private MetafieldAuthorization $authorization,
         private ListOwnerMetafieldsAction $fields,
+        private MetafieldOwnerModelResolver $owners,
     ) {}
 
     /**
@@ -37,7 +39,11 @@ final readonly class ListAuthorizedOwnerMetafieldsAction implements ListAuthoriz
     public function execute(Model $owner, ?string $locale = null): Collection
     {
         $this->authorization->authorizeOwner(MetafieldAbility::ViewOwner, $owner);
+        $canonical = $this->owners->canonical($owner);
+        if ($canonical->getAttributes() !== $owner->getAttributes() || $owner->getRelations() !== []) {
+            $this->authorization->authorizeOwner(MetafieldAbility::ViewOwner, $canonical);
+        }
 
-        return $this->fields->execute($owner, $locale);
+        return $this->fields->execute($canonical, $locale);
     }
 }

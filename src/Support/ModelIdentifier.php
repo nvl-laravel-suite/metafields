@@ -22,9 +22,9 @@ final class ModelIdentifier
             );
         }
 
-        $normalized = trim((string) $identifier);
+        $normalized = (string) $identifier;
 
-        if ($normalized === '') {
+        if (trim($normalized) === '') {
             throw new InvalidArgumentException(
                 'The model ['.$model::class.'] must be persisted before metafields can be assigned.',
             );

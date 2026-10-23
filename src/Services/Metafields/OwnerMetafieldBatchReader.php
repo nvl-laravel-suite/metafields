@@ -189,22 +189,28 @@ final readonly class OwnerMetafieldBatchReader
                 }
             }
         })->where(fn (Builder $nested) => $this->policy->scopeValues($nested, $batch));
-        $values = $query->limit(10001)->get();
-        if ($values->count() > 10000) {
-            throw new MetafieldBatchReadException('Metafield batches allow at most 10,000 current values.');
-        }
-        if ($values->isNotEmpty()) {
-            $translations = MetafieldTranslation::query()->whereIn('metafield_id', $values->modelKeys())->whereIn('locale', $chain)->limit(100001)->get();
-            if ($translations->count() > 100000) {
-                throw new MetafieldBatchReadException('Metafield value translations exceed the bounded batch payload.');
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            $values = (clone $query)->limit(10001)->get();
+            if ($values->count() > 10000) {
+                throw new MetafieldBatchReadException('Metafield batches allow at most 10,000 current values.');
             }
-            $byValue = $translations->groupBy('metafield_id');
-            foreach ($values as $value) {
-                $value->setRelation('translations', $byValue->get($value->id, new Collection));
+            if ($values->isNotEmpty()) {
+                $translations = MetafieldTranslation::query()->whereIn('metafield_id', $values->modelKeys())->whereIn('locale', $chain)->limit(100001)->get();
+                if ($translations->count() > 100000) {
+                    throw new MetafieldBatchReadException('Metafield value translations exceed the bounded batch payload.');
+                }
+                $byValue = $translations->groupBy('metafield_id');
+                foreach ($values as $value) {
+                    $value->setRelation('translations', $byValue->get($value->id, new Collection));
+                }
+            }
+            $current = (clone $query)->limit(10001)->get(['id', 'revision']);
+            if ($values->pluck('revision', 'id')->sortKeys()->all() === $current->pluck('revision', 'id')->sortKeys()->all()) {
+                return $values;
             }
         }
 
-        return $values;
+        throw new MetafieldBatchReadException('A coherent owner metafield batch snapshot could not be read; reload it before saving.');
     }
 
     /** Find the already admitted owner for an integrity failure. */

@@ -40,7 +40,7 @@ final readonly class OwnerMetafieldRecordWriter
     }
 
     /**
-     * Synchronize localized values using an explicit patch or replace contract.
+     * Synchronize localized values and consume one revision for each accepted existing-record write.
      *
      * @param  array<string, mixed>  $translations
      */
@@ -67,7 +67,8 @@ final readonly class OwnerMetafieldRecordWriter
         $this->translations->sync($metafield, $storedTranslations, $mode);
 
         if (! $isInitialOrRestoredWrite) {
-            $metafield->touch();
+            $metafield->revision++;
+            $metafield->save();
         }
     }
 

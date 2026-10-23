@@ -258,6 +258,38 @@ transaction, rejects stale revisions, rolls back the entire payload if any item
 fails, and dispatches `MetafieldsSyncedEvent` after commit. Recreating a cleared
 value does not require the hidden revision of its soft-deleted storage row.
 
+Each accepted synchronization of an existing localized value consumes exactly
+one revision, including a no-op, independently of timestamp precision. A newly
+created value starts at revision `1`; a restored record retains its monotonic
+revision history.
+
+For an initial editor snapshot, inject `ListAuthorizedOwnerMetafieldsContract`
+(or the trusted `ListOwnerMetafieldsContract`). Its `OwnerMetafieldField` includes
+the current `revision` alongside the resolved `value` and exact `translations`:
+
+```php
+$field = app(ListAuthorizedOwnerMetafieldsContract::class)
+    ->execute($article, 'en')
+    ->firstWhere('handle', 'details.arrival');
+
+$updated = app(SetMetafieldContract::class)->execute(
+    $article,
+    'details.arrival',
+    'Garden entrance',
+    'en',
+    expectedRevision: $field->revision,
+);
+```
+
+Unset and default-only fields have `revision: null`; omit the expected revision
+when creating their first stored value. The three owner readers, including
+`ListAuthorizedOwnersMetafieldsContract`, validate complete active value identities
+and revisions after loading translations without acquiring read locks. An
+interleaved update, insertion, removal or recreation retries the graph up to
+three times; sustained contention fails closed with `MetafieldIntegrityException`
+(single owner) or `MetafieldBatchReadException` (batch). Re-read after contention
+or a stale-write exception; never reuse an old editor revision.
+
 Focused operations are available through `SetMetafieldAction`,
 `DeleteOwnerMetafieldAction`, and `ListOwnerMetafieldsAction`.
 

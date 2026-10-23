@@ -71,8 +71,10 @@ final readonly class OwnerMetafieldQueryAdapter
         }
         $values = Metafield::query()->where('definition_id', $definition->id)
             ->whereHas('definition', static function (Builder $definitions) use ($alias): void {
-                $definitions->whereNotNull('active_handle')->whereHas('assignments',
-                    static fn (Builder $assignments) => $assignments->getQuery()->where('owner_type', $alias)->where('is_active', true));
+                $definitions->whereNotNull('active_handle')->whereHas('assignments', static function (Builder $assignments) use ($alias): void {
+                    MetafieldOwnerPredicate::equal($assignments, 'owner_type', $alias);
+                    $assignments->getQuery()->where('is_active', true);
+                });
             });
         MetafieldOwnerPredicate::equal($values, (new Metafield)->qualifyColumn('metafieldable_type'), $owner->getMorphClass());
         MetafieldOwnerPredicate::columns($values, (new Metafield)->qualifyColumn('metafieldable_id'), $owner->getQualifiedKeyName());

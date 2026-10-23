@@ -75,6 +75,8 @@ final class OwnerMetafieldField extends Data
         public readonly mixed $defaultValue,
         #[LiteralTypeScriptType('number')]
         public readonly int $displayOrder,
+        #[LiteralTypeScriptType('number | null')]
+        public readonly ?int $revision = null,
     ) {}
 
     /**
@@ -123,6 +125,7 @@ final class OwnerMetafieldField extends Data
                 : null,
             defaultValue: $definition->getSerializableDefaultValue($locale),
             displayOrder: $assignment->display_order,
+            revision: $metafield?->revision,
         );
     }
 
@@ -185,6 +188,7 @@ final class OwnerMetafieldField extends Data
                 ? MetafieldJsonProperty::collect($definition->json_property_schema, DataCollection::class) : null,
             defaultValue: $default instanceof DateTimeInterface ? $default->format('Y-m-d H:i:s') : $default,
             displayOrder: $assignment->display_order,
+            revision: $metafield?->revision,
         );
     }
 

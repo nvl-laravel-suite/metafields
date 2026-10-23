@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Nvl\Metafields\Exceptions\MetafieldIntegrityException;
 use Nvl\Metafields\Models\Metafield;
+use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Support\ModelIdentifier;
 
 /**
@@ -87,7 +88,7 @@ final class OwnerMetafieldRecordFinder
         }
 
         /** @var Collection<int, Metafield> $records */
-        $records = $query->get();
+        $records = $this->readCurrentRecords($query, $lockForUpdate);
 
         /** @var list<string> $duplicateDefinitionIds */
         $duplicateDefinitionIds = array_values($records
@@ -112,13 +113,39 @@ final class OwnerMetafieldRecordFinder
     }
 
     /**
+     * Load a complete value graph and verify its active identities and revisions without acquiring read locks.
+     *
+     * @param  Builder<Metafield>  $query
+     * @return Collection<int, Metafield>
+     */
+    private function readCurrentRecords(Builder $query, bool $lockForUpdate): Collection
+    {
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            $records = (clone $query)->get();
+
+            if ($lockForUpdate) {
+                return $records;
+            }
+
+            $current = (clone $query)->withoutEagerLoads()->get(['id', 'revision']);
+            if ($records->pluck('revision', 'id')->sortKeys()->all() === $current->pluck('revision', 'id')->sortKeys()->all()) {
+                return $records;
+            }
+        }
+
+        throw new MetafieldIntegrityException('A coherent owner metafield snapshot could not be read; reload it before saving.');
+    }
+
+    /**
      * @return Builder<Metafield>
      */
     private function activeQuery(Model $owner): Builder
     {
-        return Metafield::query()
-            ->where('metafieldable_type', $owner->getMorphClass())
-            ->where('metafieldable_id', ModelIdentifier::required($owner));
+        $query = Metafield::query();
+        MetafieldOwnerPredicate::equal($query, 'metafieldable_type', $owner->getMorphClass());
+        MetafieldOwnerPredicate::equal($query, 'metafieldable_id', ModelIdentifier::required($owner));
+
+        return $query;
     }
 
     /**
@@ -126,10 +153,11 @@ final class OwnerMetafieldRecordFinder
      */
     private function trashedQuery(Model $owner): Builder
     {
-        return Metafield::query()
-            ->onlyTrashed()
-            ->where('metafieldable_type', $owner->getMorphClass())
-            ->where('metafieldable_id', ModelIdentifier::required($owner));
+        $query = Metafield::query()->onlyTrashed();
+        MetafieldOwnerPredicate::equal($query, 'metafieldable_type', $owner->getMorphClass());
+        MetafieldOwnerPredicate::equal($query, 'metafieldable_id', ModelIdentifier::required($owner));
+
+        return $query;
     }
 
     /**

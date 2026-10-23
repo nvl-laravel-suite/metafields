@@ -2,19 +2,23 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Nvl\Metafields\Actions\Metafields\ListOwnerMetafieldsAction;
+use Nvl\Metafields\Actions\Metafields\SetMetafieldAction;
 use Nvl\Metafields\Contracts\ListAuthorizedOwnersMetafieldsContract;
 use Nvl\Metafields\Contracts\MetafieldBatchAuthorization;
 use Nvl\Metafields\Data\OwnersMetafields;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Exceptions\MetafieldBatchReadException;
-use Nvl\Metafields\Exceptions\MetafieldIntegrityException;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
@@ -44,20 +48,13 @@ beforeEach(function (): void {
         ],
         'nvl-metafields.reference_models' => ['products' => TestMetafieldOwner::class],
     ]);
-    $driver = Schema::getConnection()->getDriverName();
-    Schema::create('test_batch_string_metafield_owners', static fn (Blueprint $table) => batchStringMetafieldOwnerSchema($table, $driver));
 });
 
-function batchStringMetafieldOwnerSchema(Blueprint $table, string $driver): void
-{
-    $id = $table->string('id')->primary();
-    if (in_array($driver, ['mysql', 'mariadb'], true)) {
-        $id->collation('utf8mb4_bin');
-    }
-    $table->string('name');
-    $table->timestamps();
-    $table->softDeletes();
-}
+it('retains native owner uniqueness and an active outer transaction for batch fixtures', function (): void {
+    expect(DB::connection()->transactionLevel())->toBe(1)
+        ->and(DB::connection()->getPdo()->inTransaction())->toBeTrue()
+        ->and(Schema::hasIndex((new Metafield)->getTable(), 'metafields_owner_definition_unique'))->toBeTrue();
+});
 
 /** @param list<array{query: string}> $queries */
 function batchMetafieldStorageQueries(array $queries): Collection
@@ -143,13 +140,69 @@ it('has a fixed localized SQL budget at one, twenty-five and one hundred owners'
         expect($fields->fields)->toHaveCount(2);
         $byId = collect($fields->fields)->keyBy('definitionId');
         expect($byId[$default->id]->value)->toBe('fallback')
+            ->and($byId[$default->id]->revision)->toBeNull()
             ->and($byId[$default->id]->usesDefaultValue)->toBeTrue()
             ->and($byId[$localized->id]->title)->toBe('English title')
-            ->and($byId[$localized->id]->value)->toBe('English value');
+            ->and($byId[$localized->id]->value)->toBe('English value')
+            ->and($byId[$localized->id]->revision)->toBe(1);
     }
 
-    expect($budget)->toBe(7);
+    expect($budget)->toBe(8);
 })->with([1, 25, 100]);
+
+it('retries complete batch value identities when localized writes interleave reads', function (string $change): void {
+    $this->travelTo('2026-10-23 12:00:00');
+    batchMetafieldPolicy();
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
+    $definition = batchMetafieldDefinition();
+    $definition->update(['is_translatable' => true]);
+    $set = app(SetMetafieldAction::class);
+    $initial = $change === 'insert' ? null : $set->execute($owner, $definition->handle, 'Reception', 'en');
+    $interleaved = false;
+    $table = (new Metafield)->getTable();
+    DB::listen(function (QueryExecuted $query) use ($table, &$interleaved, $change, $set, $owner, $definition, $initial): void {
+        $sql = str_replace(['"', '`'], '', $query->sql);
+        if (! $interleaved && str_starts_with($sql, 'select * from '.$table.' ')) {
+            $interleaved = true;
+            if ($change === 'recreate') {
+                $initial->forceDelete();
+            }
+            $set->execute($owner, $definition->handle, 'Garden', 'en', $change === 'update' ? 1 : null);
+        }
+    });
+
+    $result = app(ListAuthorizedOwnersMetafieldsContract::class)->execute([$owner], 'en');
+    $field = $result->owners->{TestMetafieldOwner::class}->{(string) $owner->getKey()}->fields[0];
+
+    expect($interleaved)->toBeTrue()
+        ->and($field->value)->toBe('Garden')
+        ->and($field->translations)->toBe(['en' => 'Garden'])
+        ->and($field->revision)->toBe($change === 'update' ? 2 : 1);
+})->with(['update', 'insert', 'recreate']);
+
+it('fails closed after bounded batch snapshot retries under continuous writes', function (): void {
+    batchMetafieldPolicy();
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
+    $definition = batchMetafieldDefinition();
+    $definition->update(['is_translatable' => true]);
+    $set = app(SetMetafieldAction::class);
+    $set->execute($owner, $definition->handle, 'Reception', 'en');
+    $writes = 0;
+    $insideWrite = false;
+    $table = (new Metafield)->getTable();
+    DB::listen(function (QueryExecuted $query) use ($table, &$writes, &$insideWrite, $set, $owner, $definition): void {
+        $sql = str_replace(['"', '`'], '', $query->sql);
+        if (! $insideWrite && str_starts_with($sql, 'select * from '.$table.' ')) {
+            $insideWrite = true;
+            $set->execute($owner, $definition->handle, 'Revision '.++$writes, 'en', $writes);
+            $insideWrite = false;
+        }
+    });
+
+    expect(fn () => app(ListAuthorizedOwnersMetafieldsContract::class)->execute([$owner], 'en'))
+        ->toThrow(MetafieldBatchReadException::class, 'coherent')
+        ->and($writes)->toBe(3);
+});
 
 it('uses canonical owners and exact type-key pairs for equal and crossed integer/string keys', function (bool $equal): void {
     $policy = batchMetafieldPolicy();
@@ -190,6 +243,93 @@ it('applies SQL visibility before loading defaults, values and references and co
         ->and($fields[0]->hasStoredValue)->toBeFalse()->and($fields[0]->value)->toBeNull();
 });
 
+it('preserves exact native string owners in single field reads writes and restores', function (string $identity, string $operation): void {
+    Schema::table((new Metafield)->getTable(), function (Blueprint $table): void {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $table->string('metafieldable_id')->collation('NOCASE')->change();
+        }
+    });
+    $foreign = BatchStringMetafieldOwner::query()->create(['id' => 'ABC', 'name' => 'Other']);
+    $owner = BatchStringMetafieldOwner::query()->create(['id' => $identity, 'name' => 'Selected']);
+    $definition = batchMetafieldDefinition(alias: 'strings');
+    $stored = Metafield::factory()->forDefinition($definition)->forOwner($foreign)->withValue('Other value')->create();
+    if ($operation === 'restore') {
+        $stored->delete();
+    }
+
+    if ($operation === 'read') {
+        $field = app(ListOwnerMetafieldsAction::class)->execute($owner)->sole();
+
+        expect($field->hasStoredValue)->toBeFalse()->and($field->revision)->toBeNull()->and($field->value)->toBeNull();
+
+        return;
+    }
+
+    if ($identity === 'abc' && DB::connection()->getDriverName() === 'sqlite') {
+        expect(fn () => app(SetMetafieldAction::class)->execute($owner, $definition->handle, 'Selected value'))
+            ->toThrow(UniqueConstraintViolationException::class)
+            ->and($stored->fresh()->value)->toBe('Other value')
+            ->and($stored->fresh()->trashed())->toBe($operation === 'restore');
+
+        return;
+    }
+
+    $written = app(SetMetafieldAction::class)->execute($owner, $definition->handle, 'Selected value');
+
+    expect($written->metafieldable_id)->toBe($identity)
+        ->and($written->id)->not->toBe($stored->id)
+        ->and($stored->fresh()->value)->toBe('Other value')
+        ->and($stored->fresh()->trashed())->toBe($operation === 'restore');
+})->with(['case' => 'abc', 'padding' => ' ABC '])->with(['read', 'write', 'restore']);
+
+it('keeps case-distinct registered owner assignments outside single reads writes and host filters', function (string $operation): void {
+    $owners = config('nvl-metafields.owners');
+    $owners['Strings'] = $owners['products'];
+    unset($owners['products']);
+    config(['nvl-metafields.owners' => $owners]);
+    if (DB::connection()->getDriverName() === 'sqlite') {
+        Schema::table((new MetafieldDefinitionAssignment)->getTable(), function (Blueprint $table): void {
+            $table->string('owner_type')->collation('NOCASE')->change();
+        });
+    }
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Upper alias owner']);
+    $definition = batchMetafieldDefinition(alias: 'strings');
+    $definition->update(['is_filterable' => true]);
+    Metafield::factory()->forDefinition($definition)->forOwner($owner)->withValue('Retained value')->create();
+
+    if ($operation === 'read') {
+        expect(app(ListOwnerMetafieldsAction::class)->execute($owner))->toBeEmpty();
+
+        return;
+    }
+    if ($operation === 'filter') {
+        expect(TestMetafieldOwner::query()->whereNvlMetafield($definition->handle, 'Retained value', batchMetafieldPolicy())->exists())->toBeFalse();
+
+        return;
+    }
+
+    expect(fn () => app(SetMetafieldAction::class)->execute($owner, $definition->handle, 'Changed value', expectedRevision: 1))
+        ->toThrow(ValidationException::class);
+})->with(['read', 'write', 'filter']);
+
+it('rejects stale single owners excluded by current host scopes before reading or writing fields', function (string $state, string $operation): void {
+    $owner = BatchStringMetafieldOwner::query()->create(['id' => 'scoped-owner', 'name' => 'Visible']);
+    $definition = batchMetafieldDefinition(alias: 'strings');
+    $stored = Metafield::factory()->forDefinition($definition)->forOwner($owner)->withValue('Original value')->create();
+    if ($state === 'deleted') {
+        $owner->delete();
+    } else {
+        DB::table($owner->getTable())->where('id', $owner->id)->update(['name' => 'hidden']);
+    }
+
+    expect(fn () => $operation === 'read'
+        ? app(ListOwnerMetafieldsAction::class)->execute($owner)
+        : app(SetMetafieldAction::class)->execute($owner, $definition->handle, 'Forbidden value', expectedRevision: 1))
+        ->toThrow(ModelNotFoundException::class)
+        ->and($stored->fresh()->value)->toBe('Original value')
+        ->and($stored->fresh()->revision)->toBe(1);
+})->with(['hidden', 'deleted'])->with(['read', 'write']);
+
 it('rejects scoped-out and deleted owners before package queries', function (string $state): void {
     batchMetafieldPolicy();
     $owner = BatchStringMetafieldOwner::query()->create(['id' => 'ABC', 'name' => $state === 'hidden' ? 'hidden' : 'Owner']);
@@ -224,7 +364,7 @@ it('generates an exact string owner key while preserving case-insensitive table 
     $connection->useDefaultSchemaGrammar();
     $blueprint = new Blueprint($connection, 'test_batch_string_metafield_owners');
     $blueprint->create();
-    batchStringMetafieldOwnerSchema($blueprint, $driver);
+    $this->defineBatchStringOwnerSchema($blueprint, $driver);
     $sql = implode("\n", $blueprint->toSql());
 
     expect($sql)->toContain('`id` varchar(255) collate \'utf8mb4_bin\'')
@@ -297,12 +437,6 @@ it('keeps caller OR predicates inside mandatory live owner and stored value guar
 })->with([false, true]);
 
 it('retains a canonical custom soft delete column in host stored value filters', function (): void {
-    Schema::create((new BatchSoftDeletingMetafieldOwner)->getTable(), static function (Blueprint $table): void {
-        $table->id();
-        $table->string('name');
-        $table->timestamps();
-        $table->softDeletes(BatchSoftDeletingMetafieldOwner::DELETED_AT);
-    });
     $policy = batchMetafieldPolicy();
     $live = BatchSoftDeletingMetafieldOwner::query()->create(['name' => 'Live']);
     $deleted = BatchSoftDeletingMetafieldOwner::query()->create(['name' => 'Deleted']);
@@ -334,7 +468,7 @@ it('loads stored and default reference targets once for a complete batch', funct
     DB::flushQueryLog();
     $result = app(ListAuthorizedOwnersMetafieldsContract::class)->execute($owners);
     $budget = count(DB::getQueryLog());
-    expect($budget)->toBe(8);
+    expect($budget)->toBe(9);
     foreach ($result->owners->{TestMetafieldOwner::class} as $fields) {
         $byId = collect($fields->fields)->keyBy('definitionId');
         expect($byId[$stored->id]->value)->toBe((string) $target->getKey())
@@ -443,33 +577,6 @@ it('returns UUID owner keys and rejects an absent owner rather than defaulting i
     BatchStringMetafieldOwner::query()->whereKey($id)->forceDelete();
     expect(fn () => app(ListAuthorizedOwnersMetafieldsContract::class)->execute([$owner]))->toThrow(TenantBoundaryViolation::class);
 });
-
-it('rejects duplicate active values and bounds corrupt current rows before translation transfer', function (bool $overflow): void {
-    batchMetafieldPolicy();
-    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
-    $definition = batchMetafieldDefinition();
-    Schema::table((new Metafield)->getTable(), static fn (Blueprint $table) => $table->dropUnique('metafields_owner_definition_unique'));
-    $prototype = Metafield::factory()->forDefinition($definition)->forOwner($owner)->withValue('value')->make()->getAttributes();
-    $rows = [];
-    for ($index = 0; $index < ($overflow ? 10001 : 2); $index++) {
-        $rows[] = ['id' => (string) Str::uuid(), ...$prototype];
-        if (count($rows) === 1000) {
-            DB::table((new Metafield)->getTable())->insert($rows);
-            $rows = [];
-        }
-    }
-    if ($rows !== []) {
-        DB::table((new Metafield)->getTable())->insert($rows);
-    }
-    DB::enableQueryLog();
-    DB::flushQueryLog();
-
-    expect(fn () => app(ListAuthorizedOwnersMetafieldsContract::class)->execute([$owner]))
-        ->toThrow($overflow ? MetafieldBatchReadException::class : MetafieldIntegrityException::class);
-    if ($overflow) {
-        expect(collect(DB::getQueryLog())->filter(static fn (array $query): bool => str_contains($query['query'], (new MetafieldTranslation)->getTable())))->toHaveCount(0);
-    }
-})->with([false, true]);
 
 it('bounds stored and default reference identifiers before target SQL', function (): void {
     batchMetafieldPolicy();

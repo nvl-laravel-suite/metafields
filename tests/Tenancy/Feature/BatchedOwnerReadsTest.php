@@ -46,7 +46,7 @@ it('keeps a fixed localized query budget under the real active tenant boundary',
         $result = app(ListAuthorizedOwnersMetafieldsContract::class)->execute($owners, 'bg');
         $budget = count(DB::getQueryLog());
         expect($result->order)->toHaveCount($size);
-        expect($budget)->toBe(7);
+        expect($budget)->toBe(8);
     });
 })->with([1, 25, 100]);
 

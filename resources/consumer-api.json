@@ -490,6 +490,7 @@
                 "jsonPropertySchema",
                 "key",
                 "namespace",
+                "revision",
                 "title",
                 "translations",
                 "type",

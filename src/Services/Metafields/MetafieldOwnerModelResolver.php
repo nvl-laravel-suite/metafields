@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Ownership\MetafieldOwnership;
+use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
+use Nvl\Metafields\Support\ModelIdentifier;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 
@@ -58,11 +60,8 @@ final class MetafieldOwnerModelResolver
         if ($owner->getConnection() !== (new Metafield)->getConnection()) {
             throw new TenantBoundaryViolation('Metafield owners must use the canonical tenant connection.');
         }
-        if (! MetafieldOwnership::active() && ! $lock) {
-            return $owner;
-        }
-
         $query = (new ($owner::class))->newQuery()->whereKey($owner->getKey());
+        MetafieldOwnerPredicate::equal($query, $query->getModel()->getQualifiedKeyName(), ModelIdentifier::required($owner));
         if (MetafieldOwnership::active()) {
             $resource = MetafieldOwnership::resource($owner);
             $this->boundary->query($query, $resource);
@@ -76,11 +75,7 @@ final class MetafieldOwnerModelResolver
                 throw new TenantBoundaryViolation('The metafield owner is unavailable in the current tenant boundary.');
             }
 
-            $fallback = $query->getModel()->newModelQuery()->findOrFail($owner->getKey());
-            if (! $fallback instanceof Model) {
-                throw new TenantBoundaryViolation('The metafield owner could not be resolved canonically.');
-            }
-            $canonical = $fallback;
+            return $query->firstOrFail();
         }
 
         return $canonical;

@@ -7,8 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Query\Grammars\PostgresGrammar;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -33,6 +35,7 @@ use Nvl\Metafields\Enums\MetafieldAbility;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Events\MetafieldSet;
 use Nvl\Metafields\Events\MetafieldsSynced;
+use Nvl\Metafields\Exceptions\MetafieldIntegrityException;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
@@ -298,7 +301,7 @@ it('keeps owner field projection queries independent of assigned field count', f
 
     $populatedQueryCount = $measure(25);
 
-    expect($singleQueryCount)->toBeLessThanOrEqual(7)
+    expect($singleQueryCount)->toBe(9)
         ->and($populatedQueryCount)->toBe($singleQueryCount);
 });
 
@@ -375,6 +378,28 @@ it('does not query owner fields after authorization denial', function (): void {
     }
 });
 
+it('rechecks persisted owner policy facts before returning an authorized editor snapshot', function (): void {
+    $owner = metafieldTestOwner();
+    $definition = MetafieldDefinition::factory()->create();
+    assignMetafieldTestDefinition($definition);
+    app(SetMetafieldAction::class)->execute($owner, $definition->handle, 'Protected value');
+    DB::table($owner->getTable())->where('id', $owner->id)->update(['name' => 'Access revoked']);
+    app()->instance(MetafieldAuthorization::class, new class implements MetafieldAuthorization
+    {
+        public function authorizeDefinition(MetafieldAbility $ability, ?MetafieldDefinition $definition = null): void {}
+
+        public function authorizeOwner(MetafieldAbility $ability, ?Model $owner = null, ?MetafieldDefinition $definition = null): void
+        {
+            if ($owner?->getAttribute('name') !== 'Owner') {
+                throw new AuthorizationException;
+            }
+        }
+    });
+
+    expect(fn () => app(ListAuthorizedOwnerMetafieldsAction::class)->execute($owner))
+        ->toThrow(AuthorizationException::class);
+});
+
 it('supports patch and replace semantics for localized owner values', function (): void {
     $definition = MetafieldDefinition::factory()->translatable()->create([
         'namespace' => 'product',
@@ -420,6 +445,336 @@ it('supports patch and replace semantics for localized owner values', function (
 
     expect($metafield->refresh()->translations()->pluck('locale')->all())->toBe(['en']);
 });
+
+it('advances localized single-write revisions within the same timestamp second', function (): void {
+    $this->travelTo('2026-10-23 12:00:00');
+    $definition = MetafieldDefinition::factory()->translatable()->create([
+        'namespace' => 'product', 'key' => 'arrival',
+    ]);
+    assignMetafieldTestDefinition($definition);
+    $action = app(SetMetafieldAction::class);
+    $owner = metafieldTestOwner();
+    $created = $action->execute($owner, 'product.arrival', 'Reception', 'en');
+
+    $updated = $action->execute($owner, 'product.arrival', 'Garden', 'en', $created->revision);
+    $snapshot = OwnerMetafieldValue::fromModel($updated->fresh(), 'products', 'en');
+
+    expect($created->revision)->toBe(1)
+        ->and($snapshot->value)->toBe('Garden')
+        ->and($snapshot->translations)->toBe(['en' => 'Garden'])
+        ->and($snapshot->revision)->toBe(2)
+        ->and($updated->updated_at->equalTo($created->updated_at))->toBeTrue();
+
+    Event::fake([MetafieldSet::class, MetafieldsSynced::class]);
+    expect(fn () => $action->execute($owner, 'product.arrival', 'Stale edit', 'en', 1))
+        ->toThrow(StaleMetafieldVersionException::class)
+        ->and($updated->fresh()->getValue('en'))->toBe('Garden');
+    Event::assertNotDispatched(MetafieldSet::class);
+    Event::assertNotDispatched(MetafieldsSynced::class);
+});
+
+it('advances same-second bulk localized revisions for changed values and removed locales', function (
+    string $mode,
+    array $translations,
+    ?array $expectedTranslations,
+): void {
+    $this->travelTo('2026-10-23 12:00:00');
+    $definition = MetafieldDefinition::factory()->translatable()->create([
+        'namespace' => 'product', 'key' => 'arrival',
+    ]);
+    assignMetafieldTestDefinition($definition);
+    $action = app(SyncOwnerMetafieldsAction::class);
+    $owner = metafieldTestOwner();
+    $created = $action->execute($owner, SyncOwnerMetafieldsPayload::from(['items' => [[
+        'definitionId' => $definition->id,
+        'translations' => ['en' => 'Reception', 'bg' => 'Рецепция'],
+    ]]]))->sole();
+    $payload = SyncOwnerMetafieldsPayload::from(['items' => [[
+        'definitionId' => $definition->id,
+        'translations' => $translations,
+        'translationMode' => $mode,
+        'expectedRevision' => $created->revision,
+    ]]]);
+
+    $updated = $action->execute($owner, $payload)->sole();
+    $snapshot = OwnerMetafieldValue::fromModel($updated->fresh(), 'products', 'en');
+    $actualTranslations = $snapshot->translations;
+    if ($actualTranslations !== null) {
+        ksort($actualTranslations);
+    }
+    if ($expectedTranslations !== null) {
+        ksort($expectedTranslations);
+    }
+
+    expect($actualTranslations)->toBe($expectedTranslations)
+        ->and($snapshot->revision)->toBe(2)
+        ->and(fn () => $action->execute($owner, $payload))->toThrow(StaleMetafieldVersionException::class);
+})->with([
+    'patch' => ['patch', ['en' => 'Garden'], ['bg' => 'Рецепция', 'en' => 'Garden']],
+    'replace' => ['replace', ['en' => 'Garden'], ['en' => 'Garden']],
+    'locale removal only' => ['replace', ['en' => 'Reception'], ['en' => 'Reception']],
+]);
+
+it('consumes exactly one localized revision for an accepted no-op synchronization', function (int $elapsedSeconds): void {
+    $this->travelTo('2026-10-23 12:00:00');
+    $definition = MetafieldDefinition::factory()->translatable()->create([
+        'namespace' => 'product', 'key' => 'arrival',
+    ]);
+    assignMetafieldTestDefinition($definition);
+    $action = app(SetMetafieldAction::class);
+    $owner = metafieldTestOwner();
+    $created = $action->execute($owner, 'product.arrival', 'Reception', 'en');
+    $this->travel($elapsedSeconds)->seconds();
+
+    $unchanged = $action->execute($owner, 'product.arrival', 'Reception', 'en', $created->revision);
+
+    expect($unchanged->getValue('en'))->toBe('Reception')
+        ->and($unchanged->revision)->toBe(2)
+        ->and(fn () => $action->execute($owner, 'product.arrival', 'Reception', 'en', 1))
+        ->toThrow(StaleMetafieldVersionException::class);
+})->with([0, 1]);
+
+it('rolls back every bulk value and localized revision after a later stale item', function (): void {
+    $this->travelTo('2026-10-23 12:00:00');
+    $localized = MetafieldDefinition::factory()->translatable()->create([
+        'namespace' => 'product', 'key' => 'arrival',
+    ]);
+    $scalar = MetafieldDefinition::factory()->create(['namespace' => 'product', 'key' => 'reference']);
+    $stale = MetafieldDefinition::factory()->create(['namespace' => 'product', 'key' => 'stale']);
+    assignMetafieldTestDefinition($localized);
+    assignMetafieldTestDefinition($scalar);
+    assignMetafieldTestDefinition($stale);
+    $action = app(SyncOwnerMetafieldsAction::class);
+    $owner = metafieldTestOwner();
+    $created = $action->execute($owner, SyncOwnerMetafieldsPayload::from(['items' => [
+        ['definitionId' => $localized->id, 'translations' => ['en' => 'Reception', 'bg' => 'Рецепция']],
+        ['definitionId' => $scalar->id, 'value' => 'original'],
+        ['definitionId' => $stale->id, 'value' => 'original'],
+    ]]))->keyBy('definition_id');
+    $action->execute($owner, SyncOwnerMetafieldsPayload::from(['items' => [[
+        'definitionId' => $stale->id, 'value' => 'current', 'expectedRevision' => 1,
+    ]]]));
+    Event::fake([MetafieldSet::class, MetafieldsSynced::class]);
+
+    expect(fn () => $action->execute($owner, SyncOwnerMetafieldsPayload::from(['items' => [
+        ['definitionId' => $localized->id, 'translations' => ['en' => 'Garden'], 'translationMode' => 'replace', 'expectedRevision' => 1],
+        ['definitionId' => $scalar->id, 'value' => 'must roll back', 'expectedRevision' => 1],
+        ['definitionId' => $stale->id, 'value' => 'stale write', 'expectedRevision' => 1],
+    ]])))->toThrow(StaleMetafieldVersionException::class);
+
+    $localizedSnapshot = OwnerMetafieldValue::fromModel($created->get($localized->id)->fresh(), 'products', 'en');
+    $actualTranslations = $localizedSnapshot->translations;
+    if ($actualTranslations !== null) {
+        ksort($actualTranslations);
+    }
+    expect($actualTranslations)->toBe(['bg' => 'Рецепция', 'en' => 'Reception'])
+        ->and($localizedSnapshot->revision)->toBe(1)
+        ->and($created->get($scalar->id)->fresh()->value)->toBe('original')
+        ->and($created->get($scalar->id)->fresh()->revision)->toBe(1)
+        ->and($created->get($stale->id)->fresh()->value)->toBe('current')
+        ->and($created->get($stale->id)->fresh()->revision)->toBe(2);
+    Event::assertNotDispatched(MetafieldSet::class);
+    Event::assertNotDispatched(MetafieldsSynced::class);
+});
+
+it('publishes same-second localized revisions only after the containing transaction commits', function (): void {
+    $this->travelTo('2026-10-23 12:00:00');
+    $definition = MetafieldDefinition::factory()->translatable()->create([
+        'namespace' => 'product', 'key' => 'arrival',
+    ]);
+    assignMetafieldTestDefinition($definition);
+    $action = app(SetMetafieldAction::class);
+    $owner = metafieldTestOwner();
+    $action->execute($owner, 'product.arrival', 'Reception', 'en');
+    $setEvents = [];
+    $syncEvents = [];
+    Event::listen(MetafieldSet::class, function (MetafieldSet $event) use (&$setEvents): void {
+        $setEvents[] = $event;
+    });
+    Event::listen(MetafieldsSynced::class, function (MetafieldsSynced $event) use (&$syncEvents): void {
+        $syncEvents[] = $event;
+    });
+
+    $connection = (new Metafield)->getConnection();
+    $connection->transaction(function () use ($action, $owner, &$setEvents, &$syncEvents): void {
+        $updated = $action->execute($owner, 'product.arrival', 'Garden', 'en', 1);
+
+        expect($updated->revision)->toBe(2)
+            ->and($setEvents)->toBe([])
+            ->and($syncEvents)->toBe([]);
+    });
+
+    expect($setEvents)->toHaveCount(1)
+        ->and($setEvents[0]->revision)->toBe(2)
+        ->and($syncEvents)->toHaveCount(1);
+});
+
+it('exposes editable revisions for stored fields and null for unset or default fields', function (bool $authorized): void {
+    $unset = MetafieldDefinition::factory()->create(['namespace' => 'product', 'key' => 'unset']);
+    $default = MetafieldDefinition::factory()->create(['namespace' => 'product', 'key' => 'default', 'default_value' => 'Fallback']);
+    $localized = MetafieldDefinition::factory()->translatable()->create(['namespace' => 'product', 'key' => 'arrival']);
+    foreach ([$unset, $default, $localized] as $definition) {
+        assignMetafieldTestDefinition($definition);
+    }
+    $owner = metafieldTestOwner();
+    $set = app(SetMetafieldAction::class);
+    $set->execute($owner, 'product.arrival', 'Reception', 'en');
+    app()->instance(MetafieldAuthorization::class, new class implements MetafieldAuthorization
+    {
+        public function authorizeDefinition(MetafieldAbility $ability, ?MetafieldDefinition $definition = null): void {}
+
+        public function authorizeOwner(MetafieldAbility $ability, ?Model $owner = null, ?MetafieldDefinition $definition = null): void {}
+    });
+    $fields = $authorized
+        ? app(ListAuthorizedOwnerMetafieldsAction::class)->execute($owner, 'en')
+        : app(ListOwnerMetafieldsAction::class)->execute($owner, 'en');
+    $fields = $fields->keyBy('definitionId');
+
+    expect($fields[$unset->id]->revision)->toBeNull()
+        ->and($fields[$unset->id]->hasStoredValue)->toBeFalse()
+        ->and($fields[$default->id]->revision)->toBeNull()
+        ->and($fields[$default->id]->value)->toBe('Fallback')
+        ->and($fields[$default->id]->usesDefaultValue)->toBeTrue()
+        ->and($fields[$localized->id]->revision)->toBe(1)
+        ->and($fields[$localized->id]->value)->toBe('Reception');
+
+    $set->execute($owner, 'product.arrival', 'Garden', 'en', $fields[$localized->id]->revision);
+    expect(fn () => $set->execute($owner, 'product.arrival', 'Stale edit', 'en', $fields[$localized->id]->revision))
+        ->toThrow(StaleMetafieldVersionException::class);
+})->with([false, true]);
+
+it('retries owner field snapshots when a write interleaves parent and localized reads', function (bool $existing): void {
+    $this->travelTo('2026-10-23 12:00:00');
+    $definition = MetafieldDefinition::factory()->translatable()->create(['namespace' => 'product', 'key' => 'arrival']);
+    assignMetafieldTestDefinition($definition);
+    $owner = metafieldTestOwner();
+    $set = app(SetMetafieldAction::class);
+    if ($existing) {
+        $set->execute($owner, 'product.arrival', 'Reception', 'en');
+    }
+    $interleaved = false;
+    $table = (new Metafield)->getTable();
+    DB::listen(function (QueryExecuted $query) use ($table, &$interleaved, $set, $owner, $existing): void {
+        $sql = str_replace(['"', '`'], '', $query->sql);
+        if (! $interleaved && str_starts_with($sql, 'select * from '.$table.' ')) {
+            $interleaved = true;
+            $set->execute($owner, 'product.arrival', 'Garden', 'en', $existing ? 1 : null);
+        }
+    });
+
+    $field = app(ListOwnerMetafieldsAction::class)->execute($owner, 'en')->sole();
+
+    expect($interleaved)->toBeTrue()
+        ->and($field->value)->toBe('Garden')
+        ->and($field->translations)->toBe(['en' => 'Garden'])
+        ->and($field->revision)->toBe($existing ? 2 : 1);
+})->with([false, true]);
+
+it('fails closed after bounded owner snapshot retries under continuous writes', function (): void {
+    $definition = MetafieldDefinition::factory()->translatable()->create(['namespace' => 'product', 'key' => 'arrival']);
+    assignMetafieldTestDefinition($definition);
+    $owner = metafieldTestOwner();
+    $set = app(SetMetafieldAction::class);
+    $set->execute($owner, 'product.arrival', 'Reception', 'en');
+    $writes = 0;
+    $insideWrite = false;
+    $table = (new Metafield)->getTable();
+    DB::listen(function (QueryExecuted $query) use ($table, &$writes, &$insideWrite, $set, $owner): void {
+        $sql = str_replace(['"', '`'], '', $query->sql);
+        if (! $insideWrite && str_starts_with($sql, 'select * from '.$table.' ')) {
+            $insideWrite = true;
+            $set->execute($owner, 'product.arrival', 'Revision '.++$writes, 'en', $writes);
+            $insideWrite = false;
+        }
+    });
+
+    expect(fn () => app(ListOwnerMetafieldsAction::class)->execute($owner, 'en'))
+        ->toThrow(MetafieldIntegrityException::class, 'coherent')
+        ->and($writes)->toBe(3);
+});
+
+it('accepts exactly one same-second localized writer across competing processes', function (string $mode): void {
+    $this->travelTo('2026-10-23 12:00:00');
+    $directory = sys_get_temp_dir().'/metafields-race-'.Str::uuid();
+    mkdir($directory);
+    touch($directory.'/database.sqlite');
+    $originalConnection = config('database.default');
+    config([
+        'database.default' => 'metafields_race',
+        'database.connections.metafields_race' => array_replace(config('database.connections.sqlite'), [
+            'database' => $directory.'/database.sqlite', 'busy_timeout' => 5000, 'journal_mode' => 'WAL', 'transaction_mode' => 'IMMEDIATE',
+        ]),
+    ]);
+    $workers = [];
+    $waitFor = static function (Closure $condition): void {
+        $deadline = microtime(true) + 20;
+        while (! $condition()) {
+            if (microtime(true) >= $deadline) {
+                throw new RuntimeException('The Metafield concurrency barrier timed out.');
+            }
+            usleep(10000);
+            clearstatcache();
+        }
+    };
+
+    try {
+        foreach (glob(__DIR__.'/../../database/migrations/*.php') as $path) {
+            (require $path)->up();
+        }
+        DB::connection()->getSchemaBuilder()->create('test_metafield_owners', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+        $owner = TestMetafieldOwner::query()->create(['name' => 'Concurrent owner']);
+        $definition = MetafieldDefinition::factory()->translatable()->create(['namespace' => 'product', 'key' => 'arrival']);
+        assignMetafieldTestDefinition($definition);
+        app(SyncOwnerMetafieldsAction::class)->execute($owner, SyncOwnerMetafieldsPayload::from(['items' => [[
+            'definitionId' => $definition->id, 'translations' => ['en' => 'Reception', 'bg' => 'Рецепция'],
+        ]]]));
+        DB::purge('metafields_race');
+        foreach (['Garden', 'Terrace'] as $index => $value) {
+            $workers[] = Process::timeout(25)->env(['XDEBUG_MODE' => 'off'])->start([
+                PHP_BINARY,
+                __DIR__.'/../Fixtures/metafield-revision-worker.php',
+                json_encode([
+                    'directory' => $directory, 'index' => $index, 'mode' => $mode, 'value' => $value,
+                    'owner' => $owner->getKey(), 'definition' => $definition->id, 'handle' => $definition->handle,
+                ], JSON_THROW_ON_ERROR),
+            ]);
+        }
+        $waitFor(static fn (): bool => is_file($directory.'/ready-0') && is_file($directory.'/ready-1'));
+        touch($directory.'/start');
+        $results = collect();
+        foreach ($workers as $worker) {
+            $result = $worker->wait();
+            expect($result->errorOutput())->toBe('')->and($result->exitCode())->toBe(0);
+            $results->push(json_decode($result->output(), true, flags: JSON_THROW_ON_ERROR));
+        }
+        expect($results->where('status', 'error')->values()->all())->toBe([])
+            ->and($results->pluck('status')->sort()->values()->all())->toBe(['stale', 'written']);
+        $winner = $results->firstWhere('status', 'written');
+        $stored = Metafield::query()->sole();
+        expect($stored->revision)->toBe(2)
+            ->and($stored->getValue('en'))->toBe($winner['value'])
+            ->and($winner['revision'])->toBe(2)
+            ->and($winner['events'])->toBe($mode === 'single' ? [2] : [])
+            ->and($winner['syncEvents'])->toBe(1)
+            ->and($results->firstWhere('status', 'stale')['events'])->toBe([])
+            ->and($results->firstWhere('status', 'stale')['syncEvents'])->toBe(0);
+    } finally {
+        touch($directory.'/start');
+        foreach ($workers as $worker) {
+            $worker->stop();
+        }
+        DB::purge('metafields_race');
+        config(['database.default' => $originalConnection]);
+        foreach (glob($directory.'/*') as $path) {
+            unlink($path);
+        }
+        rmdir($directory);
+    }
+})->with(['single', 'patch', 'replace']);
 
 it('rejects null localized values before reaching the non-null translation column', function (): void {
     $definition = MetafieldDefinition::factory()->translatable()->create([
