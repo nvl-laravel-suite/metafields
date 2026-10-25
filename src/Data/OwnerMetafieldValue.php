@@ -12,37 +12,25 @@ use Spatie\LaravelData\Attributes\MapInputName;
 use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /** Canonical serialized value returned after an owner metafield mutation. */
 #[MapOutputName(CamelCaseMapper::class)]
 #[MapInputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class OwnerMetafieldValue extends Data
 {
     /**
      * @param  array<string, mixed>|null  $translations
      */
     public function __construct(
-        #[LiteralTypeScriptType('string')]
         public readonly string $id,
-        #[LiteralTypeScriptType('string')]
         public readonly string $definitionId,
-        #[LiteralTypeScriptType('string')]
         public readonly string $ownerId,
-        #[LiteralTypeScriptType('string')]
         public readonly string $ownerType,
         public readonly MetafieldTypeEnum $type,
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool $isTranslatable,
-        #[LiteralTypeScriptType('unknown | null')]
         public readonly mixed $value,
-        #[LiteralTypeScriptType('Record<string, unknown> | null')]
         public readonly ?array $translations,
-        #[LiteralTypeScriptType('string | null')]
         public readonly ?string $referencedId,
-        #[LiteralTypeScriptType('number')]
         public readonly int $revision,
     ) {}
 

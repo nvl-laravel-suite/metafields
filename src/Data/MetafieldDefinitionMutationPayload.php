@@ -22,9 +22,6 @@ use Spatie\LaravelData\Data;
 use Spatie\LaravelData\DataCollection;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
 use Spatie\LaravelData\Optional;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\Optional as TypeScriptOptional;
-use Spatie\TypeScriptTransformer\Attributes\TypeScriptType;
 
 #[MapOutputName(CamelCaseMapper::class)]
 #[MapInputName(CamelCaseMapper::class)]
@@ -42,40 +39,19 @@ abstract class MetafieldDefinitionMutationPayload extends Data
      * @param  array<string, array<string, mixed>>|Optional|null  $translations
      */
     public function __construct(
-        #[LiteralTypeScriptType('string')]
         public readonly string $namespace,
-        #[LiteralTypeScriptType('string')]
         public readonly string $key,
-        #[TypeScriptType(MetafieldTypeEnum::class)]
         public readonly MetafieldTypeEnum $type,
-        #[TypeScriptType(AssignMetafieldDefinitionPayload::class)]
         public readonly AssignMetafieldDefinitionPayload $assignment,
-        #[TypeScriptOptional]
-        #[LiteralTypeScriptType('string | null')]
         public readonly string|Optional|null $referencedModelType = new Optional,
-        #[TypeScriptOptional]
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool|Optional $isTranslatable = new Optional,
-        #[TypeScriptOptional]
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool|Optional $isRequired = new Optional,
-        #[TypeScriptOptional]
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool|Optional $isFilterable = new Optional,
-        #[TypeScriptOptional]
-        #[LiteralTypeScriptType('string[] | null')]
         public readonly array|Optional|null $validationRules = new Optional,
-        #[TypeScriptOptional]
         #[DataCollectionOf(MetafieldJsonProperty::class)]
         public readonly DataCollection|Optional|null $jsonPropertySchema = new Optional,
-        #[TypeScriptOptional]
-        #[LiteralTypeScriptType('unknown | null')]
         public readonly array|bool|float|int|string|Optional|null $defaultValue = new Optional,
-        #[TypeScriptOptional]
-        #[LiteralTypeScriptType('number')]
         public readonly int|Optional $displayOrder = new Optional,
-        #[TypeScriptOptional]
-        #[LiteralTypeScriptType('Record<string, { title: string; description?: string | null; hint?: string | null; defaultValue?: unknown; properties?: Record<string, unknown> | null }> | null')]
         public readonly array|Optional|null $translations = null,
     ) {}
 

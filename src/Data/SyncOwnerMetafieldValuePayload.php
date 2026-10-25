@@ -13,9 +13,6 @@ use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
 use Spatie\LaravelData\Optional;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\Optional as TypeScriptOptional;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * SyncOwnerMetafieldValuePayload: one owner-metafield mutation payload item.
@@ -24,7 +21,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapOutputName(CamelCaseMapper::class)]
 #[MapInputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class SyncOwnerMetafieldValuePayload extends Data
 {
     use DataTransform;
@@ -33,22 +29,11 @@ final class SyncOwnerMetafieldValuePayload extends Data
      * @param  array<string, mixed>|Optional|null  $translations
      */
     public function __construct(
-        #[LiteralTypeScriptType('string')]
         public readonly string $definitionId,
-        #[TypeScriptOptional]
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool|Optional $clear = false,
-        #[TypeScriptOptional]
-        #[LiteralTypeScriptType('unknown | null')]
         public readonly mixed $value = null,
-        #[TypeScriptOptional]
-        #[LiteralTypeScriptType('Record<string, unknown> | null')]
         public readonly array|Optional|null $translations = null,
-        #[TypeScriptOptional]
-        #[LiteralTypeScriptType("'patch' | 'replace'")]
         public readonly TranslationSyncMode $translationMode = TranslationSyncMode::Patch,
-        #[TypeScriptOptional]
-        #[LiteralTypeScriptType('number | null')]
         public readonly int|Optional|null $expectedRevision = null,
     ) {}
 

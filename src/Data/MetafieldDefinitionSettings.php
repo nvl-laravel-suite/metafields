@@ -14,13 +14,9 @@ use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\DataCollection;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
-use Spatie\TypeScriptTransformer\Attributes\TypeScriptType;
 
 #[MapOutputName(CamelCaseMapper::class)]
 #[MapInputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class MetafieldDefinitionSettings extends Data
 {
     use DataTransform;
@@ -30,38 +26,23 @@ final class MetafieldDefinitionSettings extends Data
      * @param  DataCollection<int, MetafieldJsonProperty>|null  $jsonPropertySchema
      */
     public function __construct(
-        #[LiteralTypeScriptType('string')]
         public readonly string $id,
-        #[LiteralTypeScriptType('string')]
         public readonly string $handle,
-        #[LiteralTypeScriptType('string')]
         public readonly string $namespace,
-        #[LiteralTypeScriptType('string')]
         public readonly string $key,
         public readonly MetafieldTypeEnum $type,
-        #[LiteralTypeScriptType('string')]
         public readonly string $title,
-        #[LiteralTypeScriptType('string | null')]
         public readonly ?string $description,
-        #[LiteralTypeScriptType('string | null')]
         public readonly ?string $hint,
-        #[LiteralTypeScriptType('string | null')]
         public readonly ?string $referencedModelType,
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool $isTranslatable,
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool $isRequired,
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool $isFilterable,
-        #[LiteralTypeScriptType('string[] | null')]
         public readonly ?array $validationRules,
         #[DataCollectionOf(MetafieldJsonProperty::class)]
         public readonly ?DataCollection $jsonPropertySchema,
-        #[LiteralTypeScriptType('unknown | null')]
         public readonly mixed $defaultValue,
-        #[LiteralTypeScriptType('number')]
         public readonly int $displayOrder,
-        #[TypeScriptType(MetafieldDefinitionAssignmentPayload::class)]
         public readonly MetafieldDefinitionAssignmentPayload $assignment,
     ) {}
 

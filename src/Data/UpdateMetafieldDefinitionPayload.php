@@ -11,8 +11,6 @@ use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\DataCollection;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
 use Spatie\LaravelData\Optional;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Revision-aware contract for patching a metafield definition and localized copy.
@@ -21,8 +19,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapOutputName(CamelCaseMapper::class)]
 #[MapInputName(CamelCaseMapper::class)]
-#[TypeScript]
-#[LiteralTypeScriptType("Omit<Nvl.Metafields.Data.MetafieldDefinitionMutationPayload, 'translations'> & { expectedRevision: number; translations?: Record<string, { title?: string; description?: string | null; hint?: string | null; defaultValue?: unknown; properties?: Record<string, unknown> | null }> | null }")]
 final class UpdateMetafieldDefinitionPayload extends MetafieldDefinitionMutationPayload
 {
     /**

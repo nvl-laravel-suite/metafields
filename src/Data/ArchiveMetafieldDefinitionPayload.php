@@ -9,7 +9,6 @@ use Spatie\LaravelData\Attributes\MapInputName;
 use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * Revision-aware archive or restore request for a definition.
@@ -18,7 +17,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapOutputName(CamelCaseMapper::class)]
 #[MapInputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class ArchiveMetafieldDefinitionPayload extends Data
 {
     use DataTransform;

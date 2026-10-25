@@ -15,16 +15,12 @@ use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\DataCollection;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
-use Spatie\TypeScriptTransformer\Attributes\TypeScriptType;
 
 /**
  * Consumer-safe display contract for a metafield definition.
  */
 #[MapOutputName(CamelCaseMapper::class)]
 #[MapInputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class MetafieldDefinitionPayload extends Data
 {
     use DataTransform;
@@ -35,37 +31,22 @@ final class MetafieldDefinitionPayload extends Data
      * @param  array<string, array<string, mixed>>|null  $translations
      */
     public function __construct(
-        #[LiteralTypeScriptType('string')]
         public readonly string $namespace,
-        #[LiteralTypeScriptType('string')]
         public readonly string $key,
-        #[TypeScriptType(MetafieldTypeEnum::class)]
         public readonly MetafieldTypeEnum $type,
-        #[LiteralTypeScriptType('string')]
         public readonly string $title,
-        #[LiteralTypeScriptType('string | null')]
         public readonly ?string $description,
-        #[LiteralTypeScriptType('string | null')]
         public readonly ?string $hint,
-        #[LiteralTypeScriptType('string | null')]
         public readonly ?string $referencedModelType,
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool $isTranslatable,
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool $isRequired,
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool $isFilterable,
-        #[LiteralTypeScriptType('string[] | null')]
         public readonly ?array $validationRules,
         #[DataCollectionOf(MetafieldJsonProperty::class)]
         public readonly ?DataCollection $jsonPropertySchema,
-        #[LiteralTypeScriptType('unknown | null')]
         public readonly mixed $defaultValue,
-        #[LiteralTypeScriptType('number')]
         public readonly int $displayOrder,
-        #[LiteralTypeScriptType('number')]
         public readonly int $revision,
-        #[LiteralTypeScriptType('Record<string, { title: string; description: string | null; hint: string | null; defaultValue: unknown; properties: Record<string, unknown> | null }> | null')]
         public readonly ?array $translations,
     ) {}
 

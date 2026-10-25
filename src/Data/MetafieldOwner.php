@@ -9,8 +9,6 @@ use Spatie\LaravelData\Attributes\MapInputName;
 use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * MetafieldOwner: output DTO describing one supported owner registry entry.
@@ -19,7 +17,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapOutputName(CamelCaseMapper::class)]
 #[MapInputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class MetafieldOwner extends Data
 {
     use DataTransform;
@@ -29,17 +26,11 @@ final class MetafieldOwner extends Data
      * @param  list<string>  $sections
      */
     public function __construct(
-        #[LiteralTypeScriptType('string')]
         public readonly string $type,
-        #[LiteralTypeScriptType('string')]
         public readonly string $label,
-        #[LiteralTypeScriptType('string[]')]
         public readonly array $supportedTypes,
-        #[LiteralTypeScriptType('string[]')]
         public readonly array $sections,
-        #[LiteralTypeScriptType("'live' | 'planned'")]
         public readonly string $runtimeStatus,
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool $supportsRuntimeEditing,
     ) {}
 }

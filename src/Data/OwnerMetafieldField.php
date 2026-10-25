@@ -22,8 +22,6 @@ use Spatie\LaravelData\Attributes\MapOutputName;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\DataCollection;
 use Spatie\LaravelData\Mappers\CamelCaseMapper;
-use Spatie\TypeScriptTransformer\Attributes\LiteralTypeScriptType;
-use Spatie\TypeScriptTransformer\Attributes\TypeScript;
 
 /**
  * OwnerMetafieldField: assigned owner-metafield definition with current owner value state.
@@ -32,7 +30,6 @@ use Spatie\TypeScriptTransformer\Attributes\TypeScript;
  */
 #[MapOutputName(CamelCaseMapper::class)]
 #[MapInputName(CamelCaseMapper::class)]
-#[TypeScript]
 final class OwnerMetafieldField extends Data
 {
     use DataTransform;
@@ -42,40 +39,24 @@ final class OwnerMetafieldField extends Data
      * @param  DataCollection<int, MetafieldJsonProperty>|null  $jsonPropertySchema
      */
     public function __construct(
-        #[LiteralTypeScriptType('string')]
         public readonly string $definitionId,
-        #[LiteralTypeScriptType('string')]
         public readonly string $handle,
-        #[LiteralTypeScriptType('string')]
         public readonly string $namespace,
-        #[LiteralTypeScriptType('string')]
         public readonly string $key,
         public readonly MetafieldTypeEnum $type,
-        #[LiteralTypeScriptType('string')]
         public readonly string $title,
-        #[LiteralTypeScriptType('string | null')]
         public readonly ?string $description,
-        #[LiteralTypeScriptType('string | null')]
         public readonly ?string $hint,
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool $isTranslatable,
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool $isRequired,
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool $hasStoredValue,
-        #[LiteralTypeScriptType('boolean')]
         public readonly bool $usesDefaultValue,
-        #[LiteralTypeScriptType('unknown | null')]
         public readonly mixed $value,
-        #[LiteralTypeScriptType('Record<string, unknown> | null')]
         public readonly ?array $translations,
         #[DataCollectionOf(MetafieldJsonProperty::class)]
         public readonly ?DataCollection $jsonPropertySchema,
-        #[LiteralTypeScriptType('unknown | null')]
         public readonly mixed $defaultValue,
-        #[LiteralTypeScriptType('number')]
         public readonly int $displayOrder,
-        #[LiteralTypeScriptType('number | null')]
         public readonly ?int $revision = null,
     ) {}
 
