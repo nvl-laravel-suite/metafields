@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\Metafields;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Metafields\Contracts\MetafieldBatchAuthorization;
-use Nvl\Metafields\Data\OwnerMetafieldField;
-use Nvl\Metafields\Data\OwnerMetafieldFields;
-use Nvl\Metafields\Data\OwnersMetafields;
 use Nvl\Metafields\Exceptions\MetafieldBatchReadException;
 use Nvl\Metafields\Exceptions\MetafieldIntegrityException;
 use Nvl\Metafields\Models\Metafield;
@@ -24,11 +22,12 @@ use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Support\Contracts\LocaleCatalog;
+use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Owners\OwnerBatch;
 use Nvl\Support\Owners\OwnerIdentity;
 use Nvl\Support\Owners\OwnerResultMap;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
-use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
+use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
 /** Grouped owner admission and bounded SQL-visible assigned field projection. */
 final readonly class OwnerMetafieldBatchReader
@@ -43,7 +42,7 @@ final readonly class OwnerMetafieldBatchReader
     ) {}
 
     /** @param list<Model> $owners */
-    public function read(array $owners, ?string $locale = null): OwnersMetafields
+    public function read(array $owners, Authenticatable|SystemActor $actor, ?string $locale = null): array
     {
         $input = OwnerBatch::fromModels($owners);
         if ($input->isEmpty()) {
@@ -55,7 +54,7 @@ final readonly class OwnerMetafieldBatchReader
             throw new MetafieldBatchReadException('Metafield batch reads allow at most ten requested and fallback locales.');
         }
         $batch = $this->admit($input);
-        $this->policy->authorizeOwners($batch);
+        $this->policy->authorizeOwners($actor, $batch);
         $aliases = [];
         foreach ($batch->owners() as $owner) {
             $aliases[] = $this->registry->resolveOwnerType($owner);
@@ -65,7 +64,7 @@ final readonly class OwnerMetafieldBatchReader
         $query
             ->where('is_active', true)
             ->whereHas('definition', static fn (Builder $definition) => $definition->whereNotNull('active_handle'))
-            ->where(fn (Builder $nested) => $this->policy->scopeAssignments($nested, $batch));
+            ->where(fn (Builder $nested) => $this->policy->scopeAssignments($actor, $nested, $batch));
         $counts = (clone $query)->selectRaw('owner_type, COUNT(*) AS aggregate')->groupBy('owner_type', new ExactOwnerTextColumn('owner_type', $query->getModel()->getConnection()->getDriverName()))->toBase()->get();
         foreach ($counts as $count) {
             $aggregate = $count->aggregate;
@@ -85,7 +84,7 @@ final readonly class OwnerMetafieldBatchReader
             foreach ($assignments as $assignment) {
                 $definition = $assignment->definition;
                 if ($assignment->owner_type === $aliases[$index] && $definition instanceof MetafieldDefinition
-                    && $this->policy->allowsDefinition($owner, $definition)) {
+                    && $this->policy->allowsDefinition($actor, $owner, $definition)) {
                     $selected[$identity->type][$identity->id][$definition->id] = $assignment;
                     $definitions[$definition->id] = $definition;
                 }
@@ -101,8 +100,8 @@ final readonly class OwnerMetafieldBatchReader
                 $definition->setRelation('translations', $byDefinition->get($definition->id, new Collection));
             }
         }
-        $values = $this->values($batch, $selected, $chain);
-        $this->references->load($batch, array_values($definitions), array_values($values->all()));
+        $values = $this->values($batch, $selected, $chain, $actor);
+        $this->references->load($batch, array_values($definitions), array_values($values->all()), $actor);
         $current = [];
         foreach ($values as $value) {
             $type = $value->metafieldable_type;
@@ -118,18 +117,24 @@ final readonly class OwnerMetafieldBatchReader
         foreach ($batch->identities() as $identity) {
             $fields = [];
             foreach ($selected[$identity->type][$identity->id] ?? [] as $assignment) {
-                $fields[] = OwnerMetafieldField::fromBatchAssignment($assignment, $current[$identity->type][$identity->id][$assignment->definition_id] ?? null, $locale);
+                $fields[] = [
+                    'definition' => $assignment->definition,
+                    'assignment' => $assignment,
+                    'value' => $current[$identity->type][$identity->id][$assignment->definition_id] ?? null,
+                ];
             }
-            $result[$identity->type][$identity->id] = new OwnerMetafieldFields($fields);
+            $result[$identity->type][$identity->id] = (object) ['fields' => $fields];
         }
 
         return $this->result($batch, $result);
     }
 
-    /** @param array<string, array<array-key, OwnerMetafieldFields>> $values */
-    private function result(OwnerBatch $batch, array $values): OwnersMetafields
+    /** @param array<string, array<array-key, object{fields: list<array<string, mixed>>}>> $values */
+    private function result(OwnerBatch $batch, array $values): array
     {
-        return OwnersMetafields::fromMap(new OwnerResultMap($batch, $values));
+        $map = new OwnerResultMap($batch, $values);
+
+        return ['owners' => $map->jsonSerialize(), 'order' => $map->order()];
     }
 
     /** Reload every owner through retained host scopes before package reads. */
@@ -141,7 +146,7 @@ final readonly class OwnerMetafieldBatchReader
             $prototype = new ($owner::class);
             if ($owner->getConnection() !== (new Metafield)->getConnection() || $prototype->getConnection() !== $owner->getConnection()
                 || $prototype->getTable() !== $owner->getTable()) {
-                throw new TenantBoundaryViolation('Metafield owners must retain their canonical table and package connection.');
+                throw new OwnershipViolation('Metafield owners must retain their canonical table and package connection.');
             }
             $groups[$owner::class][] = $input->identities()[$index]->id;
         }
@@ -161,7 +166,7 @@ final readonly class OwnerMetafieldBatchReader
         $canonical = [];
         foreach ($input->identities() as $identity) {
             $canonical[] = $loaded[$identity->type][$identity->id]
-                ?? throw new TenantBoundaryViolation('A Metafield batch owner is absent, deleted or outside the active host/tenant scope.');
+                ?? throw new OwnershipViolation('A Metafield batch owner is absent, deleted or outside the active host scope.');
         }
 
         return OwnerBatch::fromModels($canonical);
@@ -172,7 +177,7 @@ final readonly class OwnerMetafieldBatchReader
      * @param  list<string>  $chain
      * @return Collection<int, Metafield>
      */
-    private function values(OwnerBatch $batch, array $selected, array $chain): Collection
+    private function values(OwnerBatch $batch, array $selected, array $chain, Authenticatable|SystemActor $actor): Collection
     {
         if ($selected === []) {
             return new Collection;
@@ -188,7 +193,7 @@ final readonly class OwnerMetafieldBatchReader
                     });
                 }
             }
-        })->where(fn (Builder $nested) => $this->policy->scopeValues($nested, $batch));
+        })->where(fn (Builder $nested) => $this->policy->scopeValues($actor, $nested, $batch));
         for ($attempt = 0; $attempt < 3; $attempt++) {
             $values = (clone $query)->limit(10001)->get();
             if ($values->count() > 10000) {

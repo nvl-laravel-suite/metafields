@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Tests\Fixtures;
 
-use Nvl\Metafields\Actions\MetafieldDefinitions\CreateMetafieldDefinitionAction;
-use Nvl\Metafields\Data\CreateMetafieldDefinitionPayload;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Services\MetafieldDefinitions;
 use Nvl\Ownership\Services\OwnershipWriter;
 use Nvl\Ownership\ValueObjects\OwnershipAssignment;
 
@@ -25,6 +24,6 @@ final class OwnershipMetafieldScenario
 
     public static function definition(string $key = 'text', string $type = 'string'): MetafieldDefinition
     {
-        return app(CreateMetafieldDefinitionAction::class)->execute(CreateMetafieldDefinitionPayload::from(['namespace' => 'product', 'key' => $key, 'type' => $type, 'referencedModelType' => in_array($type, ['reference', 'reference_list'], true) ? 'products' : null, 'assignment' => ['ownerType' => 'products', 'section' => 'general'], 'translations' => ['en' => ['title' => 'Field']]]));
+        return app(MetafieldDefinitions::class)->create(['namespace' => 'product', 'key' => $key, 'type' => $type, 'referencedModelType' => in_array($type, ['reference', 'reference_list'], true) ? 'products' : null, 'assignment' => ['ownerType' => 'products', 'section' => 'general'], 'translations' => ['en' => ['title' => 'Field']]], OwnershipActor::firstOrFail());
     }
 }

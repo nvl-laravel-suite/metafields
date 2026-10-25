@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
-use Nvl\Data\Providers\DataServiceProvider;
 use Nvl\Metafields\Providers\MetafieldsServiceProvider;
 use Nvl\Metafields\Tests\Fixtures\BatchSoftDeletingMetafieldOwner;
 use Nvl\Support\Providers\LocaleServiceProvider;
@@ -44,7 +43,6 @@ abstract class TestCase extends Orchestra
     {
         return [
             LocaleServiceProvider::class,
-            DataServiceProvider::class,
             SupportServiceProvider::class,
             TranslatableServiceProvider::class,
             MetafieldsServiceProvider::class,
@@ -53,6 +51,12 @@ abstract class TestCase extends Orchestra
 
     protected function defineDatabaseMigrationsAfterDatabaseRefreshed(): void
     {
+        Schema::create('test_metafield_actors', static function (Blueprint $table): void {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+
         Schema::create('test_metafield_owners', function (Blueprint $table): void {
             $table->id();
             $table->string('name');

@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Contracts;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Nvl\Metafields\Data\MetafieldReferenceFacts;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
+use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Owners\OwnerBatch;
 
 /**
@@ -20,19 +21,19 @@ use Nvl\Support\Owners\OwnerBatch;
 interface MetafieldBatchAuthorization
 {
     /** Admit all canonical owners without querying. */
-    public function authorizeOwners(OwnerBatch $owners): void;
+    public function authorizeOwners(Authenticatable|SystemActor $actor, OwnerBatch $owners): void;
 
     /** @param Builder<MetafieldDefinitionAssignment> $query */
-    public function scopeAssignments(Builder $query, OwnerBatch $owners): void;
+    public function scopeAssignments(Authenticatable|SystemActor $actor, Builder $query, OwnerBatch $owners): void;
 
     /** Admit one loaded definition for a canonical owner without querying. */
-    public function allowsDefinition(Model $owner, MetafieldDefinition $definition): bool;
+    public function allowsDefinition(Authenticatable|SystemActor $actor, Model $owner, MetafieldDefinition $definition): bool;
 
     /** @param Builder<Metafield> $query */
-    public function scopeValues(Builder $query, OwnerBatch $owners): void;
+    public function scopeValues(Authenticatable|SystemActor $actor, Builder $query, OwnerBatch $owners): void;
 
     /** @param Builder<Model> $query */
-    public function scopeReferenceTargets(Builder $query, string $registeredReference, OwnerBatch $owners): void;
+    public function scopeReferenceTargets(Authenticatable|SystemActor $actor, Builder $query, string $registeredReference, OwnerBatch $owners): void;
 
     /**
      * Authorize all stored and default references using only loaded facts.
@@ -40,8 +41,8 @@ interface MetafieldBatchAuthorization
      * @param  list<MetafieldDefinition>  $definitions
      * @param  list<Metafield>  $values
      */
-    public function authorizeReferences(OwnerBatch $owners, array $definitions, array $values, MetafieldReferenceFacts $facts): void;
+    public function authorizeReferences(Authenticatable|SystemActor $actor, OwnerBatch $owners, array $definitions, array $values, array $facts): void;
 
     /** @param Builder<Metafield> $query */
-    public function scopeHostValues(Builder $query, Model $ownerPrototype, string $handle): void;
+    public function scopeHostValues(Authenticatable|SystemActor $actor, Builder $query, Model $ownerPrototype, string $handle): void;
 }

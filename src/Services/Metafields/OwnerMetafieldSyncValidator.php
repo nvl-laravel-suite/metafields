@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\Metafields;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
-use Nvl\Metafields\Data\SyncOwnerMetafieldValuePayload;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
 use Nvl\Metafields\Models\Metafield;
@@ -16,7 +16,7 @@ use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Models\MetafieldTranslation;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Support\Contracts\LocaleCatalog;
-use Spatie\LaravelData\Optional;
+use Nvl\Support\Enums\SystemActor;
 
 /**
  * Enforces owner assignment, completeness, locale, and typed-value invariants.
@@ -208,7 +208,7 @@ final readonly class OwnerMetafieldSyncValidator
      */
     public function ensureExpectedRevision(
         ?Metafield $metafield,
-        int|Optional|null $expectedRevision,
+        ?int $expectedRevision,
         string $definitionId,
         int $index,
     ): void {
@@ -236,13 +236,14 @@ final readonly class OwnerMetafieldSyncValidator
      * Validate one locale-neutral value against its effective definition contract.
      */
     public function validateNonTranslatableValue(
-        SyncOwnerMetafieldValuePayload $item,
+        array $item,
         MetafieldDefinition $definition,
         MetafieldDefinitionAssignment $assignment,
         Model $owner,
+        Authenticatable|SystemActor $actor,
         int $index,
     ): void {
-        if (! ($item->translations instanceof Optional) && $item->translations !== null) {
+        if (array_key_exists('translations', $item) && $item['translations'] !== null) {
             throw ValidationException::withMessages([
                 "items.{$index}.translations" => [
                     trans('nvl-metafields::owner-metafields/validation.custom.translations.not_allowed'),
@@ -253,7 +254,8 @@ final readonly class OwnerMetafieldSyncValidator
         if (! $this->metafieldValueValidator->passes(
             definition: $definition,
             owner: $owner,
-            value: $item->value,
+            actor: $actor,
+            value: $item['value'] ?? null,
             required: $assignment->is_required || $definition->is_required,
         )) {
             throw ValidationException::withMessages([
@@ -268,13 +270,14 @@ final readonly class OwnerMetafieldSyncValidator
      * Validate supplied localized values and locale keys before persistence.
      */
     public function validateTranslations(
-        SyncOwnerMetafieldValuePayload $item,
+        array $item,
         MetafieldDefinition $definition,
         MetafieldDefinitionAssignment $assignment,
         Model $owner,
+        Authenticatable|SystemActor $actor,
         int $index,
     ): void {
-        if ($item->translations instanceof Optional || $item->translations === null || $item->translations === []) {
+        if (! array_key_exists('translations', $item) || $item['translations'] === null || $item['translations'] === []) {
             throw ValidationException::withMessages([
                 "items.{$index}.translations" => [
                     trans('nvl-metafields::owner-metafields/validation.custom.translations.required'),
@@ -282,7 +285,7 @@ final readonly class OwnerMetafieldSyncValidator
             ]);
         }
 
-        if (! ($item->value instanceof Optional) && $item->value !== null) {
+        if (array_key_exists('value', $item) && $item['value'] !== null) {
             throw ValidationException::withMessages([
                 "items.{$index}.value" => [
                     trans('nvl-metafields::owner-metafields/validation.custom.value.translatable_forbidden'),
@@ -290,7 +293,7 @@ final readonly class OwnerMetafieldSyncValidator
             ]);
         }
 
-        foreach ($item->translations as $locale => $value) {
+        foreach ($item['translations'] as $locale => $value) {
             if ($locale === '' || ! $this->locales->supports($locale)) {
                 throw ValidationException::withMessages([
                     "items.{$index}.translations" => [
@@ -312,6 +315,7 @@ final readonly class OwnerMetafieldSyncValidator
             if (! $this->metafieldValueValidator->passes(
                 definition: $definition,
                 owner: $owner,
+                actor: $actor,
                 value: $value,
                 required: $assignment->is_required || $definition->is_required,
             )) {

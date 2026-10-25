@@ -7,7 +7,6 @@ namespace Nvl\Metafields\Services\MetafieldDefinitions;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use JsonException;
-use Nvl\Metafields\Data\UpdateMetafieldDefinitionPayload;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
@@ -15,7 +14,6 @@ use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
 use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
 use Nvl\Metafields\Support\MetafieldJsonPropertySchemaValidator;
 use Nvl\Metafields\Support\MetafieldValidationRuleCompiler;
-use Spatie\LaravelData\Optional;
 
 /**
  * Guards definition updates that would invalidate active owner values.
@@ -30,7 +28,7 @@ final class MetafieldDefinitionMutationGuard
      */
     public function ensureUpdateIsSafe(
         MetafieldDefinition $definition,
-        UpdateMetafieldDefinitionPayload $data,
+        array $data,
     ): void {
         $this->ensureNewTranslationsHaveTitles($definition, $data);
         $this->ensureDefaultValuesAreSafe($definition, $data);
@@ -63,9 +61,9 @@ final class MetafieldDefinitionMutationGuard
      */
     private function ensureNewTranslationsHaveTitles(
         MetafieldDefinition $definition,
-        UpdateMetafieldDefinitionPayload $data,
+        array $data,
     ): void {
-        if ($data->translations instanceof Optional || $data->translations === null) {
+        if (! array_key_exists('translations', $data) || $data['translations'] === null) {
             return;
         }
 
@@ -73,7 +71,7 @@ final class MetafieldDefinitionMutationGuard
         $existingLocales = $definition->translations->pluck('locale')->all();
         $errors = [];
 
-        foreach ($data->translations as $locale => $translation) {
+        foreach ($data['translations'] as $locale => $translation) {
             if (in_array($locale, $existingLocales, true)) {
                 continue;
             }
@@ -99,15 +97,15 @@ final class MetafieldDefinitionMutationGuard
      */
     private function ensureDefaultValuesAreSafe(
         MetafieldDefinition $definition,
-        UpdateMetafieldDefinitionPayload $data,
+        array $data,
     ): void {
         $targetIsTranslatable = $this->targetIsTranslatable($definition, $data);
         $targetValidationRules = $this->targetValidationRules($definition, $data);
         $targetJsonPropertySchema = $this->targetJsonPropertySchemaForValidation($definition, $data);
         $targetReferencedModelType = $this->targetReferencedModelType($definition, $data);
 
-        if (! $data->defaultValue instanceof Optional
-            && $this->hasDefaultValue($data->defaultValue)) {
+        if (array_key_exists('defaultValue', $data)
+            && $this->hasDefaultValue($data['defaultValue'])) {
             if ($targetIsTranslatable) {
                 $this->throwDefaultValidation(
                     'defaultValue',
@@ -116,11 +114,11 @@ final class MetafieldDefinitionMutationGuard
             }
 
             if (! $this->defaultValueIsValid(
-                type: $data->type,
+                type: $data['type'],
                 validationRules: $targetValidationRules,
                 jsonPropertySchema: $targetJsonPropertySchema,
                 referencedModelType: $targetReferencedModelType,
-                value: $data->defaultValue,
+                value: $data['defaultValue'],
             )) {
                 $this->throwDefaultValidation(
                     'defaultValue',
@@ -130,11 +128,11 @@ final class MetafieldDefinitionMutationGuard
         }
 
         if (! $targetIsTranslatable
-            && $data->defaultValue instanceof Optional
+            && ! array_key_exists('defaultValue', $data)
             && ! $definition->is_translatable
             && $definition->hasDefaultValue()
             && ! $this->defaultValueIsValid(
-                type: $data->type,
+                type: $data['type'],
                 validationRules: $targetValidationRules,
                 jsonPropertySchema: $targetJsonPropertySchema,
                 referencedModelType: $targetReferencedModelType,
@@ -160,8 +158,8 @@ final class MetafieldDefinitionMutationGuard
             )
             ->all();
 
-        if (! $data->translations instanceof Optional && is_array($data->translations)) {
-            foreach ($data->translations as $locale => $translation) {
+        if (array_key_exists('translations', $data) && is_array($data['translations'])) {
+            foreach ($data['translations'] as $locale => $translation) {
                 if (! array_key_exists('defaultValue', $translation)) {
                     continue;
                 }
@@ -188,7 +186,7 @@ final class MetafieldDefinitionMutationGuard
             }
 
             if (! $this->defaultValueIsValid(
-                type: $data->type,
+                type: $data['type'],
                 validationRules: $targetValidationRules,
                 jsonPropertySchema: $targetJsonPropertySchema,
                 referencedModelType: $targetReferencedModelType,
@@ -214,11 +212,11 @@ final class MetafieldDefinitionMutationGuard
      */
     private function blockedShapeChanges(
         MetafieldDefinition $definition,
-        UpdateMetafieldDefinitionPayload $data,
+        array $data,
     ): array {
         $changes = [];
 
-        if ($definition->type !== $data->type) {
+        if ($definition->type !== $data['type']) {
             $changes['type'] = 'type';
         }
 
@@ -243,27 +241,27 @@ final class MetafieldDefinitionMutationGuard
 
     private function targetIsTranslatable(
         MetafieldDefinition $definition,
-        UpdateMetafieldDefinitionPayload $data,
+        array $data,
     ): bool {
-        return $data->isTranslatable instanceof Optional
+        return ! array_key_exists('isTranslatable', $data)
             ? $definition->is_translatable
-            : $data->isTranslatable;
+            : $data['isTranslatable'];
     }
 
     private function targetReferencedModelType(
         MetafieldDefinition $definition,
-        UpdateMetafieldDefinitionPayload $data,
+        array $data,
     ): ?string {
-        if (! in_array($data->type, [
+        if (! in_array($data['type'], [
             MetafieldTypeEnum::Reference,
             MetafieldTypeEnum::ReferenceList,
         ], true)) {
             return null;
         }
 
-        return $data->referencedModelType instanceof Optional
+        return ! array_key_exists('referencedModelType', $data)
             ? $definition->referenced_model_type
-            : $data->referencedModelType;
+            : $data['referencedModelType'];
     }
 
     /**
@@ -271,17 +269,17 @@ final class MetafieldDefinitionMutationGuard
      */
     private function targetValidationRules(
         MetafieldDefinition $definition,
-        UpdateMetafieldDefinitionPayload $data,
+        array $data,
     ): ?array {
-        if ($data->type === MetafieldTypeEnum::Json) {
+        if ($data['type'] === MetafieldTypeEnum::Json) {
             return null;
         }
 
-        if ($data->validationRules instanceof Optional) {
+        if (! array_key_exists('validationRules', $data)) {
             return $this->normalizeArray($definition->validation_rules);
         }
 
-        return $this->normalizeArray($data->validationRules);
+        return $this->normalizeArray($data['validationRules']);
     }
 
     /**
@@ -289,17 +287,17 @@ final class MetafieldDefinitionMutationGuard
      */
     private function targetJsonPropertySchema(
         MetafieldDefinition $definition,
-        UpdateMetafieldDefinitionPayload $data,
+        array $data,
     ): ?array {
-        if ($data->type !== MetafieldTypeEnum::Json) {
+        if ($data['type'] !== MetafieldTypeEnum::Json) {
             return null;
         }
 
-        if ($data->jsonPropertySchema instanceof Optional) {
+        if (! array_key_exists('jsonPropertySchema', $data)) {
             return $this->normalizeArray($definition->json_property_schema);
         }
 
-        return $this->normalizeArray($data->jsonPropertySchema?->toArray());
+        return $this->normalizeArray($data['jsonPropertySchema']);
     }
 
     /**
@@ -309,7 +307,7 @@ final class MetafieldDefinitionMutationGuard
      */
     private function targetJsonPropertySchemaForValidation(
         MetafieldDefinition $definition,
-        UpdateMetafieldDefinitionPayload $data,
+        array $data,
     ): ?array {
         $schema = $this->targetJsonPropertySchema($definition, $data);
 

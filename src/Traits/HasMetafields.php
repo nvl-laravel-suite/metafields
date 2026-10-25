@@ -5,18 +5,20 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Traits;
 
 use Illuminate\Container\Container;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Nvl\Metafields\Contracts\MetafieldBatchAuthorization;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Relations\StringMorphMany;
 use Nvl\Metafields\Services\Metafields\OwnerMetafieldQueryAdapter;
+use Nvl\Support\Enums\SystemActor;
 
 /**
  * HasMetafields
  *
  * Provides the owner-to-metafields morph relation only. Metafield reads and
- * writes must go through injected actions and services.
+ * writes must go through the native Metafield services.
  *
  * @api
  *
@@ -30,9 +32,9 @@ trait HasMetafields
      * @param  Builder<$this>  $query
      * @return Builder<$this>
      */
-    public function scopeWhereNvlMetafield(Builder $query, string $handle, string|int|float|bool|null $value, MetafieldBatchAuthorization $policy, string $operator = '='): Builder
+    public function scopeWhereNvlMetafield(Builder $query, string $handle, string|int|float|bool|null $value, Authenticatable|SystemActor $actor, MetafieldBatchAuthorization $policy, string $operator = '='): Builder
     {
-        return Container::getInstance()->make(OwnerMetafieldQueryAdapter::class)->apply($query, $handle, $value, $policy, $operator);
+        return Container::getInstance()->make(OwnerMetafieldQueryAdapter::class)->apply($query, $handle, $value, $actor, $policy, $operator);
     }
 
     /**

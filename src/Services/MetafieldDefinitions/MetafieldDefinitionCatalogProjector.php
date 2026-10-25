@@ -4,16 +4,12 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\MetafieldDefinitions;
 
-use Nvl\Metafields\Data\MetafieldDefinitionCatalogSnapshot;
-use Nvl\Metafields\Data\MetafieldDefinitionPayload;
-use Nvl\Metafields\Data\MetafieldJsonProperty;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\MetafieldDefinition;
-use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
+use Nvl\Metafields\Models\MetafieldDefinitionOwnerGrant;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
 use Nvl\Support\Contracts\LocaleCatalog;
-use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
-use Spatie\LaravelData\DataCollection;
+use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
 /**
  * Projects authorized canonical schema facts without issuing storage access.
@@ -25,7 +21,7 @@ final readonly class MetafieldDefinitionCatalogProjector
     public function __construct(private LocaleCatalog $locales) {}
 
     /** @param iterable<MetafieldDefinitionTranslation> $rows */
-    public function project(MetafieldDefinition $source, MetafieldDefinitionTenantGrant $grant, iterable $rows): MetafieldDefinitionCatalogSnapshot
+    public function project(MetafieldDefinition $source, MetafieldDefinitionOwnerGrant $grant, iterable $rows): array
     {
         $translations = [];
         foreach ($rows as $translation) {
@@ -38,43 +34,41 @@ final readonly class MetafieldDefinitionCatalogProjector
             ];
         }
         if ($translations === []) {
-            throw new TenantBoundaryViolation('The granted platform definition has no localized title.');
+            throw new OwnershipViolation('The granted platform definition has no localized title.');
         }
         $display = $this->displayTranslation($translations);
         $default = match ($source->type) {
             MetafieldTypeEnum::Reference => $source->default_referenced_id,
             default => $source->default_value === null ? null : $source->type->cast($source->default_value),
         };
-        $payload = new MetafieldDefinitionPayload(
-            namespace: $source->namespace,
-            key: $source->key,
-            type: $source->type,
-            title: $display['title'],
-            description: $display['description'],
-            hint: $display['hint'],
-            referencedModelType: $source->referenced_model_type,
-            isTranslatable: $source->is_translatable,
-            isRequired: $source->is_required,
-            isFilterable: $source->is_filterable,
-            validationRules: $source->validation_rules,
-            jsonPropertySchema: is_array($source->json_property_schema)
-                ? MetafieldJsonProperty::collect($source->json_property_schema, DataCollection::class)
-                : null,
-            defaultValue: $default,
-            displayOrder: $source->display_order,
-            revision: $source->revision,
-            translations: $translations,
-        );
-        $hash = hash('sha256', json_encode($this->canonical($payload->toArray()), JSON_THROW_ON_ERROR));
+        $payload = [
+            'namespace' => $source->namespace,
+            'key' => $source->key,
+            'type' => $source->type,
+            'title' => $display['title'],
+            'description' => $display['description'],
+            'hint' => $display['hint'],
+            'referencedModelType' => $source->referenced_model_type,
+            'isTranslatable' => $source->is_translatable,
+            'isRequired' => $source->is_required,
+            'isFilterable' => $source->is_filterable,
+            'validationRules' => $source->validation_rules,
+            'jsonPropertySchema' => $source->json_property_schema,
+            'defaultValue' => $default,
+            'displayOrder' => $source->display_order,
+            'revision' => $source->revision,
+            'translations' => $translations,
+        ];
+        $hash = hash('sha256', json_encode($this->canonical($payload), JSON_THROW_ON_ERROR));
 
-        return new MetafieldDefinitionCatalogSnapshot(
-            grantId: $grant->id,
-            grantRevision: $grant->revision,
-            sourceId: $source->id,
-            sourceRevision: $source->revision,
-            sourceHash: $hash,
-            definition: $payload,
-        );
+        return [
+            'grantId' => $grant->id,
+            'grantRevision' => $grant->revision,
+            'sourceId' => $source->id,
+            'sourceRevision' => $source->revision,
+            'sourceHash' => $hash,
+            'definition' => $payload,
+        ];
     }
 
     /**
@@ -98,7 +92,7 @@ final readonly class MetafieldDefinitionCatalogProjector
                 ];
             }
         }
-        throw new TenantBoundaryViolation('The granted platform definition title cannot be resolved.');
+        throw new OwnershipViolation('The granted platform definition title cannot be resolved.');
     }
 
     /** Recursively sort associative maps before hashing. */

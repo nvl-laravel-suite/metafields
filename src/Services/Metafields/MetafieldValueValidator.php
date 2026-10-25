@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\Metafields;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Metafields\Contracts\MetafieldReferenceAuthorization;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
@@ -11,6 +12,7 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Support\MetafieldJsonPropertySchemaValidator;
 use Nvl\Metafields\Support\MetafieldPayloadLimits;
 use Nvl\Metafields\Support\MetafieldValidationRuleCompiler;
+use Nvl\Support\Enums\SystemActor;
 
 /**
  * Validates typed owner values and authorizes every referenced record.
@@ -55,15 +57,16 @@ final readonly class MetafieldValueValidator
     public function passes(
         MetafieldDefinition $definition,
         Model $owner,
+        Authenticatable|SystemActor $actor,
         mixed $value,
         bool $required,
     ): bool {
         if ($definition->type === MetafieldTypeEnum::Reference) {
-            return $this->referencePasses($definition, $owner, $value, $required);
+            return $this->referencePasses($definition, $owner, $actor, $value, $required);
         }
 
         if ($definition->type === MetafieldTypeEnum::ReferenceList) {
-            return $this->referenceListPasses($definition, $owner, $value, $required);
+            return $this->referenceListPasses($definition, $owner, $actor, $value, $required);
         }
 
         if (in_array($definition->type, [
@@ -94,6 +97,7 @@ final readonly class MetafieldValueValidator
     private function referencePasses(
         MetafieldDefinition $definition,
         Model $owner,
+        Authenticatable|SystemActor $actor,
         mixed $value,
         bool $required,
     ): bool {
@@ -119,7 +123,7 @@ final readonly class MetafieldValueValidator
             return false;
         }
 
-        $this->referenceAuthorization->authorize($owner, $definition, $reference);
+        $this->referenceAuthorization->authorize($actor, $owner, $definition, $reference);
 
         return true;
     }
@@ -127,6 +131,7 @@ final readonly class MetafieldValueValidator
     private function referenceListPasses(
         MetafieldDefinition $definition,
         Model $owner,
+        Authenticatable|SystemActor $actor,
         mixed $value,
         bool $required,
     ): bool {
@@ -153,7 +158,7 @@ final readonly class MetafieldValueValidator
                 return false;
             }
 
-            $this->referenceAuthorization->authorize($owner, $definition, $referencedRecord);
+            $this->referenceAuthorization->authorize($actor, $owner, $definition, $referencedRecord);
         }
 
         return true;

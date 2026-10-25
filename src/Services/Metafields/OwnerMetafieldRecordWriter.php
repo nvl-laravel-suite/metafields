@@ -11,7 +11,7 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Support\ModelIdentifier;
 use Nvl\Support\Ownership\Contracts\OwnershipWriter;
 use Nvl\Translatable\Enums\TranslationSyncMode;
-use Nvl\Translatable\Services\TranslationWriter;
+use Nvl\Translatable\Services\RelatedTranslationStore;
 
 /**
  * Persists owner metafield records and delegates locale-row synchronization to Translatable.
@@ -22,7 +22,7 @@ final readonly class OwnerMetafieldRecordWriter
      * Create the owner metafield record writer.
      */
     public function __construct(
-        private TranslationWriter $translations,
+        private RelatedTranslationStore $translations,
         private OwnershipWriter $ownershipWriter,
     ) {}
 
@@ -35,7 +35,7 @@ final readonly class OwnerMetafieldRecordWriter
             return;
         }
 
-        $this->translations->replace($metafield, []);
+        $this->translations->deleteExcept($metafield, $metafield->translationDefinition(), []);
         $metafield->delete();
     }
 
@@ -64,7 +64,13 @@ final readonly class OwnerMetafieldRecordWriter
             })
             ->all();
 
-        $this->translations->sync($metafield, $storedTranslations, $mode);
+        $translationDefinition = $metafield->translationDefinition();
+        foreach ($storedTranslations as $locale => $attributes) {
+            $this->translations->upsert($metafield, $translationDefinition, $locale, $attributes);
+        }
+        if ($mode === TranslationSyncMode::Replace) {
+            $this->translations->deleteExcept($metafield, $translationDefinition, array_keys($storedTranslations));
+        }
 
         if (! $isInitialOrRestoredWrite) {
             $metafield->revision++;
@@ -116,10 +122,6 @@ final readonly class OwnerMetafieldRecordWriter
                 'metafieldable_id' => ModelIdentifier::required($owner),
                 'metafieldable_type' => $owner->getMorphClass(),
             ]);
-            $tenant = $owner->getAttribute('tenant_id');
-            if (config('nvl-tenancy.enabled') === true && is_string($tenant) && $tenant !== '') {
-                $metafield->forceFill(['tenant_id' => $tenant]);
-            }
             $this->ownershipWriter->create(Metafield::class, static function (array $ownership) use ($metafield): Metafield {
                 $metafield->forceFill($ownership)->save();
 

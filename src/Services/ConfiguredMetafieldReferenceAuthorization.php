@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Services;
 
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Nvl\Metafields\Contracts\MetafieldReferenceAuthorization;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Support\Enums\SystemActor;
 
 /**
  * Gate-backed reference authorization that fails closed until consumers configure an ability.
@@ -25,6 +27,7 @@ final class ConfiguredMetafieldReferenceAuthorization implements MetafieldRefere
      * @throws AuthorizationException
      */
     public function authorize(
+        Authenticatable|SystemActor $actor,
         Model $owner,
         MetafieldDefinition $definition,
         Model $reference,
@@ -37,6 +40,6 @@ final class ConfiguredMetafieldReferenceAuthorization implements MetafieldRefere
             );
         }
 
-        Gate::authorize($configuredAbility, [$owner, $definition, $reference]);
+        Gate::forUser($actor)->authorize($configuredAbility, [$owner, $definition, $reference]);
     }
 }

@@ -6,7 +6,6 @@ namespace Nvl\Metafields\Ownership;
 
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
-use Nvl\Support\Ownership\Compatibility\LegacyOwnershipSupport;
 use Nvl\Support\Ownership\Contracts\Ownable;
 use Nvl\Support\Ownership\Exceptions\OwnershipConfigurationInvalid;
 use Nvl\Support\Ownership\Services\OwnershipQueueCapture;
@@ -53,12 +52,12 @@ final class MetafieldOwnership
 
     public static function active(): bool
     {
-        return self::declared() || app(LegacyOwnershipSupport::class)->enabled();
+        return self::declared();
     }
 
     public static function resource(Model $model): string
     {
-        return self::declared() ? app(OwnershipResourceRegistry::class)->forModel($model)->key : app(LegacyOwnershipSupport::class)->resource($model);
+        return app(OwnershipResourceRegistry::class)->forModel($model)->key;
     }
 
     /** Capture scalar admission; untouched graphs preserve disabled installation behavior. */

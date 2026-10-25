@@ -10,19 +10,6 @@ return [
 
     'name' => 'Metafields',
 
-    /*
-    |--------------------------------------------------------------------------
-    | Optional HTTP API
-    |--------------------------------------------------------------------------
-    */
-    'routes' => [
-        'enabled' => false,
-        'prefix' => 'nvl/api/v1',
-        'middleware' => ['api'],
-        'management_middleware' => ['auth', 'throttle:nvl.metafields.management'],
-        'rate_limit_per_minute' => 60,
-    ],
-
     'migrations' => [
         'enabled' => true,
     ],

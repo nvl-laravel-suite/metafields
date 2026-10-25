@@ -7,13 +7,13 @@ namespace Nvl\Metafields\Console\Commands;
 use Exception;
 use Illuminate\Console\Command;
 use InvalidArgumentException;
-use Nvl\Metafields\Actions\MetafieldDefinitions\CreateMetafieldDefinitionAction;
-use Nvl\Metafields\Data\CreateMetafieldDefinitionPayload;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
+use Nvl\Metafields\Services\MetafieldDefinitions;
 use Nvl\Metafields\Support\MetafieldConfiguration;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
 use Nvl\Support\Contracts\LocaleCatalog;
+use Nvl\Support\Enums\SystemActor;
 
 /**
  * MetafieldDefinitionAddCommand
@@ -49,7 +49,7 @@ final class MetafieldDefinitionAddCommand extends Command
      * Execute the console command.
      */
     public function handle(
-        CreateMetafieldDefinitionAction $action,
+        MetafieldDefinitions $definitions,
         MetafieldOwnerRegistry $ownerRegistry,
         LocaleCatalog $locales,
     ): int {
@@ -89,7 +89,7 @@ final class MetafieldDefinitionAddCommand extends Command
         try {
             $fieldType = MetafieldTypeEnum::from($type);
             $ownerType = $this->resolveOwnerType();
-            $section = $ownerRegistry->forType($ownerType)->sections[0] ?? 'general';
+            $section = $ownerRegistry->forType($ownerType)['sections'][0] ?? 'general';
             $locale = $locales->default();
             $payload = [
                 'namespace' => $namespace,
@@ -127,8 +127,7 @@ final class MetafieldDefinitionAddCommand extends Command
                 $payload['jsonPropertySchema'] = $jsonPropertySchema;
             }
 
-            $data = CreateMetafieldDefinitionPayload::validateAndCreate($payload);
-            $definition = $action->execute($data);
+            $definition = $definitions->create($payload, SystemActor::Background);
             $this->info("Successfully created metafield definition: {$definition->handle}");
 
             return Command::SUCCESS;

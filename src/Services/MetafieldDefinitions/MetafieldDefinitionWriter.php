@@ -4,31 +4,31 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\MetafieldDefinitions;
 
-use Nvl\Metafields\Data\MetafieldDefinitionMutationPayload;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Support\Ownership\Contracts\OwnershipWriter;
-use Nvl\Translatable\Services\TranslationWriter;
-use Spatie\LaravelData\Optional;
+use Nvl\Translatable\Services\RelatedTranslationStore;
 
 /**
  * Persists metafield definitions and their localized copy within an action-owned transaction.
  */
 final readonly class MetafieldDefinitionWriter
 {
+    private const string OMITTED = '__metafield_omitted__';
+
     /**
      * Create the definition writer.
      */
     public function __construct(
-        private TranslationWriter $translations,
+        private RelatedTranslationStore $translations,
         private OwnershipWriter $ownershipWriter,
     ) {}
 
     /**
      * Create a metafield definition and optional localized copy.
      */
-    public function create(MetafieldDefinitionMutationPayload $data): MetafieldDefinition
+    public function create(array $data): MetafieldDefinition
     {
         return $this->createImported($data, []);
     }
@@ -38,7 +38,7 @@ final readonly class MetafieldDefinitionWriter
      *
      * @param  array<string, bool|int|string|null>  $provenance
      */
-    public function createImported(MetafieldDefinitionMutationPayload $data, array $provenance): MetafieldDefinition
+    public function createImported(array $data, array $provenance): MetafieldDefinition
     {
         $definition = $this->ownershipWriter->create(MetafieldModelRegistry::modelClass(), function (array $ownership) use ($data, $provenance): MetafieldDefinition {
             $definition = MetafieldModelRegistry::newInstance($this->payload($data, true));
@@ -50,7 +50,7 @@ final readonly class MetafieldDefinitionWriter
         });
         $this->syncTranslations($definition, $data);
 
-        return $definition->load('translations');
+        return $definition->refresh();
     }
 
     /**
@@ -58,7 +58,7 @@ final readonly class MetafieldDefinitionWriter
      */
     public function update(
         MetafieldDefinition $definition,
-        MetafieldDefinitionMutationPayload $data,
+        array $data,
     ): MetafieldDefinition {
         $definition->fill($this->payload($data, false));
         $this->syncDefaultValue($definition, $data);
@@ -74,35 +74,31 @@ final readonly class MetafieldDefinitionWriter
      *
      * @return array<string, mixed>
      */
-    private function payload(MetafieldDefinitionMutationPayload $data, bool $creating): array
+    private function payload(array $data, bool $creating): array
     {
         $payload = [
-            'namespace' => $data->namespace,
-            'key' => $data->key,
-            'type' => $data->type,
-            'referenced_model_type' => in_array($data->type, [
+            'namespace' => $data['namespace'],
+            'key' => $data['key'],
+            'type' => $data['type'],
+            'referenced_model_type' => in_array($data['type'], [
                 MetafieldTypeEnum::Reference,
                 MetafieldTypeEnum::ReferenceList,
             ], true)
-                ? ($data->referencedModelType instanceof Optional
-                    ? ($creating ? null : $data->referencedModelType)
-                    : $data->referencedModelType)
+                ? ($data['referencedModelType'] ?? null)
                 : null,
         ];
 
-        $this->putOptional($payload, 'is_translatable', $data->isTranslatable, false, $creating);
-        $this->putOptional($payload, 'is_required', $data->isRequired, false, $creating);
-        $this->putOptional($payload, 'is_filterable', $data->isFilterable, false, $creating);
-        $this->putOptional($payload, 'display_order', $data->displayOrder, 0, $creating);
+        $this->putOptional($payload, 'is_translatable', $data['isTranslatable'] ?? self::OMITTED, false, $creating);
+        $this->putOptional($payload, 'is_required', $data['isRequired'] ?? self::OMITTED, false, $creating);
+        $this->putOptional($payload, 'is_filterable', $data['isFilterable'] ?? self::OMITTED, false, $creating);
+        $this->putOptional($payload, 'display_order', $data['displayOrder'] ?? self::OMITTED, 0, $creating);
 
-        if ($data->type === MetafieldTypeEnum::Json) {
+        if ($data['type'] === MetafieldTypeEnum::Json) {
             $payload['validation_rules'] = null;
             $this->putOptional(
                 $payload,
                 'json_property_schema',
-                $data->jsonPropertySchema instanceof Optional
-                    ? $data->jsonPropertySchema
-                    : $data->jsonPropertySchema?->toArray(),
+                array_key_exists('jsonPropertySchema', $data) ? $data['jsonPropertySchema'] : self::OMITTED,
                 null,
                 $creating,
             );
@@ -111,7 +107,7 @@ final readonly class MetafieldDefinitionWriter
             $this->putOptional(
                 $payload,
                 'validation_rules',
-                $data->validationRules,
+                array_key_exists('validationRules', $data) ? $data['validationRules'] : self::OMITTED,
                 null,
                 $creating,
             );
@@ -119,7 +115,7 @@ final readonly class MetafieldDefinitionWriter
 
         return array_filter(
             $payload,
-            static fn (mixed $value): bool => ! $value instanceof Optional,
+            static fn (mixed $value): bool => $value !== self::OMITTED,
         );
     }
 
@@ -128,11 +124,9 @@ final readonly class MetafieldDefinitionWriter
      */
     private function syncDefaultValue(
         MetafieldDefinition $definition,
-        MetafieldDefinitionMutationPayload $data,
+        array $data,
     ): void {
-        $isTranslatable = $data->isTranslatable instanceof Optional
-            ? $definition->is_translatable
-            : $data->isTranslatable;
+        $isTranslatable = array_key_exists('isTranslatable', $data) ? $data['isTranslatable'] : $definition->is_translatable;
 
         if ($isTranslatable) {
             $definition->clearDefaultValue();
@@ -140,11 +134,11 @@ final readonly class MetafieldDefinitionWriter
             return;
         }
 
-        if ($data->defaultValue instanceof Optional) {
+        if (! array_key_exists('defaultValue', $data)) {
             return;
         }
 
-        $definition->setDefaultValue($data->defaultValue);
+        $definition->setDefaultValue($data['defaultValue']);
     }
 
     /**
@@ -159,7 +153,7 @@ final readonly class MetafieldDefinitionWriter
         mixed $default,
         bool $creating,
     ): void {
-        if ($value instanceof Optional) {
+        if ($value === self::OMITTED) {
             if ($creating) {
                 $payload[$key] = $default;
             }
@@ -175,14 +169,14 @@ final readonly class MetafieldDefinitionWriter
      */
     private function syncTranslations(
         MetafieldDefinition $definition,
-        MetafieldDefinitionMutationPayload $data,
+        array $data,
     ): void {
-        if ($data->translations instanceof Optional || $data->translations === null) {
+        if (! array_key_exists('translations', $data) || $data['translations'] === null) {
             return;
         }
 
         /** @var array<string, array<string, mixed>> $translations */
-        $translations = collect($data->translations)
+        $translations = collect($data['translations'])
             ->map(function (array $translation) use ($definition): array {
                 $attributes = [];
 
@@ -205,7 +199,10 @@ final readonly class MetafieldDefinitionWriter
             })
             ->all();
 
-        $this->translations->patch($definition, $translations);
+        $translationDefinition = $definition->translationDefinition();
+        foreach ($translations as $locale => $attributes) {
+            $this->translations->upsert($definition, $translationDefinition, $locale, $attributes);
+        }
     }
 
     /**

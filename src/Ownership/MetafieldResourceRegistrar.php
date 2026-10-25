@@ -8,7 +8,6 @@ use InvalidArgumentException;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Models\MetafieldDefinitionOwnerGrant;
-use Nvl\Metafields\Models\MetafieldDefinitionTenantGrant;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
 use Nvl\Metafields\Models\MetafieldTranslation;
 use Nvl\Metafields\Services\MetafieldModelRegistry;
@@ -45,6 +44,6 @@ final readonly class MetafieldResourceRegistrar
             $resources->register(new OwnershipResourceDefinition($key, 'metafields', $model, $owned ? OwnershipDefinition::inherited($relation) : OwnershipDefinition::unscoped(), parentResource: $owned ? $parent : null, allowsCentral: $key !== 'metafields.value-translations' && $central));
         }
         $resources->register(new OwnershipResourceDefinition('metafields.values', 'metafields', Metafield::class, $owned ? OwnershipDefinition::inherited('metafieldable') : OwnershipDefinition::unscoped(), parentResources: $owned ? $parents : [], immutableFields: $owned ? ['definition_id'] : []));
-        $resources->register(new OwnershipResourceDefinition('metafields.catalog-grants', 'metafields', $owned ? MetafieldDefinitionOwnerGrant::class : MetafieldDefinitionTenantGrant::class, $owned ? OwnershipDefinition::captured() : OwnershipDefinition::unscoped(), immutableFields: $owned ? ['definition_id'] : []));
+        $resources->register(new OwnershipResourceDefinition('metafields.catalog-grants', 'metafields', MetafieldDefinitionOwnerGrant::class, OwnershipDefinition::captured(), immutableFields: ['definition_id']));
     }
 }

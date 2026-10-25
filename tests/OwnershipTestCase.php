@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Nvl\Data\Providers\DataServiceProvider;
+use Illuminate\Support\Facades\Gate;
 use Nvl\Filterable\Providers\FilterableServiceProvider;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Providers\MetafieldsServiceProvider;
@@ -50,7 +50,7 @@ abstract class OwnershipTestCase extends TestCase
     /** @return list<class-string> */
     protected function getPackageProviders($app): array
     {
-        return [LocaleServiceProvider::class, SupportServiceProvider::class, FilterableServiceProvider::class, TranslatableServiceProvider::class, DataServiceProvider::class, OwnershipServiceProvider::class, MetafieldsServiceProvider::class];
+        return [LocaleServiceProvider::class, SupportServiceProvider::class, FilterableServiceProvider::class, TranslatableServiceProvider::class, OwnershipServiceProvider::class, MetafieldsServiceProvider::class];
     }
 
     /** @return class-string<MetafieldDefinition> */
@@ -93,6 +93,9 @@ abstract class OwnershipTestCase extends TestCase
     {
         $this->originalMorphMap = Relation::morphMap();
         parent::setUp();
+        foreach (['create', 'update', 'archive', 'delete', 'grant', 'revoke', 'import', 'write', 'read'] as $ability) {
+            Gate::define('metafields.'.$ability, static fn (OwnershipActor $actor): bool => $actor->exists);
+        }
         $connection = MetafieldModelRegistry::newInstance()->getConnection();
         $schema = $connection->getSchemaBuilder();
         $actorSchema = DB::getSchemaBuilder();

@@ -7,8 +7,8 @@ namespace Nvl\Metafields\Services\Metafields;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
-use Nvl\Metafields\Data\OwnerMetafieldField;
 use Nvl\Metafields\Models\Metafield;
+use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
@@ -30,7 +30,7 @@ final readonly class OwnerMetafieldFieldCatalog
     /**
      * List active assigned fields and current values for an owner.
      *
-     * @return Collection<int, OwnerMetafieldField>
+     * @return Collection<int, array{definition: MetafieldDefinition, assignment: MetafieldDefinitionAssignment, value: ?Metafield}>
      */
     public function list(Model $owner, ?string $locale = null): Collection
     {
@@ -48,7 +48,7 @@ final readonly class OwnerMetafieldFieldCatalog
         $assignments = $query->get();
 
         if ($assignments->isEmpty()) {
-            /** @var Collection<int, OwnerMetafieldField> $empty */
+            /** @var Collection<int, array{definition: MetafieldDefinition, assignment: MetafieldDefinitionAssignment, value: ?Metafield}> $empty */
             $empty = new Collection;
 
             return $empty;
@@ -61,19 +61,19 @@ final readonly class OwnerMetafieldFieldCatalog
             ->all();
         /** @var Collection<string, Metafield> $metafields */
         $metafields = $this->recordFinder->mapCurrentByDefinitionIds($owner, $definitionIds);
-        /** @var list<OwnerMetafieldField> $fieldItems */
+        /** @var list<array{definition: MetafieldDefinition, assignment: MetafieldDefinitionAssignment, value: ?Metafield}> $fieldItems */
         $fieldItems = $assignments
             ->map(
-                static fn (MetafieldDefinitionAssignment $assignment): OwnerMetafieldField => OwnerMetafieldField::fromAssignment(
-                    assignment: $assignment,
-                    metafield: $metafields->get($assignment->definition_id),
-                    locale: $locale,
-                ),
+                static fn (MetafieldDefinitionAssignment $assignment): array => [
+                    'definition' => $assignment->definition,
+                    'assignment' => $assignment,
+                    'value' => $metafields->get($assignment->definition_id),
+                ],
             )
             ->values()
             ->all();
 
-        /** @var Collection<int, OwnerMetafieldField> $fields */
+        /** @var Collection<int, array{definition: MetafieldDefinition, assignment: MetafieldDefinitionAssignment, value: ?Metafield}> $fields */
         $fields = new Collection($fieldItems);
 
         return $fields;

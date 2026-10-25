@@ -24,7 +24,7 @@ it('keeps metafield behavior when the owner model is a shared alias reference', 
     $registry = app(MetafieldOwnerRegistry::class);
 
     expect($registry->configurationForType('article')['model'])->toBe(TestMetafieldOwner::class)
-        ->and($registry->forType('article')->sections)->toBe(['content'])
+        ->and($registry->forType('article')['sections'])->toBe(['content'])
         ->and($registry->supportsRuntimeEditing('article'))->toBeFalse()
         ->and(fn () => $registry->configurationForType('unlisted'))->toThrow(InvalidArgumentException::class);
 });

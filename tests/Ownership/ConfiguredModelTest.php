@@ -59,7 +59,7 @@ it('resolves base-class owner and reference declarations through configured nati
 it('reports native ownership schema readiness on the configured source', function (): void {
     app(OwnershipRunner::class)->run(OwnershipCompany::findOrFail(7), OwnershipActor::firstOrFail(), function (): void {
         $checks = app(MetafieldDoctor::class)->inspect();
-        $errors = array_filter($checks, static fn ($check) => ! $check->passed && (str_starts_with($check->key, 'schema.') || str_starts_with($check->key, 'index.')));
-        expect(array_map(static fn ($check) => $check->key, array_values($errors)))->toBe([]);
+        $errors = array_filter($checks, static fn (array $check): bool => ! $check['passed'] && (str_starts_with($check['key'], 'schema.') || str_starts_with($check['key'], 'index.')));
+        expect(array_map(static fn (array $check): string => $check['key'], array_values($errors)))->toBe([]);
     });
 });

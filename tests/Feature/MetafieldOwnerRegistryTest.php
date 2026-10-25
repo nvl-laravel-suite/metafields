@@ -36,10 +36,10 @@ beforeEach(function (): void {
 it('supports arbitrary application-defined owner aliases', function (): void {
     $owner = app(MetafieldOwnerRegistry::class)->forType('articles');
 
-    expect($owner->type)->toBe('articles')
-        ->and($owner->runtimeStatus)->toBe('live')
-        ->and($owner->supportsRuntimeEditing)->toBeTrue()
-        ->and($owner->sections)->toBe(['content']);
+    expect($owner['type'])->toBe('articles')
+        ->and($owner['runtimeStatus'])->toBe('live')
+        ->and($owner['supportsRuntimeEditing'])->toBeTrue()
+        ->and($owner['sections'])->toBe(['content']);
 });
 
 it('rejects ambiguous aliases for the same owner model', function (): void {
@@ -94,13 +94,13 @@ it('reports invalid reference aliases through the doctor', function (): void {
     $check = collect(app(MetafieldDoctor::class)->inspect())
         ->firstWhere('key', 'registry.references');
 
-    expect($check?->passed)->toBeFalse()
-        ->and($check?->message)->toContain('stable string alias');
+    expect($check['passed'])->toBeFalse()
+        ->and($check['message'])->toContain('stable string alias');
 });
 
 it('marks definition-only owner surfaces as planned', function (): void {
     $owner = app(MetafieldOwnerRegistry::class)->forType('archives');
 
-    expect($owner->runtimeStatus)->toBe('planned')
-        ->and($owner->supportsRuntimeEditing)->toBeFalse();
+    expect($owner['runtimeStatus'])->toBe('planned')
+        ->and($owner['supportsRuntimeEditing'])->toBeFalse();
 });

@@ -12,9 +12,9 @@ use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Ownership\MetafieldOwnership;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
-use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
+use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
-/** Resolves reference records through their registered canonical tenant boundary. */
+/** Resolves reference records through their registered canonical owner boundary. */
 final readonly class MetafieldReferenceRecordResolver
 {
     /** Create the canonical reference resolver. */
@@ -47,7 +47,7 @@ final readonly class MetafieldReferenceRecordResolver
         }
         $reference = $query->first();
         if ($reference instanceof Model && $reference->getConnection() !== (new Metafield)->getConnection()) {
-            throw new TenantBoundaryViolation('Metafield references must use the canonical tenant connection.');
+            throw new OwnershipViolation('Metafield references must use the canonical package connection.');
         }
 
         if (MetafieldOwnership::declared() && $reference instanceof Model) {
@@ -60,7 +60,7 @@ final readonly class MetafieldReferenceRecordResolver
         return $reference;
     }
 
-    /** Determine whether the reference resolves inside the active tenant boundary. */
+    /** Determine whether the reference resolves inside the active owner boundary. */
     public function exists(mixed $alias, mixed $identifier): bool
     {
         return $this->resolve($alias, $identifier) instanceof Model;

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\Metafields;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Metafields\Contracts\MetafieldBatchAuthorization;
-use Nvl\Metafields\Data\MetafieldReferenceFacts;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Exceptions\MetafieldBatchReadException;
 use Nvl\Metafields\Models\Metafield;
@@ -15,9 +15,10 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Ownership\MetafieldOwnership;
 use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
+use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Owners\OwnerBatch;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
-use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
+use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
 /** Canonical bounded reference facts retain host scopes and target SQL visibility. */
 final readonly class MetafieldBatchReferenceLoader
@@ -32,7 +33,7 @@ final readonly class MetafieldBatchReferenceLoader
      * @param  list<MetafieldDefinition>  $definitions
      * @param  list<Metafield>  $values
      */
-    public function load(OwnerBatch $owners, array $definitions, array $values): MetafieldReferenceFacts
+    public function load(OwnerBatch $owners, array $definitions, array $values, Authenticatable|SystemActor $actor): array
     {
         $requested = [];
         $byDefinition = [];
@@ -54,14 +55,14 @@ final readonly class MetafieldBatchReferenceLoader
             $class = $registry[$alias] ?? throw new MetafieldBatchReadException('A batch reference target is not registered.');
             $prototype = new $class;
             if ($prototype->getConnection() !== (new Metafield)->getConnection()) {
-                throw new TenantBoundaryViolation('Metafield reference targets must use the canonical package connection.');
+                throw new OwnershipViolation('Metafield reference targets must use the canonical package connection.');
             }
             $query = $prototype->newQuery()->withoutEagerLoads();
             MetafieldOwnerPredicate::identifiers($query, $prototype->getQualifiedKeyName(), array_map(strval(...), array_keys($ids)));
             if (MetafieldOwnership::active()) {
                 $this->boundary->query($query, MetafieldOwnership::resource($prototype));
             }
-            $query->where(fn (Builder $nested) => $this->policy->scopeReferenceTargets($nested, $alias, $owners));
+            $query->where(fn (Builder $nested) => $this->policy->scopeReferenceTargets($actor, $nested, $alias, $owners));
             foreach ($query->get() as $target) {
                 $key = $target->getKey();
                 if (is_string($key) || is_int($key)) {
@@ -69,11 +70,11 @@ final readonly class MetafieldBatchReferenceLoader
                 }
             }
         }
-        $facts = new MetafieldReferenceFacts($targets);
-        $this->policy->authorizeReferences($owners, $definitions, $values, $facts);
+        $facts = $targets;
+        $this->policy->authorizeReferences($actor, $owners, $definitions, $values, $facts);
         foreach ($requested as $alias => $ids) {
             foreach (array_keys($ids) as $id) {
-                if (! $facts->find($alias, (string) $id) instanceof Model) {
+                if (! (($facts[$alias][(string) $id] ?? null) instanceof Model)) {
                     throw new MetafieldBatchReadException('A stored or default Metafield reference is unavailable or denied; no reference identifiers were returned.');
                 }
             }

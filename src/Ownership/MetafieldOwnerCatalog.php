@@ -9,10 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Str;
 use Nvl\Metafields\Contracts\MetafieldCatalogAccess;
-use Nvl\Metafields\Data\CreateMetafieldDefinitionPayload;
-use Nvl\Metafields\Data\ImportPlatformMetafieldDefinitionData;
-use Nvl\Metafields\Data\MetafieldDefinitionCatalogSnapshot;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
+use Nvl\Metafields\Events\MetafieldDefinitionCatalogGrantAudited;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionOwnerGrant;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
@@ -21,6 +19,7 @@ use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionCatalogProje
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionWriter;
 use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
+use Nvl\Support\Events\DomainEventDispatcher;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Ownership\Contracts\OwnershipContext;
 use Nvl\Support\Ownership\Contracts\OwnershipReadiness;
@@ -46,6 +45,7 @@ final readonly class MetafieldOwnerCatalog
         private MetafieldDefinitionWriter $writer,
         private MetafieldDefinitionAssignmentSyncer $assignments,
         private MetafieldReferenceRecordResolver $references,
+        private DomainEventDispatcher $events,
     ) {}
 
     /** Grant one exact source revision to the currently admitted recipient only. */
@@ -60,7 +60,9 @@ final readonly class MetafieldOwnerCatalog
                 throw new OwnershipViolation('The central definition revision changed.');
             }
             $grant = MetafieldDefinitionOwnerGrant::query()->where('definition_id', $sourceId)->lockForUpdate()->first() ?? new MetafieldDefinitionOwnerGrant;
+            $operation = $grant->exists ? 'renewed' : 'granted';
             $grant->forceFill(['definition_id' => $sourceId, 'source_revision' => $revision, 'revision' => $grant->exists ? $grant->revision + 1 : 1, 'enabled' => true, 'revoked_at' => null])->save();
+            $this->events->dispatch(new MetafieldDefinitionCatalogGrantAudited($operation, $grant->id, $grant->owner_scope_key, $grant->definition_id, $grant->source_revision, $grant->revision), $grant->getConnection());
 
             return $grant;
         });
@@ -77,6 +79,7 @@ final readonly class MetafieldOwnerCatalog
                 throw new OwnershipViolation('The definition grant revision changed.');
             }
             $grant->forceFill(['enabled' => false, 'revoked_at' => now(), 'revision' => $grant->revision + 1])->save();
+            $this->events->dispatch(new MetafieldDefinitionCatalogGrantAudited('revoked', $grant->id, $grant->owner_scope_key, $grant->definition_id, $grant->source_revision, $grant->revision), $grant->getConnection());
 
             return $grant;
         });
@@ -87,7 +90,7 @@ final readonly class MetafieldOwnerCatalog
      *
      * @internal
      */
-    public function inspect(string $grantId): MetafieldDefinitionCatalogSnapshot
+    public function inspect(string $grantId): array
     {
         $this->admit();
 
@@ -99,31 +102,31 @@ final readonly class MetafieldOwnerCatalog
      *
      * @internal
      */
-    public function persist(MetafieldDefinitionCatalogSnapshot $source, ImportPlatformMetafieldDefinitionData $data): MetafieldDefinition
+    public function persist(array $source, array $data): MetafieldDefinition
     {
         $this->admit();
         $connection = $this->connection();
-        if ($connection->transactionLevel() < 1 || ! Str::isUuid($data->idempotencyKey) || $source->grantId !== $data->grantId || $source->grantRevision !== $data->expectedGrantRevision || $source->sourceRevision !== $data->expectedSourceRevision) {
+        if ($connection->transactionLevel() < 1 || ! Str::isUuid($data['idempotencyKey']) || $source['grantId'] !== $data['grantId'] || $source['grantRevision'] !== $data['expectedGrantRevision'] || $source['sourceRevision'] !== $data['expectedSourceRevision']) {
             throw new OwnershipViolation('A definition copy requires its exact reviewed tuple and source transaction.');
         }
-        if ($this->snapshot($source->grantId, true) != $source) {
+        if ($this->snapshot($source['grantId'], true) !== $source) {
             throw new OwnershipViolation('The definition snapshot is stale or forged.');
         }
         [$sourceReferenceIds, $referenceHash] = $this->normalizedReferenceMap($source, $data);
         $requestHash = hash('sha256', json_encode([
-            $source->sourceId,
-            $source->sourceRevision,
-            $source->sourceHash,
-            $data->namespace,
-            $data->key,
-            $data->assignment->toArray(),
+            $source['sourceId'],
+            $source['sourceRevision'],
+            $source['sourceHash'],
+            $data['namespace'],
+            $data['key'],
+            $data['assignment'],
             $referenceHash,
         ], JSON_THROW_ON_ERROR));
-        $existing = MetafieldModelRegistry::query()->where('catalog_import_key', $data->idempotencyKey)->lockForUpdate()->first();
+        $existing = MetafieldModelRegistry::query()->where('catalog_import_key', $data['idempotencyKey'])->lockForUpdate()->first();
         if ($existing instanceof MetafieldDefinition) {
-            if ($existing->catalog_source_id !== $source->sourceId
-                || $existing->catalog_source_revision !== $source->sourceRevision
-                || $existing->catalog_source_hash !== $source->sourceHash
+            if ($existing->catalog_source_id !== $source['sourceId']
+                || $existing->catalog_source_revision !== $source['sourceRevision']
+                || $existing->catalog_source_hash !== $source['sourceHash']
                 || $existing->catalog_import_request_hash !== $requestHash) {
                 throw new OwnershipViolation('The Metafield import key belongs to another request.');
             }
@@ -131,40 +134,40 @@ final readonly class MetafieldOwnerCatalog
             return $existing->load(['assignments', 'translations']);
         }
         $mappedDefault = $this->mappedDefault($source, $sourceReferenceIds, $referenceHash);
-        $handle = MetafieldDefinition::generateHandle($data->namespace, $data->key);
+        $handle = MetafieldDefinition::generateHandle($data['namespace'], $data['key']);
         if (MetafieldModelRegistry::query()->active()->where('active_handle', $handle)->exists()) {
             throw new OwnershipViolation('The requested Metafield definition handle is already in use.');
         }
 
-        $definition = $source->definition;
-        $payload = CreateMetafieldDefinitionPayload::from([
-            'namespace' => $data->namespace,
-            'key' => $data->key,
-            'type' => $definition->type,
-            'assignment' => $data->assignment,
-            'referencedModelType' => $definition->referencedModelType,
-            'isTranslatable' => $definition->isTranslatable,
-            'isRequired' => $definition->isRequired,
-            'isFilterable' => $definition->isFilterable,
-            'validationRules' => $definition->validationRules,
-            'jsonPropertySchema' => $definition->jsonPropertySchema?->toArray(),
+        $definition = $source['definition'];
+        $payload = [
+            'namespace' => $data['namespace'],
+            'key' => $data['key'],
+            'type' => $definition['type'],
+            'assignment' => $data['assignment'],
+            'referencedModelType' => $definition['referencedModelType'],
+            'isTranslatable' => $definition['isTranslatable'],
+            'isRequired' => $definition['isRequired'],
+            'isFilterable' => $definition['isFilterable'],
+            'validationRules' => $definition['validationRules'],
+            'jsonPropertySchema' => $definition['jsonPropertySchema'],
             'defaultValue' => $mappedDefault,
-            'displayOrder' => $definition->displayOrder,
-            'translations' => $definition->translations,
-        ]);
+            'displayOrder' => $definition['displayOrder'],
+            'translations' => $definition['translations'],
+        ];
         $copy = $this->writer->createImported($payload, [
-            'catalog_import_key' => $data->idempotencyKey,
-            'catalog_source_id' => $source->sourceId,
-            'catalog_source_revision' => $source->sourceRevision,
-            'catalog_source_hash' => $source->sourceHash,
+            'catalog_import_key' => $data['idempotencyKey'],
+            'catalog_source_id' => $source['sourceId'],
+            'catalog_source_revision' => $source['sourceRevision'],
+            'catalog_source_hash' => $source['sourceHash'],
             'catalog_import_request_hash' => $requestHash,
         ]);
-        $this->assignments->sync($copy, $data->assignment);
+        $this->assignments->sync($copy, $data['assignment']);
 
         return $copy->refresh()->load(['assignments', 'translations']);
     }
 
-    private function snapshot(string $grantId, bool $lock): MetafieldDefinitionCatalogSnapshot
+    private function snapshot(string $grantId, bool $lock): array
     {
         $query = MetafieldDefinitionOwnerGrant::query()->whereKey($grantId);
         $initial = $query->first() ?? throw new OwnershipViolation('The definition grant is unavailable.');
@@ -227,16 +230,16 @@ final readonly class MetafieldOwnerCatalog
     }
 
     /** @return array{0: list<string>, 1: array<string, string>} */
-    private function normalizedReferenceMap(MetafieldDefinitionCatalogSnapshot $source, ImportPlatformMetafieldDefinitionData $data): array
+    private function normalizedReferenceMap(array $source, array $data): array
     {
-        $definition = $source->definition;
-        $sourceIds = match ($definition->type) {
-            MetafieldTypeEnum::Reference => is_string($definition->defaultValue) ? [$definition->defaultValue] : [],
-            MetafieldTypeEnum::ReferenceList => is_array($definition->defaultValue) ? array_values($definition->defaultValue) : [],
+        $definition = $source['definition'];
+        $sourceIds = match ($definition['type']) {
+            MetafieldTypeEnum::Reference => is_string($definition['defaultValue']) ? [$definition['defaultValue']] : [],
+            MetafieldTypeEnum::ReferenceList => is_array($definition['defaultValue']) ? array_values($definition['defaultValue']) : [],
             default => [],
         };
         $sourceIds = array_values(array_unique(array_filter($sourceIds, is_string(...))));
-        $map = $data->referenceMap;
+        $map = $data['referenceMap'];
         ksort($map);
         $expected = $sourceIds;
         sort($expected);
@@ -251,11 +254,11 @@ final readonly class MetafieldOwnerCatalog
      * @param  list<string>  $sourceIds
      * @param  array<string, string>  $map
      */
-    private function mappedDefault(MetafieldDefinitionCatalogSnapshot $source, array $sourceIds, array $map): mixed
+    private function mappedDefault(array $source, array $sourceIds, array $map): mixed
     {
-        $definition = $source->definition;
+        $definition = $source['definition'];
         foreach ($map as $sourceId => $targetId) {
-            $target = $this->references->resolve($definition->referencedModelType, $targetId, lock: true);
+            $target = $this->references->resolve($definition['referencedModelType'], $targetId, lock: true);
             if (! $target instanceof Model) {
                 throw new OwnershipViolation('A mapped Metafield reference target is unavailable.');
             }
@@ -265,10 +268,10 @@ final readonly class MetafieldOwnerCatalog
             }
             $map[$sourceId] = $targetId;
         }
-        $mapped = match ($definition->type) {
+        $mapped = match ($definition['type']) {
             MetafieldTypeEnum::Reference => $sourceIds === [] ? null : $map[$sourceIds[0]],
             MetafieldTypeEnum::ReferenceList => array_map(static fn (string $id): string => $map[$id], $sourceIds),
-            default => $definition->defaultValue,
+            default => $definition['defaultValue'],
         };
 
         return $mapped;

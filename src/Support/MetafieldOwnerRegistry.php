@@ -6,7 +6,6 @@ namespace Nvl\Metafields\Support;
 
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
-use Nvl\Metafields\Data\MetafieldOwner;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Support\OwnerRegistry;
 
@@ -137,18 +136,18 @@ final class MetafieldOwnerRegistry
     /**
      * Build the public owner contract for a stable alias.
      */
-    public function forType(string $type): MetafieldOwner
+    public function forType(string $type): array
     {
         $owner = $this->configurationForType($type);
 
-        return MetafieldOwner::from([
+        return [
             'type' => $type,
             'label' => (string) trans($owner['label']),
             'supportedTypes' => $owner['supported_types'],
             'sections' => $owner['sections'],
             'runtimeStatus' => $owner['runtime_status'],
             'supportsRuntimeEditing' => $owner['runtime_status'] === 'live',
-        ]);
+        ];
     }
 
     /**
@@ -172,7 +171,7 @@ final class MetafieldOwnerRegistry
      */
     public function supports(string $ownerType, MetafieldTypeEnum $fieldType): bool
     {
-        return in_array($fieldType->value, $this->forType($ownerType)->supportedTypes, true);
+        return in_array($fieldType->value, $this->forType($ownerType)['supportedTypes'], true);
     }
 
     /**
@@ -180,7 +179,7 @@ final class MetafieldOwnerRegistry
      */
     public function supportsRuntimeEditing(string $ownerType): bool
     {
-        return $this->forType($ownerType)->supportsRuntimeEditing;
+        return $this->forType($ownerType)['supportsRuntimeEditing'];
     }
 
     /**

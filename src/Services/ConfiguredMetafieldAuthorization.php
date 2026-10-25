@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Services;
 
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Nvl\Metafields\Contracts\MetafieldAuthorization;
 use Nvl\Metafields\Enums\MetafieldAbility;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Support\Enums\SystemActor;
 
 /**
  * Gate-backed default authorization that denies undefined definition access.
@@ -17,6 +19,7 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 final class ConfiguredMetafieldAuthorization implements MetafieldAuthorization
 {
     public function authorizeDefinition(
+        Authenticatable|SystemActor $actor,
         MetafieldAbility $ability,
         ?MetafieldDefinition $definition = null,
     ): void {
@@ -34,10 +37,11 @@ final class ConfiguredMetafieldAuthorization implements MetafieldAuthorization
             $arguments[] = $definition;
         }
 
-        Gate::authorize($configuredAbility, $arguments);
+        Gate::forUser($actor)->authorize($configuredAbility, $arguments);
     }
 
     public function authorizeOwner(
+        Authenticatable|SystemActor $actor,
         MetafieldAbility $ability,
         ?Model $owner = null,
         ?MetafieldDefinition $definition = null,
@@ -54,7 +58,7 @@ final class ConfiguredMetafieldAuthorization implements MetafieldAuthorization
                 $arguments[] = $definition;
             }
 
-            Gate::authorize($configuredAbility, $arguments);
+            Gate::forUser($actor)->authorize($configuredAbility, $arguments);
 
             return;
         }
@@ -65,6 +69,6 @@ final class ConfiguredMetafieldAuthorization implements MetafieldAuthorization
             );
         }
 
-        Gate::authorize('update', $owner);
+        Gate::forUser($actor)->authorize('update', $owner);
     }
 }

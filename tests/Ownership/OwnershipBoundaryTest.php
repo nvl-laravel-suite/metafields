@@ -1,21 +1,21 @@
 <?php
 
 declare(strict_types=1);
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
-use Nvl\Metafields\Actions\MetafieldDefinitions\CreateMetafieldDefinitionAction;
-use Nvl\Metafields\Actions\Metafields\ListAuthorizedOwnersMetafieldsAction;
-use Nvl\Metafields\Actions\Metafields\SetMetafieldAction;
 use Nvl\Metafields\Contracts\MetafieldBatchAuthorization;
 use Nvl\Metafields\Contracts\MetafieldReferenceAuthorization;
-use Nvl\Metafields\Data\CreateMetafieldDefinitionPayload;
 use Nvl\Metafields\Events\MetafieldSet;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Services\MetafieldDefinitions;
 use Nvl\Metafields\Services\MetafieldModelRegistry;
+use Nvl\Metafields\Services\MetafieldReader;
 use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
+use Nvl\Metafields\Services\MetafieldValues;
 use Nvl\Metafields\Tests\Fixtures\BatchMetafieldPolicy;
 use Nvl\Metafields\Tests\Fixtures\OwnershipActor;
 use Nvl\Metafields\Tests\Fixtures\OwnershipCompany;
@@ -26,6 +26,7 @@ use Nvl\Metafields\Tests\OwnershipTestCase;
 use Nvl\Ownership\Services\OwnershipRunner;
 use Nvl\Ownership\Services\OwnershipWriter;
 use Nvl\Ownership\ValueObjects\OwnershipAssignment;
+use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Ownership\Contracts\OwnershipQueuedJob;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
@@ -40,8 +41,8 @@ it('isolates configured definitions assignments localized values and loaded defa
 
                 return $m;
             });
-            $definition = app(CreateMetafieldDefinitionAction::class)->execute(CreateMetafieldDefinitionPayload::from(['namespace' => 'product', 'key' => 'subtitle', 'type' => 'string', 'isTranslatable' => true, 'assignment' => ['ownerType' => 'products', 'section' => 'general'], 'translations' => ['en' => ['title' => 'Subtitle', 'defaultValue' => 'Default']]]));
-            $value = app(SetMetafieldAction::class)->execute($owner, 'product.subtitle', 'Private value', 'en');
+            $definition = app(MetafieldDefinitions::class)->create(['namespace' => 'product', 'key' => 'subtitle', 'type' => 'string', 'isTranslatable' => true, 'assignment' => ['ownerType' => 'products', 'section' => 'general'], 'translations' => ['en' => ['title' => 'Subtitle', 'defaultValue' => 'Default']]], OwnershipActor::firstOrFail());
+            $value = app(MetafieldValues::class)->set($owner, 'product.subtitle', 'Private value', OwnershipActor::firstOrFail(), 'en');
             expect($definition::class)->toBe(OwnershipMetafieldDefinition::class)->and($definition->assignments()->count())->toBe(1)->and(MetafieldModelRegistry::query()->count())->toBe(1);
             if ($id === 7) {
                 $foreign = $definition;
@@ -57,7 +58,7 @@ it('isolates configured definitions assignments localized values and loaded defa
 it('rejects foreign references defaults and raw definition pivots', function (): void {
     app()->bind(MetafieldReferenceAuthorization::class, fn () => new class implements MetafieldReferenceAuthorization
     {
-        public function authorize(Model $owner, MetafieldDefinition $definition, Model $reference): void {}
+        public function authorize(Authenticatable|SystemActor $actor, Model $owner, MetafieldDefinition $definition, Model $reference): void {}
     });
     $foreignOwner = null;
     $foreignDefinition = null;
@@ -72,7 +73,7 @@ it('rejects foreign references defaults and raw definition pivots', function ():
         expect(fn () => $definition->saveQuietly())->toThrow(OwnershipViolation::class);
         $definition->discardChanges();
         expect(app(MetafieldReferenceRecordResolver::class)->resolve('products', $owner->id.' '))->toBeNull();
-        $value = app(SetMetafieldAction::class)->execute($owner, 'product.ref', $owner->id);
+        $value = app(MetafieldValues::class)->set($owner, 'product.ref', $owner->id, OwnershipActor::firstOrFail());
         $value->referenced_id = $foreignOwner->id;
         expect(fn () => $value->saveQuietly())->toThrow(OwnershipViolation::class);
         $row = $value->getRawOriginal();
@@ -89,15 +90,15 @@ it('keeps native batch query counts bounded across one and twenty five host reco
         for ($i = 0; $i < 25; $i++) {
             $owner = OwnershipMetafieldScenario::owner();
             $owners[] = $owner;
-            app(SetMetafieldAction::class)->execute($owner, 'product.text', 'Value');
+            app(MetafieldValues::class)->set($owner, 'product.text', 'Value', OwnershipActor::firstOrFail());
         }
         $measure = function (array $owners): int {
             DB::enableQueryLog();
             DB::flushQueryLog();
-            $result = app(ListAuthorizedOwnersMetafieldsAction::class)->execute($owners, 'en');
+            $result = app(MetafieldReader::class)->forOwners($owners, OwnershipActor::firstOrFail(), 'en');
             $count = count(DB::getQueryLog());
             DB::disableQueryLog();
-            expect($result->order)->toHaveCount(count($owners));
+            expect($result['order'])->toHaveCount(count($owners));
 
             return $count;
         };
@@ -115,7 +116,7 @@ it('captures native owner authority on committed scalar value events', function 
     app(OwnershipRunner::class)->run(OwnershipCompany::findOrFail(7), OwnershipActor::firstOrFail(), function (): void {
         $owner = OwnershipMetafieldScenario::owner();
         OwnershipMetafieldScenario::definition();
-        app(SetMetafieldAction::class)->execute($owner, 'product.text', 'Private scalar value');
+        app(MetafieldValues::class)->set($owner, 'product.text', 'Private scalar value', OwnershipActor::firstOrFail());
     });
     expect($events)->toHaveCount(1)->and($events[0])->toBeInstanceOf(OwnershipQueuedJob::class)
         ->and($events[0]->ownershipJobEnvelope()->data['owner']['key'])->toBe('7')->and(serialize($events))->not->toContain('Private scalar value');

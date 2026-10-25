@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Contracts;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Support\Enums\SystemActor;
 
 /**
  * Consumer-owned authorization boundary for referenced records used by metafield values.
@@ -22,6 +24,7 @@ interface MetafieldReferenceAuthorization
      * @param  Model  $reference  Referenced record selected by the mutation
      */
     public function authorize(
+        Authenticatable|SystemActor $actor,
         Model $owner,
         MetafieldDefinition $definition,
         Model $reference,

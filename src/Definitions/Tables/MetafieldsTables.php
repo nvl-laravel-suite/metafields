@@ -21,11 +21,7 @@ final class MetafieldsTables
 
     public const string I18n = 'nvl_metafields_i18n';
 
-    public const string TenantGrants = 'nvl_metafields_tenant_grants';
-
-    public const string TenantGrantLocks = 'nvl_metafields_tenant_grant_locks';
-
-    public const string TenantAdoptionCopies = 'nvl_metafields_tenant_adoption_copies';
+    public const string OwnerGrants = 'nvl_metafields_tenant_grants';
 
     public const string METAFIELDS = self::Metafields;
 
@@ -36,8 +32,6 @@ final class MetafieldsTables
     public const string METAFIELD_DEFINITION_ASSIGNMENTS = self::DefinitionAssignments;
 
     public const string METAFIELDS_I18N = self::I18n;
-
-    public const string METAFIELD_DEFINITION_TENANT_GRANTS = self::TenantGrants;
 
     /** Return one configured logical or historical package table. */
     public static function get(string $key): string

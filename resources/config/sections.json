@@ -9,12 +9,7 @@
                 "migrations.enabled",
                 "models.definition",
                 "owners",
-                "ownership.owner_resources",
-                "routes.enabled",
-                "routes.management_middleware",
-                "routes.middleware",
-                "routes.prefix",
-                "routes.rate_limit_per_minute"
+                "ownership.owner_resources"
             ],
             "advanced": [
                 "limits.maximum_json_bytes",

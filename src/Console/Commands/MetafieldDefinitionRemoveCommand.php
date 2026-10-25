@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Console\Commands;
 
 use Illuminate\Console\Command;
-use Nvl\Metafields\Actions\MetafieldDefinitions\DeleteMetafieldDefinitionAction;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Services\MetafieldDefinitions;
 use Nvl\Metafields\Services\MetafieldModelRegistry;
+use Nvl\Support\Enums\SystemActor;
 
 /**
  * Removes a metafield definition and optionally clears all owner values.
@@ -31,10 +32,10 @@ final class MetafieldDefinitionRemoveCommand extends Command
     /**
      * Execute the console command.
      *
-     * @param  DeleteMetafieldDefinitionAction  $action  Definition deletion action
+     * @param  MetafieldDefinitions  $definitions  Definition deletion action
      * @return int Console exit code
      */
-    public function handle(DeleteMetafieldDefinitionAction $action): int
+    public function handle(MetafieldDefinitions $definitions): int
     {
         $handle = (string) $this->argument('handle');
         $definition = MetafieldModelRegistry::query()
@@ -52,7 +53,7 @@ final class MetafieldDefinitionRemoveCommand extends Command
             return Command::SUCCESS;
         }
 
-        $action->execute($definition, $definition->revision, true);
+        $definitions->delete($definition, $definition->revision, SystemActor::Background, true);
         $this->info("Successfully removed metafield definition: {$handle}");
 
         return Command::SUCCESS;

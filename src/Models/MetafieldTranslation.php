@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Nvl\Metafields\Database\Factories\MetafieldTranslationFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
-use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
 use Nvl\Metafields\Ownership\MetafieldOwnership;
 use Nvl\Support\Config\PackageStorage;
 use Nvl\Support\Ownership\Contracts\Ownable;
@@ -22,7 +21,6 @@ use Nvl\Support\Ownership\Traits\HasOwnership;
  * Stores translations for translatable metafield values.
  *
  * @property string $id UUID primary key
- * @property string $tenant_id Canonical value tenant UUID
  * @property string $metafield_id Parent metafield UUID
  * @property string $locale Locale code (en, bg)
  * @property string|null $value Translated value string
@@ -34,8 +32,6 @@ use Nvl\Support\Ownership\Traits\HasOwnership;
  */
 class MetafieldTranslation extends Model implements Ownable
 {
-    use GuardsTenantOwnership;
-
     /** @use HasFactory<MetafieldTranslationFactory> */
     use HasFactory;
 

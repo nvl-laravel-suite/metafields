@@ -15,7 +15,6 @@ use Illuminate\Support\Carbon;
 use Nvl\Metafields\Database\Factories\MetafieldFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
-use Nvl\Metafields\Models\Concerns\GuardsTenantOwnership;
 use Nvl\Metafields\Ownership\MetafieldGraphOwnership;
 use Nvl\Metafields\Ownership\MetafieldOwnership;
 use Nvl\Metafields\Services\MetafieldModelRegistry;
@@ -26,7 +25,6 @@ use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Ownership\Contracts\OwnershipModelPersistence;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 use Nvl\Support\Ownership\Traits\HasOwnership;
-use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
 use Nvl\Translatable\Contracts\TranslatableModel;
 use Nvl\Translatable\Enums\TranslationMutationPolicy;
 use Nvl\Translatable\RelatedTranslationDefinition;
@@ -40,7 +38,6 @@ use Nvl\Translatable\Translatable;
  *
  * @property string|null $owner_scope_key Canonical technical partition when adopted
  * @property string $id UUID primary key
- * @property string $tenant_id Canonical tenant UUID inherited from the owner
  * @property string $definition_id Linked definition UUID
  * @property string $metafieldable_id Polymorphic owner ID
  * @property string $metafieldable_type Polymorphic owner type
@@ -64,8 +61,6 @@ use Nvl\Translatable\Translatable;
  */
 class Metafield extends Model implements Ownable, TranslatableModel
 {
-    use GuardsTenantOwnership;
-
     /** @use HasFactory<MetafieldFactory> */
     use HasFactory;
 
@@ -133,7 +128,7 @@ class Metafield extends Model implements Ownable, TranslatableModel
             foreignKey: 'metafield_id',
             fields: ['value'],
             mutationPolicy: TranslationMutationPolicy::OwningServiceOnly,
-            ownershipResource: 'metafields.values',
+            ownershipResource: MetafieldOwnership::declared() ? 'metafields.values' : null,
         );
     }
 
@@ -250,24 +245,9 @@ class Metafield extends Model implements Ownable, TranslatableModel
                 }
             }
         }
-        if (MetafieldOwnership::declared()) {
-            return;
-        }
-        $tenant = $this->getAttribute('tenant_id');
-        Container::getInstance()->make(OwnershipBoundary::class)->assertRecord($this->definition, 'metafields.definitions');
-        if (is_string($tenant) && $this->definition->getAttribute('tenant_id') !== $tenant) {
-            throw new TenantBoundaryViolation('A Metafield definition belongs to another tenant.');
-        }
-        if ($this->relationLoaded('translations')) {
-            foreach ($this->translations as $translation) {
-                if (is_string($tenant) && $translation->getAttribute('tenant_id') !== $tenant) {
-                    throw new TenantBoundaryViolation('A Metafield translation belongs to another tenant.');
-                }
-            }
-        }
     }
 
-    /** Reject platform and foreign-tenant reference targets. */
+    /** Reject foreign-owner reference targets. */
     private function assertReferenceOwnership(?Model $reference): void
     {
         if (! $reference instanceof Model) {
@@ -275,13 +255,6 @@ class Metafield extends Model implements Ownable, TranslatableModel
         }
         if (MetafieldOwnership::declared()) {
             Container::getInstance()->make(OwnershipBoundary::class)->assertRecord($reference, MetafieldOwnership::resource($reference));
-        }
-        if (MetafieldOwnership::declared()) {
-            return;
-        }
-        $tenant = $this->getAttribute('tenant_id');
-        if (is_string($tenant) && $reference->getAttribute('tenant_id') !== $tenant) {
-            throw new TenantBoundaryViolation('A Metafield reference belongs to another tenant.');
         }
     }
 

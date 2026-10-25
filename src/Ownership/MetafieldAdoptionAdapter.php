@@ -72,12 +72,6 @@ final readonly class MetafieldAdoptionAdapter implements OwnershipAdoptionAdapte
             }
         }
         foreach ($this->resources() as $key) {
-            $model = new ($this->resources->get($key)->model);
-            foreach (['tenant_id', 'ownership_key'] as $column) {
-                if ($schema->hasColumn($model->getTable(), $column)) {
-                    $schema->table($model->getTable(), static fn (Blueprint $table) => ($column === 'tenant_id' ? $table->uuid($column) : $table->string($column, 44))->nullable()->change());
-                }
-            }
             $this->schema->prepare($key);
         }
         foreach ([['metafields.definition-assignments', 'definition_id', 'metafields.definitions'], ['metafields.definition-translations', 'metafield_definition_id', 'metafields.definitions'], ['metafields.values', 'definition_id', 'metafields.definitions'], ['metafields.value-translations', 'metafield_id', 'metafields.values']] as [$childKey,$column,$parentKey]) {

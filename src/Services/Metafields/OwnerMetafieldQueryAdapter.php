@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\Metafields;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -14,11 +15,13 @@ use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Ownership\MetafieldOwnership;
 use Nvl\Metafields\Relations\NumericMetafieldComparison;
+use Nvl\Metafields\Services\MetafieldActorPolicy;
 use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
+use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
-use Nvl\Support\Tenancy\Exceptions\TenantBoundaryViolation;
+use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
 /** Compares stored scalar values with exact correlated owner identities. */
 final readonly class OwnerMetafieldQueryAdapter
@@ -27,6 +30,7 @@ final readonly class OwnerMetafieldQueryAdapter
     public function __construct(
         private MetafieldOwnerRegistry $registry,
         private OwnershipBoundary $boundary,
+        private MetafieldActorPolicy $actors,
     ) {}
 
     /**
@@ -38,8 +42,9 @@ final readonly class OwnerMetafieldQueryAdapter
      * @param  Builder<T>  $query
      * @return Builder<T>
      */
-    public function apply(Builder $query, string $handle, string|int|float|bool|null $value, MetafieldBatchAuthorization $policy, string $operator = '='): Builder
+    public function apply(Builder $query, string $handle, string|int|float|bool|null $value, Authenticatable|SystemActor $actor, MetafieldBatchAuthorization $policy, string $operator = '='): Builder
     {
+        $actor = $this->actors->authorize($actor, 'read');
         if (! in_array($operator, ['=', '!=', '<', '<=', '>', '>='], true)) {
             throw new MetafieldBatchReadException('whereNvlMetafield supports only =, !=, <, <=, > and >=.');
         }
@@ -48,14 +53,14 @@ final readonly class OwnerMetafieldQueryAdapter
         if ($owner->getConnection() !== (new Metafield)->getConnection() || $query->getConnection() !== $owner->getConnection()
             || $prototype->getTable() !== $owner->getTable() || $prototype->getConnection() !== $owner->getConnection()
             || $query->getQuery()->from !== $owner->getTable() || $query->getQuery()->unions !== null) {
-            throw new TenantBoundaryViolation('whereNvlMetafield requires the canonical owner table and package connection without unions.');
+            throw new OwnershipViolation('whereNvlMetafield requires the canonical owner table and package connection without unions.');
         }
         $alias = $this->registry->resolveOwnerType($owner);
         $this->groupCallerPredicates($query);
         if (in_array(SoftDeletes::class, class_uses_recursive($prototype), true) && method_exists($prototype, 'getQualifiedDeletedAtColumn')) {
             $column = $prototype->getQualifiedDeletedAtColumn();
             if (! is_string($column) || $column === '') {
-                throw new TenantBoundaryViolation('A canonical Metafield owner requires a valid soft-delete column.');
+                throw new OwnershipViolation('A canonical Metafield owner requires a valid soft-delete column.');
             }
             $query->whereNull($column);
         }
@@ -78,7 +83,7 @@ final readonly class OwnerMetafieldQueryAdapter
             });
         MetafieldOwnerPredicate::equal($values, (new Metafield)->qualifyColumn('metafieldable_type'), $owner->getMorphClass());
         MetafieldOwnerPredicate::columns($values, (new Metafield)->qualifyColumn('metafieldable_id'), $owner->getQualifiedKeyName());
-        $values->where(fn (Builder $nested) => $policy->scopeHostValues($nested, $prototype, $handle));
+        $values->where(fn (Builder $nested) => $policy->scopeHostValues($actor, $nested, $prototype, $handle));
         if ($value === null) {
             if (! in_array($operator, ['=', '!='], true)) {
                 throw new MetafieldBatchReadException('Null Metafield comparisons support only = and !=.');
