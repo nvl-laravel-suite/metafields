@@ -149,7 +149,7 @@ class MetafieldDefinition extends Model implements Ownable, TranslatableModel
                 'default_value',
                 'properties',
             ],
-            mutationPolicy: TranslationMutationPolicy::DomainActionOnly,
+            mutationPolicy: TranslationMutationPolicy::OwningServiceOnly,
             ownershipResource: 'metafields.definitions',
         );
     }

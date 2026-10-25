@@ -132,7 +132,7 @@ class Metafield extends Model implements Ownable, TranslatableModel
             translationModel: MetafieldTranslation::class,
             foreignKey: 'metafield_id',
             fields: ['value'],
-            mutationPolicy: TranslationMutationPolicy::DomainActionOnly,
+            mutationPolicy: TranslationMutationPolicy::OwningServiceOnly,
             ownershipResource: 'metafields.values',
         );
     }
