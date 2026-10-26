@@ -1,18 +1,12 @@
 <?php
 
 declare(strict_types=1);
-
 use Nvl\Metafields\Models\MetafieldDefinition;
 
+/** Common published defaults; advanced defaults remain in the package configuration. */
 return [
     'models' => ['definition' => MetafieldDefinition::class],
     'ownership' => ['owner_resources' => []],
-    /*
-    |--------------------------------------------------------------------------
-    | Optional HTTP API
-    |--------------------------------------------------------------------------
-    */
-    'routes' => ['enabled' => false, 'prefix' => 'nvl/api/v1', 'middleware' => ['api'], 'management_middleware' => ['auth', 'throttle:nvl.metafields.management'], 'rate_limit_per_minute' => 60],
     'migrations' => ['enabled' => true],
     /*
     |--------------------------------------------------------------------------
