@@ -7,7 +7,6 @@ namespace Nvl\Metafields\Tests;
 use Illuminate\Contracts\Foundation\MaintenanceMode;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
-use Nvl\Data\Providers\DataServiceProvider;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Providers\MetafieldsServiceProvider;
 use Nvl\Metafields\Tests\Fixtures\BatchSoftDeletingMetafieldOwner;
@@ -25,6 +24,7 @@ use Nvl\Translatable\Providers\TranslatableServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 use ReflectionClass;
 use RuntimeException;
+use Spatie\LaravelData\LaravelDataServiceProvider as DataServiceProvider;
 
 /** Boots Metafields' non-transactional tenancy adoption fixture. */
 abstract class MetafieldTenancyTestCase extends Orchestra

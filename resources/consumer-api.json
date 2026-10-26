@@ -234,63 +234,10 @@
             ],
             "constants": []
         },
-        "Nvl\\Metafields\\Exceptions\\InvalidMetafieldMutationException": {
-            "kind": "class",
-            "file": "src/Exceptions/InvalidMetafieldMutationException.php",
-            "methods": [
-                "package",
-                "publicContext",
-                "responseCode",
-                "responseHeaders",
-                "suggestedStatus",
-                "translationKey",
-                "translationParameters"
-            ],
-            "properties": [],
-            "constants": []
-        },
         "Nvl\\Metafields\\Exceptions\\MetafieldBatchReadException": {
             "kind": "class",
             "file": "src/Exceptions/MetafieldBatchReadException.php",
-            "methods": [
-                "package",
-                "publicContext",
-                "responseCode",
-                "responseHeaders",
-                "suggestedStatus",
-                "translationKey",
-                "translationParameters"
-            ],
-            "properties": [],
-            "constants": []
-        },
-        "Nvl\\Metafields\\Exceptions\\MetafieldDefinitionNotFoundException": {
-            "kind": "class",
-            "file": "src/Exceptions/MetafieldDefinitionNotFoundException.php",
-            "methods": [
-                "package",
-                "publicContext",
-                "responseCode",
-                "responseHeaders",
-                "suggestedStatus",
-                "translationKey",
-                "translationParameters"
-            ],
-            "properties": [],
-            "constants": []
-        },
-        "Nvl\\Metafields\\Exceptions\\MetafieldException": {
-            "kind": "class",
-            "file": "src/Exceptions/MetafieldException.php",
-            "methods": [
-                "package",
-                "publicContext",
-                "responseCode",
-                "responseHeaders",
-                "suggestedStatus",
-                "translationKey",
-                "translationParameters"
-            ],
+            "methods": [],
             "properties": [],
             "constants": []
         },
@@ -298,14 +245,7 @@
             "kind": "class",
             "file": "src/Exceptions/MetafieldIntegrityException.php",
             "methods": [
-                "duplicateActiveOwnerDefinitionRecords",
-                "package",
-                "publicContext",
-                "responseCode",
-                "responseHeaders",
-                "suggestedStatus",
-                "translationKey",
-                "translationParameters"
+                "duplicateActiveOwnerDefinitionRecords"
             ],
             "properties": [],
             "constants": []
@@ -314,14 +254,7 @@
             "kind": "class",
             "file": "src/Exceptions/StaleMetafieldVersionException.php",
             "methods": [
-                "forResource",
-                "package",
-                "publicContext",
-                "responseCode",
-                "responseHeaders",
-                "suggestedStatus",
-                "translationKey",
-                "translationParameters"
+                "forResource"
             ],
             "properties": [],
             "constants": []
@@ -330,116 +263,249 @@
             "kind": "class",
             "file": "src/Models/Metafield.php",
             "methods": [
-                "getKey",
-                "getKeyName",
-                "getMorphClass",
-                "getRouteKey",
-                "getRouteKeyName",
-                "is",
-                "isNot",
-                "relationLoaded"
+                "bootHasOwnership",
+                "definition",
+                "delete",
+                "fresh",
+                "getAllTranslations",
+                "getAvailableLocales",
+                "getConnectionName",
+                "getCurrentLocale",
+                "getRelationValue",
+                "getTable",
+                "getTranslatedAttributes",
+                "getTranslation",
+                "getValue",
+                "hasTranslation",
+                "isTranslatableAttribute",
+                "metafieldable",
+                "newQueryForRestoration",
+                "orderByTranslated",
+                "ownershipDefinition",
+                "refresh",
+                "refreshForUpdate",
+                "resolveTranslation",
+                "save",
+                "scopeOrderByTranslated",
+                "scopeWhereTranslated",
+                "scopeWhereTranslationNotNull",
+                "scopeWhereTranslationNull",
+                "scopeWithAllTranslations",
+                "scopeWithResolvedTranslations",
+                "setLocale",
+                "translated",
+                "translation",
+                "translationDefinition",
+                "translationOptions",
+                "translationResourceKey",
+                "translations",
+                "whereTranslated",
+                "whereTranslationNotNull",
+                "whereTranslationNull",
+                "withAllTranslations",
+                "withResolvedTranslations"
             ],
             "properties": [
                 "created_at",
+                "definition",
                 "definition_id",
                 "id",
+                "metafieldable",
                 "metafieldable_id",
                 "metafieldable_type",
+                "owner_scope_key",
+                "referenced_id",
                 "revision",
-                "updated_at"
+                "translations",
+                "updated_at",
+                "value"
             ],
-            "constants": []
+            "constants": [
+                "TABLE"
+            ]
         },
         "Nvl\\Metafields\\Models\\MetafieldDefinition": {
             "kind": "class",
             "file": "src/Models/MetafieldDefinition.php",
             "methods": [
-                "getKey",
-                "getKeyName",
-                "getMorphClass",
-                "getRouteKey",
-                "getRouteKeyName",
-                "is",
-                "isNot",
-                "relationLoaded"
+                "allowsCentralCatalog",
+                "assignments",
+                "bootHasOwnership",
+                "clearDefaultValue",
+                "delete",
+                "displayDescription",
+                "displayHint",
+                "displayTitle",
+                "fresh",
+                "generateHandle",
+                "getAllTranslations",
+                "getAvailableLocales",
+                "getConnectionName",
+                "getCurrentLocale",
+                "getDefaultValue",
+                "getRelationValue",
+                "getSerializableDefaultValue",
+                "getTable",
+                "getTranslatedAttributes",
+                "getTranslation",
+                "hasDefaultValue",
+                "hasTranslation",
+                "isTranslatableAttribute",
+                "metafields",
+                "newQueryForRestoration",
+                "orderByTranslated",
+                "ownershipDefinition",
+                "refresh",
+                "refreshForUpdate",
+                "resolveRouteBinding",
+                "resolveSoftDeletableRouteBinding",
+                "resolveTranslation",
+                "save",
+                "scopeActive",
+                "scopeInNamespace",
+                "scopeOrderByTranslated",
+                "scopeWhereTranslated",
+                "scopeWhereTranslationNotNull",
+                "scopeWhereTranslationNull",
+                "scopeWithAllTranslations",
+                "scopeWithResolvedTranslations",
+                "setDefaultValue",
+                "setLocale",
+                "translated",
+                "translation",
+                "translationDefinition",
+                "translationOptions",
+                "translationResourceKey",
+                "translations",
+                "whereTranslated",
+                "whereTranslationNotNull",
+                "whereTranslationNull",
+                "withAllTranslations",
+                "withResolvedTranslations"
             ],
-            "properties": [],
-            "constants": []
+            "properties": [
+                "active_handle",
+                "archived_at",
+                "catalog_import_key",
+                "catalog_import_request_hash",
+                "catalog_source_hash",
+                "catalog_source_id",
+                "catalog_source_revision",
+                "default_referenced_id",
+                "default_value",
+                "deleted_at",
+                "display_order",
+                "handle",
+                "id",
+                "is_filterable",
+                "is_required",
+                "is_translatable",
+                "json_property_schema",
+                "key",
+                "namespace",
+                "owner_scope_key",
+                "ownership_key",
+                "referenced_model_type",
+                "revision",
+                "translations",
+                "type",
+                "validation_rules"
+            ],
+            "constants": [
+                "TABLE"
+            ]
         },
         "Nvl\\Metafields\\Models\\MetafieldDefinitionAssignment": {
             "kind": "class",
             "file": "src/Models/MetafieldDefinitionAssignment.php",
             "methods": [
-                "getKey",
-                "getKeyName",
-                "getMorphClass",
-                "getRouteKey",
-                "getRouteKeyName",
-                "is",
-                "isNot",
-                "relationLoaded"
-            ],
-            "properties": [],
-            "constants": []
-        },
-        "Nvl\\Metafields\\Models\\MetafieldDefinitionOwnerGrant": {
-            "kind": "class",
-            "file": "src/Models/MetafieldDefinitionOwnerGrant.php",
-            "methods": [
-                "getKey",
-                "getKeyName",
-                "getMorphClass",
-                "getRouteKey",
-                "getRouteKeyName",
-                "is",
-                "isNot",
-                "relationLoaded"
+                "bootHasOwnership",
+                "definition",
+                "delete",
+                "fresh",
+                "getConnectionName",
+                "getTable",
+                "newQueryForRestoration",
+                "ownershipDefinition",
+                "refresh",
+                "refreshForUpdate",
+                "save"
             ],
             "properties": [
+                "definition",
                 "definition_id",
-                "enabled",
+                "display_order",
                 "id",
-                "revision",
-                "revoked_at",
-                "source_revision"
+                "is_active",
+                "is_required",
+                "owner_type",
+                "ownership_key",
+                "section",
+                "ui_config"
             ],
-            "constants": []
+            "constants": [
+                "TABLE"
+            ]
         },
         "Nvl\\Metafields\\Models\\MetafieldDefinitionTranslation": {
             "kind": "class",
             "file": "src/Models/MetafieldDefinitionTranslation.php",
             "methods": [
-                "getKey",
-                "getKeyName",
-                "getMorphClass",
-                "getRouteKey",
-                "getRouteKeyName",
-                "is",
-                "isNot",
-                "relationLoaded"
+                "bootHasOwnership",
+                "definition",
+                "delete",
+                "fresh",
+                "getConnectionName",
+                "getTable",
+                "newQueryForRestoration",
+                "ownershipDefinition",
+                "refresh",
+                "refreshForUpdate",
+                "save"
             ],
             "properties": [
-                "id"
+                "default_value",
+                "definition",
+                "description",
+                "hint",
+                "id",
+                "locale",
+                "metafield_definition_id",
+                "owner_scope_key",
+                "ownership_key",
+                "properties",
+                "title"
             ],
-            "constants": []
+            "constants": [
+                "TABLE"
+            ]
         },
         "Nvl\\Metafields\\Models\\MetafieldTranslation": {
             "kind": "class",
             "file": "src/Models/MetafieldTranslation.php",
             "methods": [
-                "getKey",
-                "getKeyName",
-                "getMorphClass",
-                "getRouteKey",
-                "getRouteKeyName",
-                "is",
-                "isNot",
-                "relationLoaded"
+                "bootHasOwnership",
+                "delete",
+                "fresh",
+                "getConnectionName",
+                "getTable",
+                "metafield",
+                "newQueryForRestoration",
+                "ownershipDefinition",
+                "refresh",
+                "refreshForUpdate",
+                "save"
             ],
             "properties": [
-                "id"
+                "id",
+                "locale",
+                "metafield",
+                "metafield_id",
+                "value"
             ],
-            "constants": []
+            "constants": [
+                "TABLE"
+            ]
         },
         "Nvl\\Metafields\\Ownership\\MetafieldOwnerCatalog": {
             "kind": "class",
@@ -458,6 +524,18 @@
             "methods": [
                 "__construct",
                 "definitionClass"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Services\\MetafieldValues": {
+            "kind": "class",
+            "file": "src/Services/MetafieldValues.php",
+            "methods": [
+                "__construct",
+                "delete",
+                "set",
+                "sync"
             ],
             "properties": [],
             "constants": []
@@ -486,189 +564,6 @@
             ],
             "properties": [],
             "constants": []
-        },
-        "Nvl\\Metafields\\Services\\MetafieldActorPolicy": {
-            "kind": "class",
-            "file": "src/Services/MetafieldActorPolicy.php",
-            "methods": [
-                "authorize"
-            ],
-            "properties": [],
-            "constants": []
-        },
-        "Nvl\\Metafields\\Services\\MetafieldDefinitions": {
-            "kind": "class",
-            "file": "src/Services/MetafieldDefinitions.php",
-            "methods": [
-                "create",
-                "update",
-                "archive",
-                "delete",
-                "grant",
-                "revoke",
-                "import"
-            ],
-            "properties": [],
-            "constants": []
-        },
-        "Nvl\\Metafields\\Services\\MetafieldValues": {
-            "kind": "class",
-            "file": "src/Services/MetafieldValues.php",
-            "methods": [
-                "sync",
-                "set",
-                "delete"
-            ],
-            "properties": [],
-            "constants": []
-        },
-        "Nvl\\Metafields\\Services\\MetafieldReader": {
-            "kind": "class",
-            "file": "src/Services/MetafieldReader.php",
-            "methods": [
-                "definitions",
-                "forOwner",
-                "forOwners"
-            ],
-            "properties": [],
-            "constants": []
-        },
-        "Nvl\\Metafields\\Events\\MetafieldDefinitionCatalogGrantAudited": {
-            "kind": "class",
-            "file": "src/Events/MetafieldDefinitionCatalogGrantAudited.php",
-            "methods": [
-                "__construct",
-                "ownershipJobEnvelope",
-                "schemaVersion"
-            ],
-            "properties": [
-                "operation",
-                "grantId",
-                "ownerScopeKey",
-                "definitionId",
-                "sourceRevision",
-                "grantRevision",
-                "schemaVersion"
-            ],
-            "constants": []
         }
-    },
-    "models": {
-        "Nvl\\Metafields\\Models\\Metafield": {
-            "read": [
-                "created_at",
-                "definition_id",
-                "id",
-                "metafieldable_id",
-                "metafieldable_type",
-                "revision",
-                "updated_at"
-            ],
-            "identity_methods": [
-                "getKey",
-                "getKeyName",
-                "getMorphClass",
-                "getRouteKey",
-                "getRouteKeyName",
-                "is",
-                "isNot",
-                "relationLoaded"
-            ],
-            "capability_relations": []
-        },
-        "Nvl\\Metafields\\Models\\MetafieldDefinition": {
-            "read": [],
-            "identity_methods": [
-                "getKey",
-                "getKeyName",
-                "getMorphClass",
-                "getRouteKey",
-                "getRouteKeyName",
-                "is",
-                "isNot",
-                "relationLoaded"
-            ],
-            "capability_relations": []
-        },
-        "Nvl\\Metafields\\Models\\MetafieldDefinitionAssignment": {
-            "read": [],
-            "identity_methods": [
-                "getKey",
-                "getKeyName",
-                "getMorphClass",
-                "getRouteKey",
-                "getRouteKeyName",
-                "is",
-                "isNot",
-                "relationLoaded"
-            ],
-            "capability_relations": []
-        },
-        "Nvl\\Metafields\\Models\\MetafieldDefinitionOwnerGrant": {
-            "read": [
-                "definition_id",
-                "enabled",
-                "id",
-                "revision",
-                "revoked_at",
-                "source_revision"
-            ],
-            "identity_methods": [
-                "getKey",
-                "getKeyName",
-                "getMorphClass",
-                "getRouteKey",
-                "getRouteKeyName",
-                "is",
-                "isNot",
-                "relationLoaded"
-            ],
-            "capability_relations": []
-        },
-        "Nvl\\Metafields\\Models\\MetafieldDefinitionTranslation": {
-            "read": [
-                "id"
-            ],
-            "identity_methods": [
-                "getKey",
-                "getKeyName",
-                "getMorphClass",
-                "getRouteKey",
-                "getRouteKeyName",
-                "is",
-                "isNot",
-                "relationLoaded"
-            ],
-            "capability_relations": []
-        },
-        "Nvl\\Metafields\\Models\\MetafieldTranslation": {
-            "read": [
-                "id"
-            ],
-            "identity_methods": [
-                "getKey",
-                "getKeyName",
-                "getMorphClass",
-                "getRouteKey",
-                "getRouteKeyName",
-                "is",
-                "isNot",
-                "relationLoaded"
-            ],
-            "capability_relations": []
-        }
-    },
-    "capability_relations": {
-        "Nvl\\Metafields\\Traits\\HasMetafields": [
-            "metafields"
-        ]
-    },
-    "tables": {
-        "definition_assignments": "nvl_metafields_definition_assignments",
-        "definitions": "nvl_metafields_definitions",
-        "definitions_i18n": "nvl_metafields_definitions_i18n",
-        "i18n": "nvl_metafields_i18n",
-        "metafields": "nvl_metafields_metafields",
-        "owner_grants": "nvl_metafields_tenant_grants"
     }
 }

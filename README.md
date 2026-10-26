@@ -4,7 +4,7 @@ Typed, optionally localized custom fields for registered Eloquent owners on Lara
 
 ## Install and register owners
 
-Install `nvl/metafields:^6.0` with its declared `nvl/core` and `nvl/translatable` dependencies. Use `php artisan nvl:install metafields` to publish common configuration, choose one migration owner, and run the package migrations. The installer does not run migrations or enable an ownership policy.
+Install `nvl/metafields:^6.0` with its declared `nvl/core` and `nvl/translatable` dependencies. Publish the package configuration with Laravel vendor publishing when overrides are needed, choose one migration owner, and run the package migrations. Configure authorization explicitly before enabling operations.
 
 Configure stable aliases in `nvl-metafields.owners` and `nvl-metafields.reference_models`:
 

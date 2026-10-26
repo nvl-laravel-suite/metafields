@@ -5,7 +5,6 @@ declare(strict_types=1);
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Event;
-use Nvl\Data\Providers\DataServiceProvider;
 use Nvl\Metafields\Actions\Metafields\SetMetafieldAction;
 use Nvl\Metafields\Actions\Metafields\SyncOwnerMetafieldsAction;
 use Nvl\Metafields\Data\SyncOwnerMetafieldsPayload;
@@ -20,6 +19,7 @@ use Nvl\Support\Providers\SupportServiceProvider;
 use Nvl\Translatable\Providers\TranslatableServiceProvider;
 use Orchestra\Testbench\Foundation\Application;
 use Spatie\LaravelData\LaravelDataServiceProvider;
+use Spatie\LaravelData\LaravelDataServiceProvider as DataServiceProvider;
 
 require dirname(__DIR__, 5).'/vendor/autoload.php';
 
