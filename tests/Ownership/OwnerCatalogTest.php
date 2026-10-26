@@ -29,7 +29,7 @@ it('copies explicitly granted central definitions and fences stale or revoked im
     $runner->run(OwnershipCompany::findOrFail(7), $actor, function () use ($source, &$grant, &$copy): void {
         $catalog = app(MetafieldOwnerCatalog::class);
         $grant = app(MetafieldDefinitions::class)->grant($source->id, $source->revision, OwnershipActor::firstOrFail());
-        $data = ['grantId' => $grant->id, 'expectedGrantRevision' => $grant->revision, 'expectedSourceRevision' => $source->revision, 'idempotencyKey' => '01900000-0000-7000-8000-000000000002', 'namespace' => 'product', 'key' => 'copy', 'assignment' => ['ownerType' => 'products', 'section' => 'general']];
+        $data = ['grantId' => $grant->id, 'expectedGrantRevision' => $grant->revision, 'expectedSourceRevision' => $source->revision, 'idempotency_key' => '01900000-0000-7000-8000-000000000002', 'namespace' => 'product', 'key' => 'copy', 'assignment' => ['ownerType' => 'products', 'section' => 'general']];
         $copy = app(MetafieldDefinitions::class)->import($data, OwnershipActor::firstOrFail());
         expect($copy->id)->not->toBe($source->id)->and($copy->catalog_source_id)->toBe($source->id)->and($copy->translations->first()->title)->toBe('Source schema');
         $snapshot = $catalog->inspect($grant->id);

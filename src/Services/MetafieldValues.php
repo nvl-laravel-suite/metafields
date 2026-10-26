@@ -40,7 +40,7 @@ use TypeError;
  *
  * @api
  *
- * @phpstan-type SyncItem array{definitionId:string,clear?:bool,value?:mixed,translations?:array<string,mixed>|null,translationMode?:TranslationSyncMode,expectedRevision?:int|null}
+ * @phpstan-type SyncItem array{definitionId:string,clear?:bool,value?:mixed,translations?:array<string,mixed>|null,translation_mode?:TranslationSyncMode,expected_revision?:int|null}
  */
 final class MetafieldValues
 {
@@ -67,7 +67,7 @@ final class MetafieldValues
     {
         $actor = $this->actors->authorize($actor, 'write');
         $this->validateItems($items);
-        /** @var list<array{definitionId:string,clear?:bool|0|1|'0'|'1',value?:mixed,translations?:array<string,mixed>|null,translationMode?:TranslationSyncMode|string,expectedRevision?:int|float|numeric-string|bool|null}> $validatedItems */
+        /** @var list<array{definitionId:string,clear?:bool|0|1|'0'|'1',value?:mixed,translations?:array<string,mixed>|null,translation_mode?:TranslationSyncMode|string,expected_revision?:int|float|numeric-string|bool|null}> $validatedItems */
         $validatedItems = $items;
         $owner = $this->ownerResolver->canonical($owner);
         $ownerType = $this->ownerRegistry->resolveOwnerType($owner);
@@ -75,11 +75,11 @@ final class MetafieldValues
             if (array_key_exists('clear', $item)) {
                 $item['clear'] = (bool) $item['clear'];
             }
-            if (array_key_exists('expectedRevision', $item) && $item['expectedRevision'] !== null) {
-                $item['expectedRevision'] = (int) $item['expectedRevision'];
+            if (array_key_exists('expected_revision', $item) && $item['expected_revision'] !== null) {
+                $item['expected_revision'] = (int) $item['expected_revision'];
             }
-            if (is_string($item['translationMode'] ?? null)) {
-                $item['translationMode'] = TranslationSyncMode::from($item['translationMode']);
+            if (is_string($item['translation_mode'] ?? null)) {
+                $item['translation_mode'] = TranslationSyncMode::from($item['translation_mode']);
             }
 
             /** @var SyncItem $item */
@@ -191,7 +191,7 @@ final class MetafieldValues
 
                 $this->syncValidator->ensureExpectedRevision(
                     $metafield,
-                    $item['expectedRevision'] ?? null,
+                    $item['expected_revision'] ?? null,
                     $definition->id,
                     $index,
                 );
@@ -222,7 +222,7 @@ final class MetafieldValues
                         metafield: $metafield,
                         translations: $translations,
                         definition: $definition,
-                        mode: ($item['translationMode'] ?? TranslationSyncMode::Patch),
+                        mode: ($item['translation_mode'] ?? TranslationSyncMode::Patch),
                     );
                     $metafield->refresh()->loadMissing(['translations', 'definition']);
                     $syncedMetafields->push($metafield);
@@ -275,7 +275,7 @@ final class MetafieldValues
             $item['value'] = $value;
         }
         if ($expectedRevision !== null) {
-            $item['expectedRevision'] = $expectedRevision;
+            $item['expected_revision'] = $expectedRevision;
         }
 
         return (new Metafield)->getConnection()->transaction(function () use ($owner, $item, $actor, $handle): Metafield {
@@ -296,7 +296,7 @@ final class MetafieldValues
         $this->sync($owner, [[
             'definitionId' => $definitionId,
             'clear' => true,
-            'expectedRevision' => $expectedRevision,
+            'expected_revision' => $expectedRevision,
         ]], $actor);
 
         return true;
@@ -307,12 +307,12 @@ final class MetafieldValues
     {
         Validator::make(['items' => $items], [
             'items' => ['required', 'array', 'list', 'min:1', 'max:'.MetafieldConfiguration::positiveInteger('nvl-metafields.limits.maximum_sync_items', 100)],
-            'items.*' => ['required', 'array:definitionId,clear,value,translations,translationMode,expectedRevision'],
+            'items.*' => ['required', 'array:definitionId,clear,value,translations,translation_mode,expected_revision'],
             'items.*.definitionId' => ['required', 'uuid', 'distinct'],
             'items.*.clear' => ['sometimes', 'boolean'],
             'items.*.translations' => ['sometimes', 'nullable', 'array'],
-            'items.*.translationMode' => ['sometimes', Rule::enum(TranslationSyncMode::class)],
-            'items.*.expectedRevision' => ['sometimes', 'nullable', 'integer', 'min:1'],
+            'items.*.translation_mode' => ['sometimes', Rule::enum(TranslationSyncMode::class)],
+            'items.*.expected_revision' => ['sometimes', 'nullable', 'integer', 'min:1'],
         ])->validate();
     }
 }

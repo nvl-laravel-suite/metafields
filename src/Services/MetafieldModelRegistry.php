@@ -42,7 +42,9 @@ final class MetafieldModelRegistry
         );
     }
 
-    /** Resolve and freeze the concrete MetafieldDefinition class before resource compilation.
+    /**
+     * Resolve and freeze the concrete MetafieldDefinition class before resource compilation.
+     *
      * @internal
      *
      * @return class-string<MetafieldDefinition>
@@ -60,7 +62,9 @@ final class MetafieldModelRegistry
         return $this->registration->modelClass();
     }
 
-    /** Resolve the immutable model from native framework entry points.
+    /**
+     * Resolve the immutable model from native framework entry points.
+     *
      * @internal
      *
      * @return class-string<MetafieldDefinition>
@@ -70,7 +74,9 @@ final class MetafieldModelRegistry
         return Container::getInstance()->make(self::class)->definitionClass();
     }
 
-    /** Construct the configured root.
+    /**
+     * Construct the configured root.
+     *
      * @internal
      *
      * @param  array<string,mixed>  $attributes
@@ -82,7 +88,9 @@ final class MetafieldModelRegistry
         return new $class($attributes);
     }
 
-    /** Persist a package-authored attribute map under the exact source assignment.
+    /**
+     * Persist a package-authored attribute map under the exact source assignment.
+     *
      * @internal
      *
      * @param  array<string, mixed>  $attributes
@@ -97,7 +105,9 @@ final class MetafieldModelRegistry
         });
     }
 
-    /** Create the exact configured query.
+    /**
+     * Create the exact configured query.
+     *
      * @internal
      *
      * @return Builder<MetafieldDefinition>

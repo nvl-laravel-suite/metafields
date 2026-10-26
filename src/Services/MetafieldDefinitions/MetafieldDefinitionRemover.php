@@ -9,6 +9,9 @@ use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldTranslation;
 
+/**
+ * @internal
+ */
 final class MetafieldDefinitionRemover
 {
     public function delete(

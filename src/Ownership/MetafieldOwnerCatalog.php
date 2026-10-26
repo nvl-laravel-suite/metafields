@@ -36,7 +36,7 @@ use Nvl\Support\Ownership\Services\OwnershipScope;
  * @phpstan-import-type CatalogSnapshot from MetafieldDefinitionCatalogProjector
  * @phpstan-import-type DefinitionAssignment from \Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionInput
  *
- * @phpstan-type CatalogImport array{grantId:string,expectedGrantRevision:int,expectedSourceRevision:int,idempotencyKey:string,namespace:string,key:string,assignment:DefinitionAssignment,referenceMap:array<string,string>}
+ * @phpstan-type CatalogImport array{grantId:string,expectedGrantRevision:int,expectedSourceRevision:int,idempotency_key:string,namespace:string,key:string,assignment:DefinitionAssignment,referenceMap:array<string,string>}
  */
 final readonly class MetafieldOwnerCatalog
 {
@@ -116,7 +116,7 @@ final readonly class MetafieldOwnerCatalog
     {
         $this->admit();
         $connection = $this->connection();
-        if ($connection->transactionLevel() < 1 || ! Str::isUuid($data['idempotencyKey']) || $source['grantId'] !== $data['grantId'] || $source['grantRevision'] !== $data['expectedGrantRevision'] || $source['sourceRevision'] !== $data['expectedSourceRevision']) {
+        if ($connection->transactionLevel() < 1 || ! Str::isUuid($data['idempotency_key']) || $source['grantId'] !== $data['grantId'] || $source['grantRevision'] !== $data['expectedGrantRevision'] || $source['sourceRevision'] !== $data['expectedSourceRevision']) {
             throw new OwnershipViolation('A definition copy requires its exact reviewed tuple and source transaction.');
         }
         if ($this->snapshot($source['grantId'], true) !== $source) {
@@ -132,7 +132,7 @@ final readonly class MetafieldOwnerCatalog
             $data['assignment'],
             $referenceHash,
         ], JSON_THROW_ON_ERROR));
-        $existing = MetafieldModelRegistry::query()->where('catalog_import_key', $data['idempotencyKey'])->lockForUpdate()->first();
+        $existing = MetafieldModelRegistry::query()->where('catalog_import_key', $data['idempotency_key'])->lockForUpdate()->first();
         if ($existing instanceof MetafieldDefinition) {
             if ($existing->catalog_source_id !== $source['sourceId']
                 || $existing->catalog_source_revision !== $source['sourceRevision']
@@ -166,7 +166,7 @@ final readonly class MetafieldOwnerCatalog
             'translations' => $definition['translations'],
         ];
         $copy = $this->writer->createImported($payload, [
-            'catalog_import_key' => $data['idempotencyKey'],
+            'catalog_import_key' => $data['idempotency_key'],
             'catalog_source_id' => $source['sourceId'],
             'catalog_source_revision' => $source['sourceRevision'],
             'catalog_source_hash' => $source['sourceHash'],

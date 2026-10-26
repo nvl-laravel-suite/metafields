@@ -12,7 +12,7 @@ return [
         'translations' => 'translations',
     ],
     'custom' => [
-        'expectedRevision' => [
+        'expected_revision' => [
             'required' => 'The expected revision is required when changing an existing metafield value.',
         ],
         'items' => [

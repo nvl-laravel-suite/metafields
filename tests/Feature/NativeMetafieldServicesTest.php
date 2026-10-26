@@ -90,13 +90,13 @@ it('distinguishes omitted localized values from explicit null and preserves acce
     $updated = $values->sync($owner, [[
         'definitionId' => $definition->id,
         'translations' => ['bg' => 'Български'],
-        'expectedRevision' => $original->revision,
+        'expected_revision' => $original->revision,
     ]], SystemActor::Background)->first();
     expect($updated->translations->pluck('value', 'locale')->all())->toBe(['bg' => 'Български', 'en' => 'English']);
     expect(fn () => $values->sync($owner, [[
         'definitionId' => $definition->id,
         'translations' => ['en' => null],
-        'expectedRevision' => $updated->revision,
+        'expected_revision' => $updated->revision,
     ]], SystemActor::Background))->toThrow(ValidationException::class);
     expect($updated->fresh()->translations->pluck('value', 'locale')->all())->toBe(['bg' => 'Български', 'en' => 'English']);
 });
@@ -268,13 +268,13 @@ it('patches and replaces localized values while advancing revisions', function (
     $first = $values->set($owner, 'product.caption', 'English', SystemActor::Background, 'en');
     $patched = $values->sync($owner, [[
         'definitionId' => $definition->id, 'translations' => ['bg' => 'Български'],
-        'expectedRevision' => $first->revision, 'translationMode' => TranslationSyncMode::Patch,
+        'expected_revision' => $first->revision, 'translation_mode' => TranslationSyncMode::Patch,
     ]], SystemActor::Background)->first();
     expect($patched->revision)->toBe($first->revision + 1)
         ->and($patched->translations)->toHaveCount(2);
     $replaced = $values->sync($owner, [[
         'definitionId' => $definition->id, 'translations' => ['en' => 'Updated'],
-        'expectedRevision' => $patched->revision, 'translationMode' => TranslationSyncMode::Replace,
+        'expected_revision' => $patched->revision, 'translation_mode' => TranslationSyncMode::Replace,
     ]], SystemActor::Background)->first();
     expect($replaced->revision)->toBe($patched->revision + 1)
         ->and($replaced->translations->pluck('value', 'locale')->all())->toBe(['en' => 'Updated']);
@@ -367,7 +367,7 @@ it('normalizes accepted clear flags and revision values before applying a value 
     $result = $values->sync($owner, [[
         'definitionId' => $definition->id,
         'clear' => '1',
-        'expectedRevision' => (string) $value->revision,
+        'expected_revision' => (string) $value->revision,
     ]], SystemActor::Background);
 
     expect($result)->toBeEmpty()

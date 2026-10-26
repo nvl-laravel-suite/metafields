@@ -19,7 +19,11 @@ use Nvl\Metafields\Services\Metafields\OwnerMetafieldFieldCatalog;
 use Nvl\Support\Enums\SystemActor;
 use stdClass;
 
-/** Scoped native definition and owner value reads. @api */
+/**
+ * Scoped native definition and owner value reads.
+ *
+ * @api
+ */
 final readonly class MetafieldReader
 {
     public function __construct(

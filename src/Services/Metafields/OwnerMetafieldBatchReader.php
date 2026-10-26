@@ -29,7 +29,11 @@ use Nvl\Support\Owners\OwnerResultMap;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
-/** Grouped owner admission and bounded SQL-visible assigned field projection. */
+/**
+ * Grouped owner admission and bounded SQL-visible assigned field projection.
+ *
+ * @api
+ */
 final readonly class OwnerMetafieldBatchReader
 {
     /** Retain request-scoped authorization, identity and locale dependencies. */

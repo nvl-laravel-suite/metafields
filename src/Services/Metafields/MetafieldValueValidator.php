@@ -16,6 +16,8 @@ use Nvl\Support\Enums\SystemActor;
 
 /**
  * Validates typed owner values and authorizes every referenced record.
+ *
+ * @internal
  */
 final readonly class MetafieldValueValidator
 {

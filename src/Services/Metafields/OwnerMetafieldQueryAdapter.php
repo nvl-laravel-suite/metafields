@@ -23,7 +23,11 @@ use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
-/** Compares stored scalar values with exact correlated owner identities. */
+/**
+ * Compares stored scalar values with exact correlated owner identities.
+ *
+ * @internal
+ */
 final readonly class OwnerMetafieldQueryAdapter
 {
     /** Retain explicit capability and active ownership dependencies. */

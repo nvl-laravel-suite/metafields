@@ -10,7 +10,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Nvl\Support\Enums\SystemActor;
 
-/** Admits only an explicit actor granted the requested host capability. */
+/**
+ * Admits only an explicit actor granted the requested host capability.
+ *
+ * @internal
+ */
 final readonly class MetafieldActorPolicy
 {
     public function authorize(Authenticatable|SystemActor $actor, string $ability): Authenticatable|SystemActor

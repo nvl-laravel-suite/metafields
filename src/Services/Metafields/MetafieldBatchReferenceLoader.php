@@ -20,7 +20,11 @@ use Nvl\Support\Owners\OwnerBatch;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
-/** Canonical bounded reference facts retain host scopes and target SQL visibility. */
+/**
+ * Canonical bounded reference facts retain host scopes and target SQL visibility.
+ *
+ * @internal
+ */
 final readonly class MetafieldBatchReferenceLoader
 {
     /** Retain scoped boundary and query-free policy dependencies. */

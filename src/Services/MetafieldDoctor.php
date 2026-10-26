@@ -11,7 +11,11 @@ use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
 
-/** Read-only package installation diagnostics. */
+/**
+ * Read-only package installation diagnostics.
+ *
+ * @internal
+ */
 final readonly class MetafieldDoctor
 {
     public function __construct(private MetafieldOwnerRegistry $owners) {}

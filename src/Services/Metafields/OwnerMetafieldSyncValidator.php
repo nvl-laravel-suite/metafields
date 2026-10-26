@@ -20,6 +20,8 @@ use Nvl\Support\Enums\SystemActor;
 
 /**
  * Enforces owner assignment, completeness, locale, and typed-value invariants.
+ *
+ * @internal
  */
 final readonly class OwnerMetafieldSyncValidator
 {
@@ -214,8 +216,8 @@ final readonly class OwnerMetafieldSyncValidator
     ): void {
         if ($metafield instanceof Metafield && ! is_int($expectedRevision)) {
             throw ValidationException::withMessages([
-                "items.{$index}.expectedRevision" => [
-                    trans('nvl-metafields::owner-metafields/validation.custom.expectedRevision.required'),
+                "items.{$index}.expected_revision" => [
+                    trans('nvl-metafields::owner-metafields/validation.custom.expected_revision.required'),
                 ],
             ]);
         }

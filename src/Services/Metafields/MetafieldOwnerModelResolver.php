@@ -16,6 +16,8 @@ use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
 /**
  * Resolves configured metafield owner models without leaking persistence into controllers.
+ *
+ * @internal
  */
 final class MetafieldOwnerModelResolver
 {

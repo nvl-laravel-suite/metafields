@@ -11,6 +11,8 @@ use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 
 /**
  * Reads active definition assignments for registered owner types and sections.
+ *
+ * @api
  */
 final class OwnerMetafieldAssignmentCatalog
 {

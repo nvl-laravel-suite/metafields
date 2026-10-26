@@ -15,6 +15,8 @@ use Nvl\Metafields\Services\MetafieldModelRegistry;
  *
  * Read-only catalog for resolving metafield definitions used by admin flows
  * and owner compatibility helpers.
+ *
+ * @api
  */
 final class MetafieldDefinitionCatalog
 {

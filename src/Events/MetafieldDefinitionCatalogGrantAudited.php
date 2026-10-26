@@ -9,7 +9,11 @@ use Nvl\Support\Contracts\DomainEvent;
 use Nvl\Support\Ownership\Contracts\OwnershipQueuedJob;
 use Nvl\Support\Ownership\ValueObjects\OwnershipJobEnvelope;
 
-/** Scalar audit fact for a committed native definition grant lifecycle change. @api */
+/**
+ * Scalar audit fact for a committed native definition grant lifecycle change.
+ *
+ * @api
+ */
 final readonly class MetafieldDefinitionCatalogGrantAudited implements DomainEvent, OwnershipQueuedJob
 {
     private OwnershipJobEnvelope $ownershipEnvelope;

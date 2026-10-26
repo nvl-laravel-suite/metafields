@@ -9,7 +9,8 @@ use Nvl\Support\Contracts\DomainEvent;
 use Nvl\Support\Ownership\Contracts\OwnershipQueuedJob;
 use Nvl\Support\Ownership\ValueObjects\OwnershipJobEnvelope;
 
-/** A committed metafield identity and revision without its stored value.
+/**
+ * A committed metafield identity and revision without its stored value.
  *
  * @api
  */

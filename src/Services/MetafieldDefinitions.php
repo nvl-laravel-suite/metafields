@@ -147,7 +147,7 @@ final readonly class MetafieldDefinitions
             'grantId' => ['required', 'uuid'],
             'expectedGrantRevision' => ['required', 'integer', 'min:1'],
             'expectedSourceRevision' => ['required', 'integer', 'min:1'],
-            'idempotencyKey' => ['required', 'uuid'],
+            'idempotency_key' => ['required', 'uuid'],
             'namespace' => ['required', 'string', 'max:255', 'regex:/^[a-z0-9_-]+$/'],
             'key' => ['required', 'string', 'max:255', 'regex:/^[a-z0-9_-]+$/'],
             'assignment' => ['required', 'array:ownerType,section,displayOrder,isRequired,isActive,uiConfig'],
@@ -156,7 +156,7 @@ final readonly class MetafieldDefinitions
             'referenceMap' => ['sometimes', 'array'],
             'referenceMap.*' => ['string'],
         ])->validate();
-        if (array_diff(array_keys($request), ['grantId', 'expectedGrantRevision', 'expectedSourceRevision', 'idempotencyKey', 'namespace', 'key', 'assignment', 'referenceMap']) !== []) {
+        if (array_diff(array_keys($request), ['grantId', 'expectedGrantRevision', 'expectedSourceRevision', 'idempotency_key', 'namespace', 'key', 'assignment', 'referenceMap']) !== []) {
             throw ValidationException::withMessages(['request' => ['Unknown import attributes are not accepted.']]);
         }
         $request['referenceMap'] ??= [];

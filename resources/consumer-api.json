@@ -200,6 +200,25 @@
                 "Url"
             ]
         },
+        "Nvl\\Metafields\\Events\\MetafieldDefinitionCatalogGrantAudited": {
+            "kind": "class",
+            "file": "src/Events/MetafieldDefinitionCatalogGrantAudited.php",
+            "methods": [
+                "__construct",
+                "ownershipJobEnvelope",
+                "schemaVersion"
+            ],
+            "properties": [
+                "definitionId",
+                "grantId",
+                "grantRevision",
+                "operation",
+                "ownerScopeKey",
+                "schemaVersion",
+                "sourceRevision"
+            ],
+            "constants": []
+        },
         "Nvl\\Metafields\\Events\\MetafieldSet": {
             "kind": "class",
             "file": "src/Events/MetafieldSet.php",
@@ -234,9 +253,30 @@
             ],
             "constants": []
         },
+        "Nvl\\Metafields\\Exceptions\\InvalidMetafieldMutationException": {
+            "kind": "class",
+            "file": "src/Exceptions/InvalidMetafieldMutationException.php",
+            "methods": [],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Metafields\\Exceptions\\MetafieldBatchReadException": {
             "kind": "class",
             "file": "src/Exceptions/MetafieldBatchReadException.php",
+            "methods": [],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Exceptions\\MetafieldDefinitionNotFoundException": {
+            "kind": "class",
+            "file": "src/Exceptions/MetafieldDefinitionNotFoundException.php",
+            "methods": [],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Exceptions\\MetafieldException": {
+            "kind": "class",
+            "file": "src/Exceptions/MetafieldException.php",
             "methods": [],
             "properties": [],
             "constants": []
@@ -263,7 +303,6 @@
             "kind": "class",
             "file": "src/Models/Metafield.php",
             "methods": [
-                "bootHasOwnership",
                 "definition",
                 "delete",
                 "fresh",
@@ -330,7 +369,6 @@
             "methods": [
                 "allowsCentralCatalog",
                 "assignments",
-                "bootHasOwnership",
                 "clearDefaultValue",
                 "delete",
                 "displayDescription",
@@ -419,7 +457,6 @@
             "kind": "class",
             "file": "src/Models/MetafieldDefinitionAssignment.php",
             "methods": [
-                "bootHasOwnership",
                 "definition",
                 "delete",
                 "fresh",
@@ -451,7 +488,6 @@
             "kind": "class",
             "file": "src/Models/MetafieldDefinitionTranslation.php",
             "methods": [
-                "bootHasOwnership",
                 "definition",
                 "delete",
                 "fresh",
@@ -484,7 +520,6 @@
             "kind": "class",
             "file": "src/Models/MetafieldTranslation.php",
             "methods": [
-                "bootHasOwnership",
                 "delete",
                 "fresh",
                 "getConnectionName",
@@ -534,12 +569,35 @@
             "properties": [],
             "constants": []
         },
+        "Nvl\\Metafields\\Services\\MetafieldDefinitions\\MetafieldDefinitionCatalog": {
+            "kind": "class",
+            "file": "src/Services/MetafieldDefinitions/MetafieldDefinitionCatalog.php",
+            "methods": [
+                "findByHandle",
+                "list",
+                "mapIdsByHandles"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Metafields\\Services\\MetafieldModelRegistry": {
             "kind": "class",
             "file": "src/Services/MetafieldModelRegistry.php",
             "methods": [
                 "__construct",
                 "definitionClass"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Services\\MetafieldReader": {
+            "kind": "class",
+            "file": "src/Services/MetafieldReader.php",
+            "methods": [
+                "__construct",
+                "definitions",
+                "forOwner",
+                "forOwners"
             ],
             "properties": [],
             "constants": []
@@ -552,6 +610,25 @@
                 "delete",
                 "set",
                 "sync"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Services\\Metafields\\OwnerMetafieldAssignmentCatalog": {
+            "kind": "class",
+            "file": "src/Services/Metafields/OwnerMetafieldAssignmentCatalog.php",
+            "methods": [
+                "activeForOwnerType"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Services\\Metafields\\OwnerMetafieldBatchReader": {
+            "kind": "class",
+            "file": "src/Services/Metafields/OwnerMetafieldBatchReader.php",
+            "methods": [
+                "__construct",
+                "read"
             ],
             "properties": [],
             "constants": []

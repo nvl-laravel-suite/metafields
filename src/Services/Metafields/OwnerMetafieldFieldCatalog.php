@@ -15,6 +15,8 @@ use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 
 /**
  * Builds consumer-safe assigned field payloads for one registered owner.
+ *
+ * @internal
  */
 final readonly class OwnerMetafieldFieldCatalog
 {

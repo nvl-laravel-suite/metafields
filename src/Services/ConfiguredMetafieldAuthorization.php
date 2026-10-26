@@ -15,6 +15,8 @@ use Nvl\Support\Enums\SystemActor;
 
 /**
  * Gate-backed default authorization that denies undefined definition access.
+ *
+ * @internal
  */
 final class ConfiguredMetafieldAuthorization implements MetafieldAuthorization
 {

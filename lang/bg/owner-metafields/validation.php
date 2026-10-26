@@ -12,7 +12,7 @@ return [
         'translations' => 'преводи',
     ],
     'custom' => [
-        'expectedRevision' => [
+        'expected_revision' => [
             'required' => 'Очакваната ревизия е задължителна при промяна на съществуваща стойност на метаполе.',
         ],
         'items' => [

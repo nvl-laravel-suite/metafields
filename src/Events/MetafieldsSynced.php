@@ -9,7 +9,8 @@ use Nvl\Support\Contracts\DomainEvent;
 use Nvl\Support\Ownership\Contracts\OwnershipQueuedJob;
 use Nvl\Support\Ownership\ValueObjects\OwnershipJobEnvelope;
 
-/** The exact synchronized metafield identities for one persisted owner.
+/**
+ * The exact synchronized metafield identities for one persisted owner.
  *
  * @api
  */

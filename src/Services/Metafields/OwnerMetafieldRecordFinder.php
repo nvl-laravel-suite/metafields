@@ -17,6 +17,8 @@ use Nvl\Metafields\Support\ModelIdentifier;
  *
  * Resolves current and restorable owner metafield rows while enforcing the
  * single-active-row invariant.
+ *
+ * @internal
  */
 final class OwnerMetafieldRecordFinder
 {

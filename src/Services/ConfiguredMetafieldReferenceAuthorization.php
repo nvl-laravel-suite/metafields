@@ -14,6 +14,8 @@ use Nvl\Support\Enums\SystemActor;
 
 /**
  * Gate-backed reference authorization that fails closed until consumers configure an ability.
+ *
+ * @internal
  */
 final class ConfiguredMetafieldReferenceAuthorization implements MetafieldReferenceAuthorization
 {

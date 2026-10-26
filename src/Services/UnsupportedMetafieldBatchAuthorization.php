@@ -15,7 +15,11 @@ use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Owners\OwnerBatch;
 
-/** Refuses to infer SQL visibility from an imperative single-owner Gate callback. */
+/**
+ * Refuses to infer SQL visibility from an imperative single-owner Gate callback.
+ *
+ * @internal
+ */
 final readonly class UnsupportedMetafieldBatchAuthorization implements MetafieldBatchAuthorization
 {
     /** Fail with the binding the consumer must provide. */

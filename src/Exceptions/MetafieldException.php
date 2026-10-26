@@ -6,5 +6,9 @@ namespace Nvl\Metafields\Exceptions;
 
 use RuntimeException;
 
-/** Base failure for Metafield domain operations. @api */
+/**
+ * Base failure for Metafield domain operations.
+ *
+ * @api
+ */
 abstract class MetafieldException extends RuntimeException {}

@@ -15,6 +15,8 @@ use Nvl\Translatable\Services\RelatedTranslationStore;
 
 /**
  * Persists owner metafield records and delegates locale-row synchronization to Translatable.
+ *
+ * @internal
  */
 final readonly class OwnerMetafieldRecordWriter
 {

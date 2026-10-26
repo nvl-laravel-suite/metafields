@@ -14,7 +14,11 @@ use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
-/** Resolves reference records through their registered canonical owner boundary. */
+/**
+ * Resolves reference records through their registered canonical owner boundary.
+ *
+ * @internal
+ */
 final readonly class MetafieldReferenceRecordResolver
 {
     /** Create the canonical reference resolver. */
