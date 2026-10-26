@@ -518,6 +518,22 @@
             "properties": [],
             "constants": []
         },
+        "Nvl\\Metafields\\Services\\MetafieldDefinitions": {
+            "kind": "class",
+            "file": "src/Services/MetafieldDefinitions.php",
+            "methods": [
+                "__construct",
+                "archive",
+                "create",
+                "delete",
+                "grant",
+                "import",
+                "revoke",
+                "update"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Metafields\\Services\\MetafieldModelRegistry": {
             "kind": "class",
             "file": "src/Services/MetafieldModelRegistry.php",

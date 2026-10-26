@@ -17,6 +17,10 @@ use Nvl\Metafields\Support\MetafieldValidationRuleCompiler;
 
 /**
  * Guards definition updates that would invalidate active owner values.
+ *
+ * @internal
+ *
+ * @phpstan-import-type DefinitionMutation from MetafieldDefinitionInput
  */
 final class MetafieldDefinitionMutationGuard
 {
@@ -25,6 +29,8 @@ final class MetafieldDefinitionMutationGuard
 
     /**
      * Reject updates that would invalidate defaults, translations, or active owner values.
+     *
+     * @param  DefinitionMutation  $data
      */
     public function ensureUpdateIsSafe(
         MetafieldDefinition $definition,
@@ -58,12 +64,14 @@ final class MetafieldDefinitionMutationGuard
 
     /**
      * Require a title only when an update introduces a previously unknown locale.
+     *
+     * @param  DefinitionMutation  $data
      */
     private function ensureNewTranslationsHaveTitles(
         MetafieldDefinition $definition,
         array $data,
     ): void {
-        if (! array_key_exists('translations', $data) || $data['translations'] === null) {
+        if (! array_key_exists('translations', $data)) {
             return;
         }
 
@@ -94,6 +102,8 @@ final class MetafieldDefinitionMutationGuard
 
     /**
      * Preserve defaults only when they remain valid for the target definition shape.
+     *
+     * @param  DefinitionMutation  $data
      */
     private function ensureDefaultValuesAreSafe(
         MetafieldDefinition $definition,
@@ -158,7 +168,7 @@ final class MetafieldDefinitionMutationGuard
             )
             ->all();
 
-        if (array_key_exists('translations', $data) && is_array($data['translations'])) {
+        if (array_key_exists('translations', $data)) {
             foreach ($data['translations'] as $locale => $translation) {
                 if (! array_key_exists('defaultValue', $translation)) {
                     continue;
@@ -208,6 +218,7 @@ final class MetafieldDefinitionMutationGuard
     }
 
     /**
+     * @param  DefinitionMutation  $data
      * @return array<string, string>
      */
     private function blockedShapeChanges(
@@ -239,6 +250,7 @@ final class MetafieldDefinitionMutationGuard
         return $changes;
     }
 
+    /** @param DefinitionMutation $data */
     private function targetIsTranslatable(
         MetafieldDefinition $definition,
         array $data,
@@ -248,6 +260,7 @@ final class MetafieldDefinitionMutationGuard
             : $data['isTranslatable'];
     }
 
+    /** @param DefinitionMutation $data */
     private function targetReferencedModelType(
         MetafieldDefinition $definition,
         array $data,
@@ -265,6 +278,7 @@ final class MetafieldDefinitionMutationGuard
     }
 
     /**
+     * @param  DefinitionMutation  $data
      * @return list<mixed>|null
      */
     private function targetValidationRules(
@@ -283,6 +297,7 @@ final class MetafieldDefinitionMutationGuard
     }
 
     /**
+     * @param  DefinitionMutation  $data
      * @return list<mixed>|null
      */
     private function targetJsonPropertySchema(
@@ -303,6 +318,8 @@ final class MetafieldDefinitionMutationGuard
     /**
      * Return the target JSON property schema as a validator-safe list.
      *
+     *
+     * @param  DefinitionMutation  $data
      * @return list<array<string, mixed>>|null
      */
     private function targetJsonPropertySchemaForValidation(

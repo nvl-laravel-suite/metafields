@@ -57,6 +57,7 @@ final class MetafieldsServiceProvider extends ServiceProvider implements Ownersh
         $this->app->bindIf(MetafieldCatalogAccess::class, DenyMetafieldCatalogAccess::class);
         $this->app->bindIf(MetafieldAuthorization::class, ConfiguredMetafieldAuthorization::class);
         $this->app->bindIf(MetafieldBatchAuthorization::class, function (): MetafieldBatchAuthorization {
+            /** @var MetafieldAuthorization $authorization */
             $authorization = $this->app->make(MetafieldAuthorization::class);
 
             return $authorization instanceof MetafieldBatchAuthorization

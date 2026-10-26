@@ -44,13 +44,13 @@ final class MetafieldOwnerRegistry
      * Return every normalized owner registration keyed by stable alias.
      *
      * @return array<string, array{
-     *     model: class-string<Model>,
-     *     label: string,
-     *     supported_types: array<int, string>,
-     *     sections: array<int, string>,
-     *     runtime_status: 'live'|'planned',
-     *     show_route?: string,
-     *     show_route_parameters?: array<string, string>
+     * model: class-string<Model>,
+     * label: string,
+     * supported_types: array<int, string>,
+     * sections: array<int, string>,
+     * runtime_status: 'live'|'planned',
+     * show_route?: string,
+     * show_route_parameters?: array<string, string>
      * }>
      */
     public function all(): array
@@ -113,13 +113,13 @@ final class MetafieldOwnerRegistry
      * Return the normalized configuration for one stable owner alias.
      *
      * @return array{
-     *     model: class-string<Model>,
-     *     label: string,
-     *     supported_types: array<int, string>,
-     *     sections: array<int, string>,
-     *     runtime_status: 'live'|'planned',
-     *     show_route?: string,
-     *     show_route_parameters?: array<string, string>
+     * model: class-string<Model>,
+     * label: string,
+     * supported_types: array<int, string>,
+     * sections: array<int, string>,
+     * runtime_status: 'live'|'planned',
+     * show_route?: string,
+     * show_route_parameters?: array<string, string>
      * }
      */
     public function configurationForType(string $type): array
@@ -135,6 +135,8 @@ final class MetafieldOwnerRegistry
 
     /**
      * Build the public owner contract for a stable alias.
+     *
+     * @return array{type:string,label:string,supportedTypes:array<int,string>,sections:array<int,string>,runtimeStatus:'live'|'planned',supportsRuntimeEditing:bool}
      */
     public function forType(string $type): array
     {
@@ -185,13 +187,13 @@ final class MetafieldOwnerRegistry
     /**
      * @param  array<mixed, mixed>  $configuration
      * @return array{
-     *     model: class-string<Model>,
-     *     label: string,
-     *     supported_types: list<string>,
-     *     sections: list<string>,
-     *     runtime_status: 'live'|'planned',
-     *     show_route?: string,
-     *     show_route_parameters?: array<string, string>
+     * model: class-string<Model>,
+     * label: string,
+     * supported_types: list<string>,
+     * sections: list<string>,
+     * runtime_status: 'live'|'planned',
+     * show_route?: string,
+     * show_route_parameters?: array<string, string>
      * }
      */
     private function normalizeConfiguration(string $type, array $configuration): array
@@ -257,10 +259,12 @@ final class MetafieldOwnerRegistry
             );
         }
 
-        /** @var class-string<Model> $modelClass */
-        /** @var list<string> $supportedTypes */
-        /** @var list<string> $sections */
-        /** @var 'live'|'planned' $runtimeStatus */
+        /**
+         * @var class-string<Model> $modelClass
+         * @var list<string> $supportedTypes
+         * @var list<string> $sections
+         * @var 'live'|'planned' $runtimeStatus
+         */
         $normalized = [
             'model' => $modelClass,
             'label' => $label,

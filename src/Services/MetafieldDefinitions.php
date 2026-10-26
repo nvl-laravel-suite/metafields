@@ -18,7 +18,13 @@ use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionRemover;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionWriter;
 use Nvl\Support\Enums\SystemActor;
 
-/** Complete native definition mutations and explicit catalog grants. @api */
+/**
+ * Complete native definition mutations and explicit catalog grants.
+ *
+ * @api
+ *
+ * @phpstan-import-type CatalogImport from MetafieldOwnerCatalog
+ */
 final readonly class MetafieldDefinitions
 {
     public function __construct(
@@ -39,7 +45,7 @@ final readonly class MetafieldDefinitions
 
         return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($attributes): MetafieldDefinition {
             $definition = $this->writer->create($attributes);
-            $this->assignments->sync($definition, $attributes['assignment']);
+            $this->assignments->sync($definition, $attributes['assignment'] ?? throw new \LogicException('Creation requires a validated assignment.'));
 
             return $definition->refresh()->load(['assignments', 'translations']);
         });
@@ -56,10 +62,12 @@ final readonly class MetafieldDefinitions
             if ($definition->revision !== $expectedRevision) {
                 throw StaleMetafieldVersionException::forResource('metafield definition', $definition->id);
             }
-            $attributes['type'] ??= $definition->type;
-            $attributes['namespace'] ??= $definition->namespace;
-            $attributes['key'] ??= $definition->key;
-            $attributes['isTranslatable'] ??= $definition->is_translatable;
+            $attributes += [
+                'type' => $definition->type,
+                'namespace' => $definition->namespace,
+                'key' => $definition->key,
+                'isTranslatable' => $definition->is_translatable,
+            ];
             if (! array_key_exists('referencedModelType', $attributes) && in_array($attributes['type'], [$definition->type, $definition->type->value], true)) {
                 $attributes['referencedModelType'] = $definition->referenced_model_type;
             }
@@ -127,7 +135,9 @@ final readonly class MetafieldDefinitions
         return $this->catalog->revoke($grantId, $expectedRevision);
     }
 
-    /** Import an exact granted central definition into the admitted native owner context.
+    /**
+     * Import an exact granted central definition into the admitted native owner context.
+     *
      * @param  array<string, mixed>  $request
      */
     public function import(array $request, Authenticatable|SystemActor $actor): MetafieldDefinition
@@ -150,6 +160,7 @@ final readonly class MetafieldDefinitions
             throw ValidationException::withMessages(['request' => ['Unknown import attributes are not accepted.']]);
         }
         $request['referenceMap'] ??= [];
+        /** @var CatalogImport $request */
         $snapshot = $this->catalog->inspect($request['grantId']);
         if ($snapshot['grantRevision'] !== $request['expectedGrantRevision'] || $snapshot['sourceRevision'] !== $request['expectedSourceRevision']) {
             throw ValidationException::withMessages(['grantId' => ['The requested catalog revision is stale.']]);

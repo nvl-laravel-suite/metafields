@@ -8,10 +8,16 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Support\Ownership\Contracts\OwnershipWriter;
 
+/**
+ * @internal
+ *
+ * @phpstan-import-type DefinitionAssignment from MetafieldDefinitionInput
+ */
 final class MetafieldDefinitionAssignmentSyncer
 {
     public function __construct(private OwnershipWriter $ownershipWriter) {}
 
+    /** @param DefinitionAssignment $assignment */
     public function sync(
         MetafieldDefinition $definition,
         array $assignment,

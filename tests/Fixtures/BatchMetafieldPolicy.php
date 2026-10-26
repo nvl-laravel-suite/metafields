@@ -57,7 +57,10 @@ class BatchMetafieldPolicy implements MetafieldBatchAuthorization
         $query->getQuery()->where('name', '!=', 'private')->orWhere('name', 'allowed-reference');
     }
 
-    /** @param list<MetafieldDefinition> $definitions @param list<Metafield> $values */
+    /**
+     * @param  list<MetafieldDefinition>  $definitions  @param list<Metafield> $values
+     * @param  array<string,array<array-key,Model>>  $facts
+     */
     public function authorizeReferences(Authenticatable|SystemActor $actor, OwnerBatch $owners, array $definitions, array $values, array $facts): void {}
 
     /** @param Builder<Metafield> $query */

@@ -39,6 +39,8 @@ use TypeError;
  * storage in one transaction.
  *
  * @api
+ *
+ * @phpstan-type SyncItem array{definitionId:string,clear?:bool,value?:mixed,translations?:array<string,mixed>|null,translationMode?:TranslationSyncMode,expectedRevision?:int|null}
  */
 final class MetafieldValues
 {
@@ -65,13 +67,22 @@ final class MetafieldValues
     {
         $actor = $this->actors->authorize($actor, 'write');
         $this->validateItems($items);
+        /** @var list<array{definitionId:string,clear?:bool|0|1|'0'|'1',value?:mixed,translations?:array<string,mixed>|null,translationMode?:TranslationSyncMode|string,expectedRevision?:int|float|numeric-string|bool|null}> $validatedItems */
+        $validatedItems = $items;
         $owner = $this->ownerResolver->canonical($owner);
         $ownerType = $this->ownerRegistry->resolveOwnerType($owner);
-        $items = collect($items)->map(static function (array $item): array {
+        $items = collect($validatedItems)->map(static function (array $item): array {
+            if (array_key_exists('clear', $item)) {
+                $item['clear'] = (bool) $item['clear'];
+            }
+            if (array_key_exists('expectedRevision', $item) && $item['expectedRevision'] !== null) {
+                $item['expectedRevision'] = (int) $item['expectedRevision'];
+            }
             if (is_string($item['translationMode'] ?? null)) {
                 $item['translationMode'] = TranslationSyncMode::from($item['translationMode']);
             }
 
+            /** @var SyncItem $item */
             return $item;
         })->values();
         /** @var list<string> $definitionIds */
@@ -204,7 +215,7 @@ final class MetafieldValues
                         $actor,
                         $index,
                     );
-                    $translations = is_array($item['translations'] ?? null) ? $item['translations'] ?? null : [];
+                    $translations = $item['translations'] ?? [];
 
                     $metafield = $this->recordWriter->upsertRecord($metafield, $owner, $definition->id);
                     $this->recordWriter->syncTranslations(

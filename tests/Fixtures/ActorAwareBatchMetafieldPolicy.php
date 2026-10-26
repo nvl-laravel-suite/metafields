@@ -26,7 +26,10 @@ final class ActorAwareBatchMetafieldPolicy extends BatchMetafieldPolicy
     public function scopeAssignments(Authenticatable|SystemActor $actor, Builder $query, OwnerBatch $owners): void
     {
         $id = $this->actorId($actor);
-        $query->whereHas('definition', static fn (Builder $definitions) => $definitions->where('namespace', 'actor_'.$id));
+        $query->whereHas('definition', static function (Builder $definitions) use ($id): void {
+            /** @var Builder<MetafieldDefinition> $definitions */
+            $definitions->where('namespace', 'actor_'.$id);
+        });
     }
 
     public function allowsDefinition(Authenticatable|SystemActor $actor, Model $owner, MetafieldDefinition $definition): bool

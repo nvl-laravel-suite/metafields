@@ -15,12 +15,20 @@ use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
  * Projects authorized canonical schema facts without issuing storage access.
  *
  * @internal
+ *
+ * @phpstan-import-type DefinitionTranslation from MetafieldDefinitionInput
+ *
+ * @phpstan-type CatalogDefinition array{namespace:string,key:string,type:MetafieldTypeEnum,title:string,description:?string,hint:?string,referencedModelType:?string,isTranslatable:bool,isRequired:bool,isFilterable:bool,validationRules:list<string>|null,jsonPropertySchema:list<array{key:string,type:string,isRequired:bool}>|null,defaultValue:mixed,displayOrder:int,revision:int,translations:array<string,DefinitionTranslation>}
+ * @phpstan-type CatalogSnapshot array{grantId:string,grantRevision:int,sourceId:string,sourceRevision:int,sourceHash:string,definition:CatalogDefinition}
  */
 final readonly class MetafieldDefinitionCatalogProjector
 {
     public function __construct(private LocaleCatalog $locales) {}
 
-    /** @param iterable<MetafieldDefinitionTranslation> $rows */
+    /**
+     * @param  iterable<MetafieldDefinitionTranslation>  $rows
+     * @return CatalogSnapshot
+     */
     public function project(MetafieldDefinition $source, MetafieldDefinitionOwnerGrant $grant, iterable $rows): array
     {
         $translations = [];
@@ -53,7 +61,7 @@ final readonly class MetafieldDefinitionCatalogProjector
             'isRequired' => $source->is_required,
             'isFilterable' => $source->is_filterable,
             'validationRules' => $source->validation_rules,
-            'jsonPropertySchema' => $source->json_property_schema,
+            'jsonPropertySchema' => $source->json_property_schema === null ? null : array_values($source->json_property_schema),
             'defaultValue' => $default,
             'displayOrder' => $source->display_order,
             'revision' => $source->revision,

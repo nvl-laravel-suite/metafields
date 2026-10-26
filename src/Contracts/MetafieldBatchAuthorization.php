@@ -40,6 +40,7 @@ interface MetafieldBatchAuthorization
      *
      * @param  list<MetafieldDefinition>  $definitions
      * @param  list<Metafield>  $values
+     * @param  array<string,array<array-key,Model>>  $facts
      */
     public function authorizeReferences(Authenticatable|SystemActor $actor, OwnerBatch $owners, array $definitions, array $values, array $facts): void;
 

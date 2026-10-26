@@ -32,6 +32,7 @@ final readonly class MetafieldBatchReferenceLoader
     /**
      * @param  list<MetafieldDefinition>  $definitions
      * @param  list<Metafield>  $values
+     * @return array<string,array<array-key,Model>>
      */
     public function load(OwnerBatch $owners, array $definitions, array $values, Authenticatable|SystemActor $actor): array
     {

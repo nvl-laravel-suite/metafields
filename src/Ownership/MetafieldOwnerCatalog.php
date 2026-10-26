@@ -32,6 +32,11 @@ use Nvl\Support\Ownership\Services\OwnershipScope;
  * Copies explicitly granted central revisions into independent native-owner schemas.
  *
  * @api
+ *
+ * @phpstan-import-type CatalogSnapshot from MetafieldDefinitionCatalogProjector
+ * @phpstan-import-type DefinitionAssignment from \Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionInput
+ *
+ * @phpstan-type CatalogImport array{grantId:string,expectedGrantRevision:int,expectedSourceRevision:int,idempotencyKey:string,namespace:string,key:string,assignment:DefinitionAssignment,referenceMap:array<string,string>}
  */
 final readonly class MetafieldOwnerCatalog
 {
@@ -89,6 +94,8 @@ final readonly class MetafieldOwnerCatalog
      * Project one capability for the package import workflow.
      *
      * @internal
+     *
+     * @return CatalogSnapshot
      */
     public function inspect(string $grantId): array
     {
@@ -101,6 +108,9 @@ final readonly class MetafieldOwnerCatalog
      * Join the actual source transaction and recheck the exact staged tuple.
      *
      * @internal
+     *
+     * @param  CatalogSnapshot  $source
+     * @param  CatalogImport  $data
      */
     public function persist(array $source, array $data): MetafieldDefinition
     {
@@ -167,6 +177,7 @@ final readonly class MetafieldOwnerCatalog
         return $copy->refresh()->load(['assignments', 'translations']);
     }
 
+    /** @return CatalogSnapshot */
     private function snapshot(string $grantId, bool $lock): array
     {
         $query = MetafieldDefinitionOwnerGrant::query()->whereKey($grantId);
@@ -229,7 +240,11 @@ final readonly class MetafieldOwnerCatalog
         return MetafieldModelRegistry::newInstance()->getConnection();
     }
 
-    /** @return array{0: list<string>, 1: array<string, string>} */
+    /**
+     * @param  CatalogSnapshot  $source
+     * @param  CatalogImport  $data
+     * @return array{0: list<string>, 1: array<string, string>}
+     */
     private function normalizedReferenceMap(array $source, array $data): array
     {
         $definition = $source['definition'];
@@ -251,6 +266,7 @@ final readonly class MetafieldOwnerCatalog
     }
 
     /**
+     * @param  CatalogSnapshot  $source
      * @param  list<string>  $sourceIds
      * @param  array<string, string>  $map
      */

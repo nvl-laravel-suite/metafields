@@ -73,7 +73,9 @@ class MetafieldDefinition extends Model implements Ownable, TranslatableModel
     use SoftDeletes;
     use Translatable;
 
-    /** Keep graph validation inside the canonical persistence lease, including quiet writes.
+    /**
+     * Keep graph validation inside the canonical persistence lease, including quiet writes.
+     *
      * @param  array<string,mixed>  $options
      */
     public function save(array $options = []): bool
@@ -396,8 +398,10 @@ class MetafieldDefinition extends Model implements Ownable, TranslatableModel
         }
     }
 
-    /** Resolve the configured package storage table. */
-    /** Resolve Laravel bindings through the exact configured root.
+    /**
+     * Resolve the configured package storage table.
+     * Resolve Laravel bindings through the exact configured root.
+     *
      * @param  mixed  $value
      * @param  string|null  $field
      */
@@ -408,7 +412,9 @@ class MetafieldDefinition extends Model implements Ownable, TranslatableModel
         return $model->newQuery()->where($field ?? $model->getRouteKeyName(), $value)->first();
     }
 
-    /** Resolve explicit trashed bindings without losing canonical ownership.
+    /**
+     * Resolve explicit trashed bindings without losing canonical ownership.
+     *
      * @param  mixed  $value
      * @param  string|null  $field
      */

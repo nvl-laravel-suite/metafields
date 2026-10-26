@@ -41,7 +41,10 @@ final readonly class OwnerMetafieldBatchReader
         private LocaleCatalog $locales,
     ) {}
 
-    /** @param list<Model> $owners */
+    /**
+     * @param  list<Model>  $owners
+     * @return array{owners: \stdClass,order:list<array{type:string,id:string}>}
+     */
     public function read(array $owners, Authenticatable|SystemActor $actor, ?string $locale = null): array
     {
         $input = OwnerBatch::fromModels($owners);
@@ -129,7 +132,10 @@ final readonly class OwnerMetafieldBatchReader
         return $this->result($batch, $result);
     }
 
-    /** @param array<string, array<array-key, object{fields: list<array<string, mixed>>}>> $values */
+    /**
+     * @param  array<string, array<array-key, object{fields: list<array<string, mixed>>}>>  $values
+     * @return array{owners: \stdClass,order:list<array{type:string,id:string}>}
+     */
     private function result(OwnerBatch $batch, array $values): array
     {
         $map = new OwnerResultMap($batch, $values);

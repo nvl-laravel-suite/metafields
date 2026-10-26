@@ -339,3 +339,37 @@ it('reloads the persisted actor through its canonical model and rejects mutated 
     expect(fn () => app(MetafieldReader::class)->definitions($actor))
         ->toThrow(AuthorizationException::class);
 });
+
+it('rejects explicit null for required definition fields instead of treating it as omission', function (string $field): void {
+    $definitions = app(MetafieldDefinitions::class);
+    $definition = $definitions->create([
+        'namespace' => 'product', 'key' => 'required-null', 'type' => 'string',
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        'translations' => ['en' => ['title' => 'Retained title']],
+    ], SystemActor::Background);
+
+    expect(fn () => $definitions->update($definition, [$field => null], $definition->revision, SystemActor::Background))
+        ->toThrow(ValidationException::class);
+    expect($definition->fresh()->revision)->toBe($definition->revision);
+})->with(['namespace', 'key', 'type', 'isTranslatable']);
+
+it('normalizes accepted clear flags and revision values before applying a value sync', function (): void {
+    $definitions = app(MetafieldDefinitions::class);
+    $definition = $definitions->create([
+        'namespace' => 'product', 'key' => 'clear-normalized', 'type' => 'string',
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        'translations' => ['en' => ['title' => 'Clear value']],
+    ], SystemActor::Background);
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Product']);
+    $values = app(MetafieldValues::class);
+    $value = $values->set($owner, $definition->handle, 'Stored value', SystemActor::Background);
+
+    $result = $values->sync($owner, [[
+        'definitionId' => $definition->id,
+        'clear' => '1',
+        'expectedRevision' => (string) $value->revision,
+    ]], SystemActor::Background);
+
+    expect($result)->toBeEmpty()
+        ->and(Metafield::query()->whereKey($value->id)->exists())->toBeFalse();
+});

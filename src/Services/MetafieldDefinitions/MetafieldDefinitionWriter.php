@@ -11,7 +11,11 @@ use Nvl\Support\Ownership\Contracts\OwnershipWriter;
 use Nvl\Translatable\Services\RelatedTranslationStore;
 
 /**
- * Persists metafield definitions and their localized copy within an action-owned transaction.
+ * Persists metafield definitions and their localized copy within the complete service transaction.
+ *
+ * @internal
+ *
+ * @phpstan-import-type DefinitionMutation from MetafieldDefinitionInput
  */
 final readonly class MetafieldDefinitionWriter
 {
@@ -27,6 +31,8 @@ final readonly class MetafieldDefinitionWriter
 
     /**
      * Create a metafield definition and optional localized copy.
+     *
+     * @param  DefinitionMutation  $data
      */
     public function create(array $data): MetafieldDefinition
     {
@@ -37,6 +43,7 @@ final readonly class MetafieldDefinitionWriter
      * Create a definition with server-owned immutable provenance attributes.
      *
      * @param  array<string, bool|int|string|null>  $provenance
+     * @param  DefinitionMutation  $data
      */
     public function createImported(array $data, array $provenance): MetafieldDefinition
     {
@@ -55,6 +62,8 @@ final readonly class MetafieldDefinitionWriter
 
     /**
      * Update a metafield definition and patch optional localized copy.
+     *
+     * @param  DefinitionMutation  $data
      */
     public function update(
         MetafieldDefinition $definition,
@@ -72,6 +81,8 @@ final readonly class MetafieldDefinitionWriter
     /**
      * Build locale-neutral definition attributes.
      *
+     *
+     * @param  DefinitionMutation  $data
      * @return array<string, mixed>
      */
     private function payload(array $data, bool $creating): array
@@ -121,6 +132,8 @@ final readonly class MetafieldDefinitionWriter
 
     /**
      * Synchronize the locale-neutral default for non-translatable definitions.
+     *
+     * @param  DefinitionMutation  $data
      */
     private function syncDefaultValue(
         MetafieldDefinition $definition,
@@ -166,12 +179,14 @@ final readonly class MetafieldDefinitionWriter
 
     /**
      * Patch localized definition copy and defaults when supplied.
+     *
+     * @param  DefinitionMutation  $data
      */
     private function syncTranslations(
         MetafieldDefinition $definition,
         array $data,
     ): void {
-        if (! array_key_exists('translations', $data) || $data['translations'] === null) {
+        if (! array_key_exists('translations', $data)) {
             return;
         }
 

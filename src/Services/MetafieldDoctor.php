@@ -27,7 +27,9 @@ final readonly class MetafieldDoctor
             $checks[] = ['key' => "schema.table.{$table}", 'severity' => 'error', 'passed' => $exists, 'message' => $exists ? "Table [{$table}] exists." : "Table [{$table}] is missing."];
         }
         $checks[] = ['key' => 'authorization.owner', 'severity' => 'error', 'passed' => app()->bound(MetafieldAuthorization::class), 'message' => 'Owner authorization binding is available.'];
-        $checks[] = ['key' => 'authorization.batch', 'severity' => 'warning', 'passed' => app()->make(MetafieldBatchAuthorization::class) instanceof MetafieldBatchAuthorization && ! app()->make(MetafieldBatchAuthorization::class) instanceof UnsupportedMetafieldBatchAuthorization, 'message' => 'A SQL-visible batch authorization adapter is required for owner batches.'];
+        /** @var MetafieldBatchAuthorization $batch */
+        $batch = app()->make(MetafieldBatchAuthorization::class);
+        $checks[] = ['key' => 'authorization.batch', 'severity' => 'warning', 'passed' => ! $batch instanceof UnsupportedMetafieldBatchAuthorization, 'message' => 'A SQL-visible batch authorization adapter is required for owner batches.'];
         $checks[] = ['key' => 'registry.owners', 'severity' => 'warning', 'passed' => $this->owners->all() !== [], 'message' => 'Registered owner models are available.'];
         try {
             $references = MetafieldReferenceModelRegistry::all();
