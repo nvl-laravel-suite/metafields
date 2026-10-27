@@ -114,13 +114,13 @@ it('distinguishes omitted localized values from explicit null and preserves acce
         'translations' => ['bg' => 'Български'],
         'expected_revision' => $original->revision,
     ]], SystemActor::Background)->first();
-    expect($updated->translations->pluck('value', 'locale')->all())->toBe(['bg' => 'Български', 'en' => 'English']);
+    expect($updated->translations->pluck('value', 'locale')->sortKeys()->all())->toBe(['bg' => 'Български', 'en' => 'English']);
     expect(fn () => $values->sync($owner, [[
         'definitionId' => $definition->id,
         'translations' => ['en' => null],
         'expected_revision' => $updated->revision,
     ]], SystemActor::Background))->toThrow(ValidationException::class);
-    expect($updated->fresh()->translations->pluck('value', 'locale')->all())->toBe(['bg' => 'Български', 'en' => 'English']);
+    expect($updated->fresh()->translations->pluck('value', 'locale')->sortKeys()->all())->toBe(['bg' => 'Български', 'en' => 'English']);
 });
 
 it('requires an explicit granted background capability and rejects unknown mutation keys', function (): void {
