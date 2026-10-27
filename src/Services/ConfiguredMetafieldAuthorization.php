@@ -27,9 +27,22 @@ final class ConfiguredMetafieldAuthorization implements MetafieldAuthorization
     ): void {
         $configuredAbility = config('nvl-metafields.authorization.definition_ability');
 
-        if (! is_string($configuredAbility) || $configuredAbility === '') {
+        if ($configuredAbility === null || $configuredAbility === '') {
+            $nativeAbility = match ($ability) {
+                MetafieldAbility::CreateDefinition => 'metafields.create',
+                MetafieldAbility::UpdateDefinition => 'metafields.update',
+                MetafieldAbility::DeleteDefinition => 'metafields.delete',
+                MetafieldAbility::ListDefinitions, MetafieldAbility::ViewDefinition => 'metafields.read',
+                default => throw new AuthorizationException('A definition capability is required.'),
+            };
+            Gate::forUser($actor)->authorize($nativeAbility, $definition === null ? [] : [$definition]);
+
+            return;
+        }
+
+        if (! is_string($configuredAbility)) {
             throw new AuthorizationException(
-                'Metafield definition management requires an authorization binding or configured Gate ability.',
+                'The Metafield definition Gate ability must be a string.',
             );
         }
 

@@ -38,7 +38,8 @@ final readonly class MetafieldReader
     /** @return Collection<int, MetafieldDefinition> */
     public function definitions(Authenticatable|SystemActor $actor): Collection
     {
-        $this->actors->authorize($actor, 'read');
+        $actor = $this->actors->authorize($actor, 'read');
+        $this->authorization->authorizeDefinition($actor, MetafieldAbility::ListDefinitions);
 
         return $this->definitions->list();
     }

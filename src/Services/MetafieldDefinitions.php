@@ -7,6 +7,8 @@ namespace Nvl\Metafields\Services;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Nvl\Metafields\Contracts\MetafieldAuthorization;
+use Nvl\Metafields\Enums\MetafieldAbility;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionOwnerGrant;
@@ -29,6 +31,7 @@ final readonly class MetafieldDefinitions
 {
     public function __construct(
         private MetafieldActorPolicy $actors,
+        private MetafieldAuthorization $authorization,
         private MetafieldDefinitionInput $input,
         private MetafieldDefinitionWriter $writer,
         private MetafieldDefinitionAssignmentSyncer $assignments,
@@ -40,7 +43,8 @@ final readonly class MetafieldDefinitions
     /** @param array<string, mixed> $attributes */
     public function create(array $attributes, Authenticatable|SystemActor $actor): MetafieldDefinition
     {
-        $this->actors->authorize($actor, 'create');
+        $actor = $this->actors->authorize($actor, 'create');
+        $this->authorization->authorizeDefinition($actor, MetafieldAbility::CreateDefinition);
         $attributes = $this->input->validate($attributes, true);
 
         return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($attributes): MetafieldDefinition {
@@ -54,11 +58,12 @@ final readonly class MetafieldDefinitions
     /** @param array<string, mixed> $attributes */
     public function update(MetafieldDefinition|string $definition, array $attributes, int $expectedRevision, Authenticatable|SystemActor $actor): MetafieldDefinition
     {
-        $this->actors->authorize($actor, 'update');
+        $actor = $this->actors->authorize($actor, 'update');
         $id = $definition instanceof MetafieldDefinition ? $definition->id : $definition;
 
-        return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($id, $attributes, $expectedRevision): MetafieldDefinition {
+        return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($id, $attributes, $expectedRevision, $actor): MetafieldDefinition {
             $definition = MetafieldModelRegistry::query()->lockForUpdate()->findOrFail($id);
+            $this->authorization->authorizeDefinition($actor, MetafieldAbility::UpdateDefinition, $definition);
             if ($definition->revision !== $expectedRevision) {
                 throw StaleMetafieldVersionException::forResource('metafield definition', $definition->id);
             }
@@ -85,11 +90,12 @@ final readonly class MetafieldDefinitions
     /** Archive or restore a definition with a revision check. */
     public function archive(MetafieldDefinition|string $definition, bool $archived, int $expectedRevision, Authenticatable|SystemActor $actor): MetafieldDefinition
     {
-        $this->actors->authorize($actor, 'archive');
+        $actor = $this->actors->authorize($actor, 'archive');
         $id = $definition instanceof MetafieldDefinition ? $definition->id : $definition;
 
-        return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($id, $archived, $expectedRevision): MetafieldDefinition {
+        return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($id, $archived, $expectedRevision, $actor): MetafieldDefinition {
             $definition = MetafieldModelRegistry::query()->lockForUpdate()->findOrFail($id);
+            $this->authorization->authorizeDefinition($actor, MetafieldAbility::UpdateDefinition, $definition);
             if ($definition->revision !== $expectedRevision) {
                 throw StaleMetafieldVersionException::forResource('metafield definition', $definition->id);
             }
@@ -106,11 +112,12 @@ final readonly class MetafieldDefinitions
     /** Soft-delete a definition and optionally its values. */
     public function delete(MetafieldDefinition|string $definition, int $expectedRevision, Authenticatable|SystemActor $actor, bool $deleteValues = false): bool
     {
-        $this->actors->authorize($actor, 'delete');
+        $actor = $this->actors->authorize($actor, 'delete');
         $id = $definition instanceof MetafieldDefinition ? $definition->id : $definition;
 
-        return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($id, $expectedRevision, $deleteValues): bool {
+        return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($id, $expectedRevision, $deleteValues, $actor): bool {
             $definition = MetafieldModelRegistry::query()->lockForUpdate()->findOrFail($id);
+            $this->authorization->authorizeDefinition($actor, MetafieldAbility::DeleteDefinition, $definition);
             if ($definition->revision !== $expectedRevision) {
                 throw StaleMetafieldVersionException::forResource('metafield definition', $definition->id);
             }

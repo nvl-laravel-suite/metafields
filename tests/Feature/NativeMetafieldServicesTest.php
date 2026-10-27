@@ -14,6 +14,10 @@ use Nvl\Metafields\Services\MetafieldValues;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldActor;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
 use Nvl\Support\Enums\SystemActor;
+use Nvl\Support\Ownership\Contracts\OwnershipQueueContext;
+use Nvl\Support\Ownership\Enums\OwnershipContextMode;
+use Nvl\Support\Ownership\Services\DisabledOwnershipQueueContext;
+use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
 use Nvl\Translatable\Enums\TranslationSyncMode;
 
 beforeEach(function (): void {
@@ -25,6 +29,24 @@ beforeEach(function (): void {
         'nvl-translatable.fallback_locales' => ['en'],
         'nvl-metafields.owners' => ['products' => ['model' => TestMetafieldOwner::class, 'label' => 'Products', 'sections' => ['general']]],
     ]);
+});
+
+it('keeps all resources unscoped and captures ordinary queued work without Ownership', function (): void {
+    config(['nvl-ownership.enabled' => false]);
+    $resources = app(OwnershipResourceRegistry::class)->all();
+
+    expect($resources)->toHaveKey('metafields.catalog-grants');
+    foreach ($resources as $resource) {
+        expect($resource->ownership->strategy)->toBe('unscoped')
+            ->and($resource->immutableFields)->toBe([]);
+    }
+
+    $queue = app(OwnershipQueueContext::class);
+    expect($queue)->toBeInstanceOf(DisabledOwnershipQueueContext::class);
+    $envelope = $queue->captureUnowned();
+
+    expect($envelope->context()->mode)->toBe(OwnershipContextMode::Disabled)
+        ->and($queue->run($envelope, static fn (): string => 'ordinary work'))->toBe('ordinary work');
 });
 
 it('creates a registered definition and stores a typed native value', function (): void {
