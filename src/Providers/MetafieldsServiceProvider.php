@@ -77,8 +77,8 @@ final class MetafieldsServiceProvider extends ServiceProvider implements Ownersh
                 MetafieldOwnership::declared();
             });
         }
-        $this->publishes([__DIR__.'/../../resources/boost/skills' => base_path('.agents/skills')], 'metafields-skills');
-        $this->publishesMigrations([__DIR__.'/../../database/migrations' => database_path('migrations')], 'metafields-migrations');
+        $this->publishes([__DIR__.'/../../resources/boost/skills' => base_path('.agents/skills')], 'nvl-metafields-skills');
+        $this->publishesMigrations([__DIR__.'/../../database/migrations' => database_path('migrations')], 'nvl-metafields-migrations');
         if ($this->app->runningInConsole()) {
             $this->commands([
                 MetafieldDefinitionAddCommand::class,
@@ -89,8 +89,8 @@ final class MetafieldsServiceProvider extends ServiceProvider implements Ownersh
         }
         $langPath = __DIR__.'/../../lang';
         $this->app->make(GlobalNames::class)->translations('metafields', $langPath, $this->app->make('translation.loader'));
-        $this->publishes([$langPath => lang_path('vendor/nvl-metafields')], 'metafields-translations');
-        $this->publishes([__DIR__.'/../../config/nvl-metafields.php' => config_path('nvl-metafields.php')], 'metafields-config');
+        $this->publishes([$langPath => lang_path('vendor/nvl-metafields')], 'nvl-metafields-translations');
+        $this->publishes([__DIR__.'/../../config/nvl-metafields.php' => config_path('nvl-metafields.php')], 'nvl-metafields-config');
         $owners->all();
         if ((bool) config('nvl-metafields.migrations.enabled', true)) {
             $this->loadMigrationsFrom(__DIR__.'/../../database/migrations');

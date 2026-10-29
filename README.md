@@ -84,3 +84,5 @@ vendor/bin/pest --test-directory=packages/nvl/metafields/tests --configuration=p
 ```
 
 The suite's `tests/Historical` directory preserves retired HTTP, Action, DTO, and Tenancy bridge tests outside active discovery. Native service, ownership, localization, reference, and batch tests are active.
+
+Shared [service contracts, model extensions and composition](https://github.com/nvl-laravel-suite/laravel-suite/blob/main/docs/consumer-api.md) apply alongside the package-specific rules above.
