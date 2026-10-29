@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
+use Nvl\Metafields\Enums\MetafieldAbility;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
@@ -16,6 +18,7 @@ use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
 use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Ownership\Contracts\OwnershipQueueContext;
 use Nvl\Support\Ownership\Enums\OwnershipContextMode;
+use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 use Nvl\Support\Ownership\Services\DisabledOwnershipQueueContext;
 use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
 use Nvl\Translatable\Enums\TranslationSyncMode;
@@ -24,7 +27,9 @@ beforeEach(function (): void {
     foreach (['create', 'update', 'archive', 'delete', 'grant', 'revoke', 'import', 'write', 'read'] as $ability) {
         Gate::define('metafields.'.$ability, static fn (SystemActor $actor): bool => $actor === SystemActor::Background);
     }
+    Gate::define('metafields.owner', static fn (SystemActor $actor, string $ability): bool => $ability !== MetafieldAbility::ViewOwner->value);
     config([
+        'nvl-metafields.authorization.owner_ability' => 'metafields.owner',
         'nvl-translatable.locales' => ['en', 'bg'],
         'nvl-translatable.fallback_locales' => ['en'],
         'nvl-metafields.owners' => ['products' => ['model' => TestMetafieldOwner::class, 'label' => 'Products', 'sections' => ['general']]],
@@ -394,4 +399,178 @@ it('normalizes accepted clear flags and revision values before applying a value 
 
     expect($result)->toBeEmpty()
         ->and(Metafield::query()->whereKey($value->id)->exists())->toBeFalse();
+});
+
+it('requires owner authority for every value operation despite a granted coarse capability', function (string $operation): void {
+    $definition = app(MetafieldDefinitions::class)->create([
+        'namespace' => 'product', 'key' => 'protected', 'type' => 'string',
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        'translations' => ['en' => ['title' => 'Protected']],
+    ], SystemActor::Background);
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
+    $values = app(MetafieldValues::class);
+    $value = $values->set($owner, $definition->handle, 'Retained', SystemActor::Background);
+    Gate::define('metafields.owner', static fn (SystemActor $actor): bool => false);
+
+    expect(fn () => match ($operation) {
+        'sync' => $values->sync($owner, [['definitionId' => $definition->id, 'value' => 'Changed', 'expected_revision' => $value->revision]], SystemActor::Background),
+        'set' => $values->set($owner, $definition->handle, 'Changed', SystemActor::Background, expectedRevision: $value->revision),
+        'delete' => $values->delete($owner, $definition, $value->revision, SystemActor::Background),
+    })->toThrow(AuthorizationException::class);
+    expect($value->fresh()->getValue())->toBe('Retained')
+        ->and($value->fresh()->revision)->toBe($value->revision);
+})->with(['sync', 'set', 'delete']);
+
+it('requires the delete capability when a sync clears a value', function (): void {
+    $definition = app(MetafieldDefinitions::class)->create([
+        'namespace' => 'product', 'key' => 'protected-clear', 'type' => 'string',
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        'translations' => ['en' => ['title' => 'Protected']],
+    ], SystemActor::Background);
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
+    $value = app(MetafieldValues::class)->set($owner, $definition->handle, 'Retained', SystemActor::Background);
+    Gate::define('metafields.owner', static fn (SystemActor $actor, string $ability): bool => $ability === MetafieldAbility::MutateOwner->value);
+
+    expect(fn () => app(MetafieldValues::class)->sync($owner, [[
+        'definitionId' => $definition->id, 'clear' => true, 'expected_revision' => $value->revision,
+    ]], SystemActor::Background))->toThrow(AuthorizationException::class);
+    expect($value->fresh())->not->toBeNull();
+});
+
+it('authorizes set before revealing missing handles or locale requirements', function (bool $denyOwner, string $handle): void {
+    app(MetafieldDefinitions::class)->create([
+        'namespace' => 'product', 'key' => 'localized', 'type' => 'string', 'isTranslatable' => true,
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        'translations' => ['en' => ['title' => 'Localized']],
+    ], SystemActor::Background);
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
+    Gate::define($denyOwner ? 'metafields.owner' : 'metafields.write', static fn (SystemActor $actor): bool => false);
+
+    expect(fn () => app(MetafieldValues::class)->set($owner, $handle, 'Value', SystemActor::Background))
+        ->toThrow(AuthorizationException::class);
+})->with([false, true])->with(['product.missing', 'product.localized']);
+
+it('rejects omitted and conflicting mutations without changing an existing value', function (array $mutation): void {
+    $definition = app(MetafieldDefinitions::class)->create([
+        'namespace' => 'product', 'key' => 'unambiguous', 'type' => 'string',
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        'translations' => ['en' => ['title' => 'Unambiguous']],
+    ], SystemActor::Background);
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
+    $values = app(MetafieldValues::class);
+    $value = $values->set($owner, $definition->handle, 'Retained', SystemActor::Background);
+
+    expect(fn () => $values->sync($owner, [[
+        ...$mutation, 'definitionId' => $definition->id, 'expected_revision' => $value->revision,
+    ]], SystemActor::Background))->toThrow(ValidationException::class);
+    expect($value->fresh()->getValue())->toBe('Retained')
+        ->and($value->fresh()->revision)->toBe($value->revision);
+})->with([
+    'omitted' => [[]],
+    'false clear alone' => [['clear' => false]],
+    'null translations for neutral field' => [['translations' => null]],
+    'clear and value' => [['clear' => true, 'value' => 'Discarded']],
+    'clear and translations' => [['clear' => true, 'translations' => ['en' => 'Discarded']]],
+    'two value channels' => [['value' => 'Changed', 'translations' => null]],
+    'neutral translation mode' => [['value' => 'Changed', 'translation_mode' => TranslationSyncMode::Replace]],
+]);
+
+it('authorizes only canonical owner facts once for a single owner read', function (): void {
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Persisted']);
+    $owner->name = 'Forged';
+    $owner->setRelation('forged', collect(['privileged']));
+    $calls = 0;
+    DB::enableQueryLog();
+    Gate::define('metafields.owner', function (SystemActor $actor, string $ability, TestMetafieldOwner $current) use (&$calls): bool {
+        $calls++;
+
+        return $current->name === 'Persisted' && $current->getRelations() === [];
+    });
+
+    expect(app(MetafieldReader::class)->forOwner($owner, SystemActor::Background))->toBeEmpty()
+        ->and($calls)->toBe(1)
+        ->and(collect(DB::getQueryLog())->filter(static fn (array $query): bool => str_contains($query['query'], 'test_metafield_owners')))->toHaveCount(1);
+    DB::disableQueryLog();
+});
+
+it('accepts explicit null for an optional neutral value with an expected revision', function (): void {
+    $definition = app(MetafieldDefinitions::class)->create([
+        'namespace' => 'product', 'key' => 'nullable', 'type' => 'string',
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        'translations' => ['en' => ['title' => 'Nullable']],
+    ], SystemActor::Background);
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
+    $values = app(MetafieldValues::class);
+    $value = $values->set($owner, $definition->handle, 'Original', SystemActor::Background);
+    $updated = $values->set($owner, $definition->handle, null, SystemActor::Background, expectedRevision: $value->revision);
+
+    expect($updated->getValue())->toBeNull()
+        ->and($updated->revision)->toBe($value->revision + 1)
+        ->and($updated->fresh())->not->toBeNull();
+});
+
+it('rejects caller-substituted owner identities', function (string $mutation): void {
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
+    $other = TestMetafieldOwner::query()->create(['name' => 'Other']);
+    match ($mutation) {
+        'table' => $owner->setTable('test_metafield_actors'),
+        'key' => $owner->id = $other->id,
+        'unpersisted' => $owner->exists = false,
+        'connection' => $owner->setConnection('missing-connection'),
+    };
+    Gate::define('metafields.owner', static fn (SystemActor $actor): bool => true);
+
+    expect(fn () => app(MetafieldReader::class)->forOwner($owner, SystemActor::Background))
+        ->toThrow(OwnershipViolation::class);
+})->with(['table', 'key', 'unpersisted', 'connection']);
+
+it('rejects a substituted actor key type', function (): void {
+    $actor = TestMetafieldActor::query()->create(['name' => 'Actor']);
+    $actor->setKeyType('string');
+    Gate::define('metafields.read', static fn (TestMetafieldActor $actor): bool => true);
+
+    expect(fn () => app(MetafieldReader::class)->definitions($actor))->toThrow(AuthorizationException::class);
+});
+
+it('authorizes locked canonical owners and rolls back earlier writes when a later clear is denied', function (): void {
+    $definitions = app(MetafieldDefinitions::class);
+    $first = $definitions->create([
+        'namespace' => 'product', 'key' => 'first', 'type' => 'string',
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        'translations' => ['en' => ['title' => 'First']],
+    ], SystemActor::Background);
+    $second = $definitions->create([
+        'namespace' => 'product', 'key' => 'second', 'type' => 'string',
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        'translations' => ['en' => ['title' => 'Second']],
+    ], SystemActor::Background);
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Persisted']);
+    $values = app(MetafieldValues::class);
+    $firstValue = $values->set($owner, $first->handle, 'First value', SystemActor::Background);
+    $secondValue = $values->set($owner, $second->handle, 'Second value', SystemActor::Background);
+    $owner->name = 'Forged';
+    $owner->setRelation('forged', collect());
+    $capabilities = [];
+    Gate::define('metafields.owner', function (SystemActor $actor, string $ability, TestMetafieldOwner $current, ?MetafieldDefinition $definition = null) use (&$capabilities, $second): bool {
+        $capabilities[] = $ability;
+        expect($current->name)->toBe('Persisted')
+            ->and($current->getRelations())->toBe([])
+            ->and($current->getConnection()->transactionLevel())->toBeGreaterThan(1);
+        if ($ability === MetafieldAbility::DeleteOwnerValue->value) {
+            expect($definition->id)->toBe($second->id);
+
+            return false;
+        }
+
+        return true;
+    });
+
+    expect(fn () => $values->sync($owner, [
+        ['definitionId' => $first->id, 'value' => 'Changed', 'expected_revision' => $firstValue->revision],
+        ['definitionId' => $second->id, 'clear' => true, 'expected_revision' => $secondValue->revision],
+    ], SystemActor::Background))->toThrow(AuthorizationException::class);
+    expect($capabilities)->toBe([MetafieldAbility::MutateOwner->value, MetafieldAbility::DeleteOwnerValue->value])
+        ->and($firstValue->fresh()->getValue())->toBe('First value')
+        ->and($firstValue->fresh()->revision)->toBe($firstValue->revision)
+        ->and($secondValue->fresh()->getValue())->toBe('Second value');
 });

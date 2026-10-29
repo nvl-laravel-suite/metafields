@@ -6,6 +6,10 @@ Light requires PHP 8.4 and Laravel 13. Replace retired package Actions, transpor
 
 Upgrade the selected family together. Preserve stored identities, migration ownership, source connections, queue state and operation recovery journals. Review and apply the relevant storage/adoption procedure before accepting writes; installing new code alone does not migrate existing data.
 
+Value writes now require the owner authorization boundary as well as `metafields.write`. Grant `MutateOwner` and, for clears, `DeleteOwnerValue` through `MetafieldAuthorization` or `authorization.owner_ability`; the default adapter requires the owner's `update` policy. Policies receive canonical persisted owners, with write checks inside the owner lock.
+
+Each sync item must explicitly select `value`, `translations`, or true `clear`. Remove conflicting keys instead of supplying unused nulls. Neutral nullable fields accept explicit `value => null`; missing values never clear a field. Supply `expected_revision` for existing rows and `translation_mode` only alongside `translations`. No schema migration is required for these changes.
+
 ## Historical upgrade notes
 
 The following sections describe pre-Light releases and their old APIs, compatibility windows and commands. They remain useful for understanding existing installations, but are not Light setup instructions. The old Tenancy bridge, DTO/Action contracts, package HTTP and type generation are retired in Light.

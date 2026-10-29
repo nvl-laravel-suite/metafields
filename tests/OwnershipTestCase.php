@@ -96,6 +96,7 @@ abstract class OwnershipTestCase extends TestCase
         foreach (['create', 'update', 'archive', 'delete', 'grant', 'revoke', 'import', 'write', 'read'] as $ability) {
             Gate::define('metafields.'.$ability, static fn (OwnershipActor $actor): bool => $actor->exists);
         }
+        Gate::define('update', static fn (OwnershipActor $actor): bool => $actor->exists);
         $connection = MetafieldModelRegistry::newInstance()->getConnection();
         $schema = $connection->getSchemaBuilder();
         $actorSchema = DB::getSchemaBuilder();

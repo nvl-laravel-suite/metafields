@@ -59,11 +59,25 @@ final class MetafieldOwnerModelResolver
     public function canonical(Model $owner, bool $lock = false): Model
     {
         MetafieldOwnership::declared();
-        if ($owner->getConnection() !== (new Metafield)->getConnection()) {
+        $prototype = new ($owner::class);
+        $key = ModelIdentifier::required($owner);
+        $originalKey = $owner->getRawOriginal($prototype->getKeyName());
+        if (! $owner->exists
+            || (! is_string($originalKey) && ! is_int($originalKey))
+            || $owner->getTable() !== $prototype->getTable()
+            || ($owner->getConnectionName() !== null && $owner->getConnectionName() !== $prototype->getConnection()->getName())
+            || $owner->getConnection() !== $prototype->getConnection()
+            || $owner->getKeyName() !== $prototype->getKeyName()
+            || $owner->getKeyType() !== $prototype->getKeyType()
+            || $owner->isDirty($prototype->getKeyName())
+            || (string) $originalKey !== $key) {
+            throw new OwnershipViolation('The metafield owner identity is not canonical.');
+        }
+        if ($prototype->getConnection() !== (new Metafield)->getConnection()) {
             throw new OwnershipViolation('Metafield owners must use the canonical package connection.');
         }
-        $query = (new ($owner::class))->newQuery()->whereKey($owner->getKey());
-        MetafieldOwnerPredicate::equal($query, $query->getModel()->getQualifiedKeyName(), ModelIdentifier::required($owner));
+        $query = $prototype->newQuery()->useWritePdo()->whereKey($key);
+        MetafieldOwnerPredicate::equal($query, $prototype->getQualifiedKeyName(), $key);
         if (MetafieldOwnership::active()) {
             $resource = MetafieldOwnership::resource($owner);
             $this->boundary->query($query, $resource);

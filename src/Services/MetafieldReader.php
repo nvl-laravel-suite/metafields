@@ -48,11 +48,8 @@ final readonly class MetafieldReader
     public function forOwner(Model $owner, Authenticatable|SystemActor $actor, ?string $locale = null): Collection
     {
         $actor = $this->actors->authorize($actor, 'read');
-        $this->authorization->authorizeOwner($actor, MetafieldAbility::ViewOwner, $owner);
         $canonical = $this->owners->canonical($owner);
-        if ($canonical->getAttributes() !== $owner->getAttributes() || $owner->getRelations() !== []) {
-            $this->authorization->authorizeOwner($actor, MetafieldAbility::ViewOwner, $canonical);
-        }
+        $this->authorization->authorizeOwner($actor, MetafieldAbility::ViewOwner, $canonical);
 
         return $this->fields->list($canonical, $locale);
     }

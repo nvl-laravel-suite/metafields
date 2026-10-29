@@ -10,6 +10,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Nvl\Metafields\Contracts\MetafieldAuthorization;
+use Nvl\Metafields\Enums\MetafieldAbility;
 use Nvl\Metafields\Events\MetafieldSet;
 use Nvl\Metafields\Events\MetafieldsSynced;
 use Nvl\Metafields\Exceptions\InvalidMetafieldMutationException;
@@ -54,6 +56,7 @@ final class MetafieldValues
         private DomainEventDispatcher $domainEvents,
         private MetafieldActorPolicy $actors,
         private MetafieldDefinitionCatalog $definitionCatalog,
+        private MetafieldAuthorization $authorization,
     ) {}
 
     /**
@@ -66,11 +69,19 @@ final class MetafieldValues
     public function sync(Model $owner, array $items, Authenticatable|SystemActor $actor): Collection
     {
         $actor = $this->actors->authorize($actor, 'write');
+
+        return $this->syncAuthorized($owner, $items, $actor);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $items
+     * @return Collection<int, Metafield>
+     */
+    private function syncAuthorized(Model $owner, array $items, Authenticatable|SystemActor $actor): Collection
+    {
         $this->validateItems($items);
         /** @var list<array{definitionId:string,clear?:bool|0|1|'0'|'1',value?:mixed,translations?:array<string,mixed>|null,translation_mode?:TranslationSyncMode|string,expected_revision?:int|float|numeric-string|bool|null}> $validatedItems */
         $validatedItems = $items;
-        $owner = $this->ownerResolver->canonical($owner);
-        $ownerType = $this->ownerRegistry->resolveOwnerType($owner);
         $items = collect($validatedItems)->map(static function (array $item): array {
             if (array_key_exists('clear', $item)) {
                 $item['clear'] = (bool) $item['clear'];
@@ -97,10 +108,11 @@ final class MetafieldValues
             $definitionIds,
             $items,
             $owner,
-            $ownerType,
             $actor,
         ): Collection {
             $owner = $this->ownerResolver->canonical($owner, lock: true);
+            $ownerType = $this->ownerRegistry->resolveOwnerType($owner);
+            $this->authorization->authorizeOwner($actor, MetafieldAbility::MutateOwner, $owner);
             $ownerAssignments = $this->assignmentCatalog->activeForOwnerType($ownerType);
             $assignments = $ownerAssignments->filter(
                 static fn (MetafieldDefinitionAssignment $assignment): bool => in_array(
@@ -201,6 +213,7 @@ final class MetafieldValues
                 }
 
                 if ($shouldClear) {
+                    $this->authorization->authorizeOwner($actor, MetafieldAbility::DeleteOwnerValue, $owner, $definition);
                     $this->recordWriter->clear($metafield);
 
                     continue;
@@ -261,6 +274,10 @@ final class MetafieldValues
     /** Set a value by registered definition handle. */
     public function set(Model $owner, string $handle, mixed $value, Authenticatable|SystemActor $actor, ?string $locale = null, ?int $expectedRevision = null): Metafield
     {
+        $actor = $this->actors->authorize($actor, 'write');
+        $owner = $this->ownerResolver->canonical($owner);
+        $this->ownerRegistry->resolveOwnerType($owner);
+        $this->authorization->authorizeOwner($actor, MetafieldAbility::MutateOwner, $owner);
         $definition = $this->definitionCatalog->findByHandle($handle);
         if (! $definition instanceof MetafieldDefinition) {
             throw new MetafieldDefinitionNotFoundException("Metafield definition not found: {$handle}");
@@ -279,7 +296,7 @@ final class MetafieldValues
         }
 
         return (new Metafield)->getConnection()->transaction(function () use ($owner, $item, $actor, $handle): Metafield {
-            $metafield = $this->sync($owner, [$item], $actor)->first();
+            $metafield = $this->syncAuthorized($owner, [$item], $actor)->first();
             if (! $metafield instanceof Metafield) {
                 throw new RuntimeException("Metafield sync did not return a persisted row for [{$handle}].");
             }
@@ -314,5 +331,18 @@ final class MetafieldValues
             'items.*.translation_mode' => ['sometimes', Rule::enum(TranslationSyncMode::class)],
             'items.*.expected_revision' => ['sometimes', 'nullable', 'integer', 'min:1'],
         ])->validate();
+
+        foreach ($items as $index => $item) {
+            $clear = in_array($item['clear'] ?? false, [true, 1, '1'], true);
+            $hasValue = array_key_exists('value', $item);
+            $hasTranslations = array_key_exists('translations', $item);
+            if (($clear && ($hasValue || $hasTranslations || array_key_exists('translation_mode', $item)))
+                || (! $clear && $hasValue === $hasTranslations)
+                || (! $hasTranslations && array_key_exists('translation_mode', $item))) {
+                throw ValidationException::withMessages([
+                    "items.{$index}" => ['Provide exactly one of value, translations, or clear; translation_mode requires translations.'],
+                ]);
+            }
+        }
     }
 }

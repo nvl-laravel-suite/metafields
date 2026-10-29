@@ -8,6 +8,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
+use Nvl\Support\Auth\CanonicalActorResolver;
 use Nvl\Support\Enums\SystemActor;
 
 /**
@@ -17,6 +18,8 @@ use Nvl\Support\Enums\SystemActor;
  */
 final readonly class MetafieldActorPolicy
 {
+    public function __construct(private CanonicalActorResolver $actors) {}
+
     public function authorize(Authenticatable|SystemActor $actor, string $ability): Authenticatable|SystemActor
     {
         if ($actor === SystemActor::Background) {
@@ -25,27 +28,15 @@ final readonly class MetafieldActorPolicy
             return $actor;
         }
 
-        if (! $actor instanceof Model || ! $actor->exists || $actor->getKey() === null) {
+        if (! $actor instanceof Model) {
             throw new AuthorizationException('A persisted Metafield actor is required.');
         }
-
-        $prototype = new ($actor::class);
-        $keyName = $prototype->getKeyName();
         $declaredConnection = $actor->getConnectionName();
-        if ($actor->getTable() !== $prototype->getTable()
-            || ($declaredConnection !== null && $declaredConnection !== $prototype->getConnection()->getName())
-            || $actor->getConnection() !== $prototype->getConnection()
-            || $actor->getKeyName() !== $keyName
-            || $actor->isDirty($keyName)
-            || $actor->getRawOriginal($keyName) !== $actor->getKey()) {
+        if ($declaredConnection !== null && $declaredConnection !== (new ($actor::class))->getConnection()->getName()) {
             throw new AuthorizationException('The Metafield actor identity is not canonical.');
         }
 
-        $current = $prototype->newQuery()->whereKey($actor->getKey())->first();
-        if (! $current instanceof Authenticatable) {
-            throw new AuthorizationException('The Metafield actor is unavailable.');
-        }
-
+        $current = $this->actors->resolve($actor);
         Gate::forUser($current)->authorize('metafields.'.$ability);
 
         return $current;

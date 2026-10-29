@@ -13,7 +13,7 @@ use Nvl\Ownership\Services\OwnershipRunner;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
 uses(OwnershipCatalogTestCase::class);
-it('copies explicitly granted central definitions and fences stale or revoked imports', function (): void {
+it('copies explicitly granted central definitions and fences stale or revoked imports', function (bool $stringRevisions): void {
     Event::fake([MetafieldDefinitionCatalogGrantAudited::class]);
     app()->bind(MetafieldCatalogAccess::class, fn () => new class implements MetafieldCatalogAccess
     {
@@ -26,10 +26,14 @@ it('copies explicitly granted central definitions and fences stale or revoked im
     $source = $runner->central('metafields-maintain', $actor, fn () => app(MetafieldDefinitions::class)->create(['namespace' => 'catalog', 'key' => 'source', 'type' => 'string', 'assignment' => ['ownerType' => 'products', 'section' => 'general'], 'translations' => ['en' => ['title' => 'Source schema']]], $actor));
     $grant = null;
     $copy = null;
-    $runner->run(OwnershipCompany::findOrFail(7), $actor, function () use ($source, &$grant, &$copy): void {
+    $runner->run(OwnershipCompany::findOrFail(7), $actor, function () use ($source, $stringRevisions, &$grant, &$copy): void {
         $catalog = app(MetafieldOwnerCatalog::class);
         $grant = app(MetafieldDefinitions::class)->grant($source->id, $source->revision, OwnershipActor::firstOrFail());
         $data = ['grantId' => $grant->id, 'expectedGrantRevision' => $grant->revision, 'expectedSourceRevision' => $source->revision, 'idempotency_key' => '01900000-0000-7000-8000-000000000002', 'namespace' => 'product', 'key' => 'copy', 'assignment' => ['ownerType' => 'products', 'section' => 'general']];
+        if ($stringRevisions) {
+            $data['expectedGrantRevision'] = (string) $data['expectedGrantRevision'];
+            $data['expectedSourceRevision'] = (string) $data['expectedSourceRevision'];
+        }
         $copy = app(MetafieldDefinitions::class)->import($data, OwnershipActor::firstOrFail());
         expect($copy->id)->not->toBe($source->id)->and($copy->catalog_source_id)->toBe($source->id)->and($copy->translations->first()->title)->toBe('Source schema');
         $snapshot = $catalog->inspect($grant->id);
@@ -42,4 +46,4 @@ it('copies explicitly granted central definitions and fences stale or revoked im
     });
     Event::assertDispatched(MetafieldDefinitionCatalogGrantAudited::class, static fn (MetafieldDefinitionCatalogGrantAudited $event): bool => $event->operation === 'granted' && $event->grantId === $grant->id && $event->ownerScopeKey !== '');
     Event::assertDispatched(MetafieldDefinitionCatalogGrantAudited::class, static fn (MetafieldDefinitionCatalogGrantAudited $event): bool => $event->operation === 'revoked' && $event->grantId === $grant->id && $event->ownerScopeKey !== '');
-});
+})->with([false, true]);

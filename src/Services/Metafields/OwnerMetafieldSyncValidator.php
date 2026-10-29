@@ -246,7 +246,7 @@ final readonly class OwnerMetafieldSyncValidator
         Authenticatable|SystemActor $actor,
         int $index,
     ): void {
-        if (array_key_exists('translations', $item) && $item['translations'] !== null) {
+        if (array_key_exists('translations', $item)) {
             throw ValidationException::withMessages([
                 "items.{$index}.translations" => [
                     trans('nvl-metafields::owner-metafields/validation.custom.translations.not_allowed'),

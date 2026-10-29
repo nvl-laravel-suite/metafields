@@ -167,6 +167,13 @@ final readonly class MetafieldDefinitions
             throw ValidationException::withMessages(['request' => ['Unknown import attributes are not accepted.']]);
         }
         $request['referenceMap'] ??= [];
+        $grantRevision = filter_var($request['expectedGrantRevision'], FILTER_VALIDATE_INT);
+        $sourceRevision = filter_var($request['expectedSourceRevision'], FILTER_VALIDATE_INT);
+        if (! is_int($grantRevision) || ! is_int($sourceRevision)) {
+            throw ValidationException::withMessages(['grantId' => ['Catalog revisions must be integers.']]);
+        }
+        $request['expectedGrantRevision'] = $grantRevision;
+        $request['expectedSourceRevision'] = $sourceRevision;
         /** @var CatalogImport $request */
         $snapshot = $this->catalog->inspect($request['grantId']);
         if ($snapshot['grantRevision'] !== $request['expectedGrantRevision'] || $snapshot['sourceRevision'] !== $request['expectedSourceRevision']) {

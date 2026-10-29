@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Enums;
 
 /**
- * Stable authorization capabilities exposed by the optional management API.
+ * Stable authorization capabilities enforced by the native services.
  *
  * @api
  */
