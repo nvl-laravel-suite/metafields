@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Models;
 
+use Closure;
 use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -67,8 +68,34 @@ class Metafield extends Model implements Ownable, TranslatableModel
     use HasOwnership { save as private saveOwned;
         delete as private deleteOwned; }
     use HasUuids;
-    use SoftDeletes;
+    use SoftDeletes { performDeleteOnModel as private performNativeDeleteOnModel; }
     use Translatable;
+
+    /** @var (Closure(Model): void)|null */
+    private ?Closure $lifecycleSourceGuard = null;
+
+    /** @internal Preserve the owning operation's source fence through Eloquent deletion callbacks.
+     * @param  Closure(Model): void  $assertSource
+     */
+    public function forceDeleteForLifecycle(Closure $assertSource): ?bool
+    {
+        $previous = $this->lifecycleSourceGuard;
+        $this->lifecycleSourceGuard = $assertSource;
+        try {
+            return $this->forceDelete();
+        } finally {
+            $this->lifecycleSourceGuard = $previous;
+        }
+    }
+
+    /** Recheck after deleting hooks; ordinary soft and permanent deletion retain native semantics. */
+    protected function performDeleteOnModel(): void
+    {
+        if ($this->lifecycleSourceGuard !== null) {
+            ($this->lifecycleSourceGuard)($this);
+        }
+        $this->performNativeDeleteOnModel();
+    }
 
     /** Keep graph validation inside the canonical persistence lease, including quiet writes.
      * @param  array<string,mixed>  $options
@@ -88,6 +115,9 @@ class Metafield extends Model implements Ownable, TranslatableModel
     /** Reject value mutation when an owned host has no adopted value graph. */
     public function delete(): ?bool
     {
+        if ($this->lifecycleSourceGuard !== null) {
+            ($this->lifecycleSourceGuard)($this);
+        }
         MetafieldOwnership::declared();
 
         return $this->deleteOwned();

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Services\Metafields;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use InvalidArgumentException;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Ownership\MetafieldOwnership;
@@ -58,6 +59,18 @@ final class MetafieldOwnerModelResolver
     /** Reload one programmatic owner through its registered resource boundary. */
     public function canonical(Model $owner, bool $lock = false): Model
     {
+        return $this->reload($owner, $lock, false);
+    }
+
+    /** Reload a live or soft-deleted owner for the explicitly authorized permanent-deletion lifecycle. */
+    public function forDeletion(Model $owner): Model
+    {
+        return $this->reload($owner, true, true);
+    }
+
+    /** Retain every identity, source and host-scope check while selecting the required lifecycle view. */
+    private function reload(Model $owner, bool $lock, bool $includeTrashed): Model
+    {
         MetafieldOwnership::declared();
         $prototype = new ($owner::class);
         $key = ModelIdentifier::required($owner);
@@ -77,6 +90,9 @@ final class MetafieldOwnerModelResolver
             throw new OwnershipViolation('Metafield owners must use the canonical package connection.');
         }
         $query = $prototype->newQuery()->useWritePdo()->whereKey($key);
+        if ($includeTrashed) {
+            $query->withoutGlobalScope(SoftDeletingScope::class)->withoutEagerLoads();
+        }
         MetafieldOwnerPredicate::equal($query, $prototype->getQualifiedKeyName(), $key);
         if (MetafieldOwnership::active()) {
             $resource = MetafieldOwnership::resource($owner);

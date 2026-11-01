@@ -72,7 +72,7 @@ final readonly class OwnerMetafieldBatchReader
             ->where('is_active', true)
             ->whereHas('definition', static fn (Builder $definition) => $definition->whereNotNull('active_handle'))
             ->where(fn (Builder $nested) => $this->policy->scopeAssignments($actor, $nested, $batch));
-        $counts = (clone $query)->selectRaw('owner_type, COUNT(*) AS aggregate')->groupBy('owner_type', new ExactOwnerTextColumn('owner_type', $query->getModel()->getConnection()->getDriverName()))->toBase()->get();
+        $counts = (clone $query)->selectRaw('owner_type, COUNT(*) AS aggregate')->groupBy('owner_type', new ExactOwnerTextColumn('owner_type', $query->getModel()->getConnection()))->toBase()->get();
         foreach ($counts as $count) {
             $aggregate = $count->aggregate;
             if ((! is_int($aggregate) && ! is_string($aggregate)) || ! is_numeric($aggregate) || (int) $aggregate > 100) {

@@ -5,6 +5,16 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Add an explicit, default-denied purge-before-owner-deletion lifecycle with bounded hydration, exact transaction/source checks, retained owner/value policies, localized history cleanup and outer-commit events.
+- Add definition-leading value lookup support through a non-destructive forward migration and bounded, explicitly authorized owner-reference diagnostics.
+- Compare native MariaDB UUID owner keys as exact text, including MySQL-labelled MariaDB sources, while retaining case-sensitive scalar, list and column comparisons.
+
+### Changed
+
+- Align NVL peers and consumer contracts on the coordinated 7.x line. Review [UPGRADING.md](UPGRADING.md) for adoption and application-owned integration requirements.
+
 ## [6.1.0] - 2026-10-23
 
 <!-- NVL GENERATED CHANGES START -->

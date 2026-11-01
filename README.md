@@ -2,6 +2,10 @@
 
 Typed, optionally localized custom fields for registered Eloquent owners on Laravel 13 and PHP 8.4. This package provides native services and model results; hosts own their HTTP and UI layers.
 
+Permanent owner deletion is an explicit host lifecycle. Grant `metafields.purge`, authorize `PurgeOwnerValues` and retain `MutateOwner`/`DeleteOwnerValue` policy. Inside an existing transaction on the exact owner/value connection, call `MetafieldValues::purgeBeforeOwnerDeletion($owner, $actor)`, then permanently delete that owner before committing. The service locks the canonical owner, purges active and cleared values/locales in bounded batches, preserves definitions and other owners, and publishes its synchronization fact after the outer commit. A connection alias cannot substitute for the same transaction. Normal soft deletion retains values; no destructive trait hooks run automatically. Raw deletion and key reuse bypass this lifecycle.
+
+Doctor's owner-reference sample requires a host `MetafieldDiagnosticAccess` binding explicitly approving `SystemActor::Background` and current Ownership admission when declared. Its default denies and reports inspection skipped. This dedicated read policy never routes a background enum through unrelated global Gate hooks. It inspects at most 100 visible value references, detects additional rows with one sentinel, and retains configured host scopes while including soft-deleted owners. Unresolved references may be scoped out or unregistered; this is a bounded diagnostic, not a global orphan inventory or deletion authority. Previously orphaned identities require reviewed host recovery before reuse.
+
 ## Install and register owners
 
 Install `nvl/metafields:^7.0` with its declared `nvl/core` and `nvl/translatable` dependencies. Publish the package configuration with Laravel vendor publishing when overrides are needed, choose one migration owner, and run the package migrations. Configure authorization explicitly before enabling operations.
@@ -65,6 +69,8 @@ $value = app(MetafieldValues::class)->set($product, 'product.headline', 'Hello',
 $fields = app(MetafieldReader::class)->forOwner($product, $actor, 'en');
 ```
 
+This example creates the initial value. Subsequent `set` calls must supply `expectedRevision: $value->revision` from the last canonical read; existing localized values also retain their locale-specific input rules.
+
 `MetafieldValues` exposes `set(Model $owner, string $handle, mixed $value, $actor, ?string $locale = null, ?int $expectedRevision = null)`, `delete(Model $owner, MetafieldDefinition|string $definition, int $expectedRevision, $actor)`, and `sync(Model $owner, array $items, $actor)`. Each sync item has `definitionId` and exactly one of `value`, `translations`, or a true `clear`; an existing value requires `expected_revision` in that item. Omission never writes null; use an explicit nullable `value` or `clear`. Localized writes accept `translation_mode` as `TranslationSyncMode::Patch` or `Replace` only alongside `translations`; omitted locales are preserved by patch and explicit null locale values are rejected. A sync validates every item against its persisted definition and commits atomically.
 
 `MetafieldReader` exposes `definitions($actor)`, `forOwner(Model $owner, $actor, ?string $locale = null)`, and `forOwners(array $owners, $actor, ?string $locale = null)`. The first two return collections of native models or arrays containing `definition`, `assignment`, and nullable `value` models. The batch result contains `owners` as a nested JSON object keyed by morph type and exact owner key, plus a separate `order` list. Empty input returns an empty object map. Nonempty batches admit canonical owners under host scopes, apply SQL visibility, and reject unavailable or denied stored and default references. Batches have bounded owner, definition, value, reference, and locale limits.
@@ -73,7 +79,9 @@ For stored scalar comparisons on active filterable definitions, use `whereNvlMet
 
 ## Events and diagnostics
 
-`MetafieldDefinitionCatalogGrantAudited`, `MetafieldSet`, and `MetafieldsSynced` contain scalar identities and revisions and dispatch after the source transaction commits. See [events](docs/events.md). Run `php artisan nvl:metafields:doctor --strict --format=json` for package diagnostics or the shared `nvl:doctor` command for loaded providers.
+`MetafieldDefinitionCatalogGrantAudited`, `MetafieldSet`, and `MetafieldsSynced` contain scalar identities and revisions and dispatch after the source transaction commits. See [events](docs/events.md). Run `php artisan nvl:metafields:doctor --strict --format=json` for package diagnostics. Core does not register a shared `nvl:doctor` by default.
+
+Definition CLI mutations use `SystemActor::Background`. Grant the appropriate `metafields.*` capability and native definition/owner policy explicitly; running a command supplies no background bypass.
 
 ## Verify
 

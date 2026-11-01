@@ -6,11 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Nvl\Metafields\Contracts\MetafieldBatchAuthorization;
 use Nvl\Metafields\Contracts\MetafieldReferenceAuthorization;
 use Nvl\Metafields\Events\MetafieldSet;
+use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Models\MetafieldTranslation;
 use Nvl\Metafields\Services\MetafieldDefinitions;
 use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Services\MetafieldReader;
@@ -31,6 +34,30 @@ use Nvl\Support\Ownership\Contracts\OwnershipQueuedJob;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
 uses(OwnershipTestCase::class);
+
+it('purges a native owner value graph inside its source transaction without touching another owner', function (): void {
+    Gate::define('metafields.purge', static fn (OwnershipActor $actor): bool => $actor->exists);
+    foreach ([7, 8] as $company) {
+        app(OwnershipRunner::class)->run(OwnershipCompany::findOrFail($company), OwnershipActor::firstOrFail(), function () use ($company): void {
+            $owner = OwnershipMetafieldScenario::owner();
+            $actor = OwnershipActor::firstOrFail();
+            app(MetafieldDefinitions::class)->create(['namespace' => 'product', 'key' => 'lifecycle', 'type' => 'string', 'isTranslatable' => true, 'assignment' => ['ownerType' => 'products', 'section' => 'general'], 'translations' => ['en' => ['title' => 'Lifecycle']]], $actor);
+            $value = app(MetafieldValues::class)->set($owner, 'product.lifecycle', 'Private value', $actor, 'en');
+            if ($company === 7) {
+                $value->delete();
+                $owner->getConnection()->transaction(function () use ($owner, $actor): void {
+                    expect(app(MetafieldValues::class)->purgeBeforeOwnerDeletion($owner, $actor))->toBe(1)
+                        ->and($owner->delete())->toBeTrue();
+                });
+                expect(Metafield::withTrashed()->count())->toBe(0)
+                    ->and(MetafieldTranslation::query()->count())->toBe(0);
+            } else {
+                expect(Metafield::query()->count())->toBe(1)
+                    ->and(MetafieldTranslation::query()->count())->toBe(1);
+            }
+        });
+    }
+});
 it('isolates configured definitions assignments localized values and loaded defaults', function (): void {
     $foreign = null;
     foreach ([7, 8] as $id) {

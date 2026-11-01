@@ -63,6 +63,10 @@ abstract class TestCase extends Orchestra
             $table->timestamps();
         });
 
+        Schema::create('test_uuid_metafield_owners', static function (Blueprint $table): void {
+            $table->uuid('id')->primary();
+        });
+
         $driver = Schema::getConnection()->getDriverName();
         Schema::create('test_batch_string_metafield_owners', function (Blueprint $table) use ($driver): void {
             $this->defineBatchStringOwnerSchema($table, $driver);

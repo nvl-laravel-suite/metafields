@@ -40,7 +40,7 @@ final class MetafieldOwnerPredicate
      */
     public static function identifiers(Builder $query, string $column, array $ids): void
     {
-        $query->whereIn(new ExactOwnerTextColumn($column, $query->getModel()->getConnection()->getDriverName()), $ids);
+        $query->whereIn(new ExactOwnerTextColumn($column, $query->getModel()->getConnection()), $ids);
     }
 
     /**
@@ -50,7 +50,7 @@ final class MetafieldOwnerPredicate
      */
     private static function text(Builder $query, string $column): string
     {
-        return (new ExactOwnerTextColumn($column, $query->getModel()->getConnection()->getDriverName()))->getValue($query->getQuery()->getGrammar());
+        return (new ExactOwnerTextColumn($column, $query->getModel()->getConnection()))->getValue($query->getQuery()->getGrammar());
     }
 
     /**

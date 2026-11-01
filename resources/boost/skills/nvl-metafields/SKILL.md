@@ -1,32 +1,91 @@
 ---
 name: nvl-metafields
-description: Implement, integrate, test, or review nvl/metafields in Laravel 13. Use for typed definitions, registered owners and references, localized values, grants and imports, optimistic concurrency, batch reads, and authorization.
+description: Use when integrating nvl/metafields typed definitions, registered owner sections, localized/reference values, atomic sync, catalog grants/imports, optimistic revisions or bounded owner/filter reads.
 ---
 
 # NVL Metafields
 
-Read the package README and source service signatures before integrating. The public native services are `MetafieldDefinitions`, `MetafieldValues`, and `MetafieldReader`. Use native Eloquent models, enums, scalars, and shaped arrays. HTTP, application view data, and UI belong to the host.
+Use the PHP 8.4 / Laravel 13 native services, models, enums and shaped arrays.
+The host owns requests, controllers, application Actions/DTOs, resources and UI.
 
-## Registration and identity
+## References
 
-- Register stable owner aliases, supported types and sections in `nvl-metafields.owners`; register reference targets in `nvl-metafields.reference_models`. A configured alias alone never admits a model outside its native host or Ownership scope.
-- Preserve Laravel's host-authored morph identity and exact owner key. Package capability declarations do not change the morph map.
-- Use native Ownership resources for isolation. Do not use retired Tenancy bridge APIs or infer authority from legacy tenant columns.
+- [Installation](references/installation.md): dependencies, migrations, config and publication choices.
+- [Native API](references/api.md): exact native service and authorization declarations.
+- [Usage](references/usage.md): owner registration, definitions, value sync, batches, references and catalog copy.
 
-## Authorization
+## Choose the service
 
-- Pass a persisted `Authenticatable` actor or explicit `SystemActor::Background` to every public native service call. Both identities deny by default; the host must grant the relevant `metafields.*` Gate ability. Never infer the current guard user.
-- Authorize single owner reads and writes through `MetafieldAuthorization` using canonical persisted owners. Writes require `MutateOwner` under the owner lock; clears also require `DeleteOwnerValue` with the definition. Authorize every reference mutation through `MetafieldReferenceAuthorization`. The configured Gate adapters use the passed actor. A missing binding or ability denies.
-- Bind `MetafieldBatchAuthorization` for nonempty batch reads. Every method receives the explicit canonical actor. Its SQL scopes constrain assignments, values, and reference targets; imperative callbacks do not replace SQL visibility. Query-free `authorizeOwners`, `allowsDefinition`, and `authorizeReferences` inspect admitted facts.
+| Need | Native service |
+| --- | --- |
+| Definition create/update/archive/delete and grant/revoke/import | `MetafieldDefinitions` |
+| Atomic value sync, handle-based set and clear/delete | `MetafieldValues` |
+| Definition list, single owner fields and bounded owner batches | `MetafieldReader` |
+| Host owner types, allowed sections/types | `MetafieldOwnerRegistry` |
+| Stored scalar host comparisons | Native `whereNvlMetafield` model scope |
 
-## Mutations and reads
+## Register identity and authorize deliberately
 
-- Create and update definitions with validated native arrays. Restrict owner assignments to registered type and section; reject invalid type, locale, default, schema, rule, or reference configuration. Update/archive/delete take expected revisions. Delete live values only with explicit cascade.
-- Use `MetafieldValues::sync` for atomic owner writes. Each item requires exactly one of `value`, `translations`, or true `clear`, and `expected_revision` on existing rows. Omission never writes null. `translation_mode` requires `translations`. Validate each heterogeneous item against its persisted definition, prevent duplicate IDs, and enforce required section fields. Localized patch preserves omitted locales; replace removes them; explicit null locale values are invalid.
-- Use `MetafieldReader::forOwner` for authorized single owner fields and `forOwners` for bounded lists. Batch output is an exact morph/key object map with separate order. Empty input has no storage queries. Admission reloads canonical owners through retained host scopes. Missing or denied stored/default references fail closed.
-- For stored scalar comparisons use `whereNvlMetafield` only on active filterable definitions with a SQL visibility policy. Missing and default-only rows never match. Keep caller OR clauses inside mandatory host, definition, and value predicates.
-- Catalog grant, revoke, and import use immutable source snapshots, explicit expected revisions, recipient authority, and idempotency. Imported definitions become independent copies.
+Declare `nvl-metafields.owners` stable aliases with native models, supported types
+and sections. Additional reference aliases live in `reference_models`; registration
+retains Laravel's host morph identity and exact keys. It never grants foreign
+model/Ownership access or changes the morph map.
 
-## Verification
+Every native service takes a persisted Eloquent Authenticatable or explicit
+`SystemActor::Background` and checks its `metafields.*` capability Gate. Both deny
+without host grants. Actor facts reload canonically; null is not background authority.
 
-Run the package's direct Pest suite from the suite root using `--test-directory=packages/nvl/metafields/tests --configuration=packages/nvl/metafields/phpunit.xml.dist --bootstrap=vendor/autoload.php`. The Historical directory preserves retired API fixtures and is excluded by the package XML. Check 1/25/100 owner SQL budgets against actual domain queries, including quoted table names and separate metadata SQL. Use package Pint and configured maximum PHPStan when the shared bootstrap is coherent.
+`MetafieldAuthorization` additionally authorizes definitions and canonical owners.
+Writes require `MetafieldAbility::MutateOwner` under lock; clears also require `MetafieldAbility::DeleteOwnerValue` with
+the definition. References use `MetafieldReferenceAuthorization`. Nonempty batch
+reads need `MetafieldBatchAuthorization` with SQL visibility and loaded-fact checks.
+Catalog grants/revocations retain independent `MetafieldCatalogAccess` authority.
+
+## Input, locale and revision rules
+
+- Create definitions with native namespace/key/type/copy and required owner assignment.
+- Definition update/archive/delete take expected revision as a separate argument.
+- Each sync item has `definitionId` plus exactly one of value/translations/true clear.
+- Existing active value writes need `expected_revision`; omission never means write null.
+- `translation_mode` requires translations; Patch keeps omitted locales and Replace removes them.
+- Null locale values are invalid; clear uses its dedicated semantic and required-field checks.
+- Validate every value/default/reference against its persisted definition and assignment.
+- Use catalog import's exact grant/source revisions and UUID idempotency key for retry.
+
+## Safe reads and optional isolation
+
+Single owner reads return definition/assignment/value model entries. Batch output
+is an object map keyed by exact morph/key plus a separate order list, including
+explicit empty owner results. Empty batches avoid metafield-data SQL; actor admission still applies. Canonical owner
+admission retains host scopes; stored/default references fail closed when unavailable.
+
+Stored scalar filters require active filterable definitions and SQL visibility.
+Missing/default-only rows do not match. Group caller OR clauses inside mandatory
+host/definition/value predicates. Do not turn model relations into an unscoped
+substitute for authorized reader/service operations.
+
+## Models, transactions and checks
+
+Choose `nvl-metafields.models.definition` before boot with a native concrete subclass.
+Preserve UUID, required casts, revision/default/handle hooks, relations, ownership
+and package-configured storage. Values, translations, grants and assignments remain
+fixed models; custom columns use host migrations. Native Ownership is optional
+for unowned hosts and requires reviewed adoption for declared owned storage.
+
+Services own source transactions, owner/definition locks and outer-commit events.
+Permanent owner deletion is an explicit host lifecycle. Grant `metafields.purge`
+and `MetafieldAbility::PurgeOwnerValues` deliberately, retain `MetafieldAbility::MutateOwner`/`MetafieldAbility::DeleteOwnerValue` policy,
+then call `MetafieldValues::purgeBeforeOwnerDeletion` inside an existing transaction
+on the exact owner/value connection before permanently deleting the owner there.
+It hard-purges active/cleared values and locale rows in bounded batches, preserves
+definitions, and follows the outer commit. Soft deletion normally retains values.
+No automatic hooks exist; raw deletion or key reuse bypasses this lifecycle.
+Doctor's bounded reference sample requires an explicit `MetafieldDiagnosticAccess`
+binding approving `SystemActor::Background`; its default reports inspection skipped.
+It retains host scopes and reports unresolved references, not a global
+orphan inventory; previously orphaned data requires reviewed host recovery.
+Definition imports create independent schemas from exact immutable granted facts.
+Test type/null/locale modes, canonical permissions, references, required clears,
+revision conflicts, whole-sync rollback, idempotent imports and bounded SQL reads.
+Use [usage](references/usage.md) to resolve host policy decisions rather than inventing
+DTO wrappers, external-asset integrations or transport APIs.

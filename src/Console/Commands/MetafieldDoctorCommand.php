@@ -16,7 +16,9 @@ final class MetafieldDoctorCommand extends Command
         {--strict : Treat warnings as failures}
         {--format=text : Output format: text or json}';
 
-    protected $description = 'Inspect Metafields schema, registries, routes, and authorization bindings';
+    protected $description = 'Inspect Metafields schema, registries, authorization and bounded owner references';
+
+    protected $help = 'Owner-reference sampling requires an explicit MetafieldDiagnosticAccess read grant for SystemActor::Background and current Ownership admission where applicable. The default policy skips inspection. At most 100 value references are inspected, with one extra row detecting partial coverage. Host scopes remain authoritative; unresolved references are not proven global orphans.';
 
     public function handle(MetafieldDoctor $doctor): int
     {

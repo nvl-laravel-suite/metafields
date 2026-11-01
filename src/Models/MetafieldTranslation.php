@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Models;
 
+use Closure;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -39,6 +40,32 @@ class MetafieldTranslation extends Model implements Ownable
         delete as private deleteOwned; }
     use HasUuids;
 
+    /** @var (Closure(Model): void)|null */
+    private ?Closure $lifecycleSourceGuard = null;
+
+    /** @internal Preserve the owning operation's source fence through Eloquent deletion callbacks.
+     * @param  Closure(Model): void  $assertSource
+     */
+    public function deleteForLifecycle(Closure $assertSource): ?bool
+    {
+        $previous = $this->lifecycleSourceGuard;
+        $this->lifecycleSourceGuard = $assertSource;
+        try {
+            return $this->delete();
+        } finally {
+            $this->lifecycleSourceGuard = $previous;
+        }
+    }
+
+    /** Recheck after deleting hooks immediately before the native DELETE. */
+    protected function performDeleteOnModel(): void
+    {
+        if ($this->lifecycleSourceGuard !== null) {
+            ($this->lifecycleSourceGuard)($this);
+        }
+        parent::performDeleteOnModel();
+    }
+
     /** @param array<string,mixed> $options */
     public function save(array $options = []): bool
     {
@@ -50,6 +77,9 @@ class MetafieldTranslation extends Model implements Ownable
     /** Reject locale mutation when its native host graph is not configured. */
     public function delete(): ?bool
     {
+        if ($this->lifecycleSourceGuard !== null) {
+            ($this->lifecycleSourceGuard)($this);
+        }
         MetafieldOwnership::declared();
 
         return $this->deleteOwned();

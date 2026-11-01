@@ -6,6 +6,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
+use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Enums\MetafieldAbility;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
 use Nvl\Metafields\Models\Metafield;
@@ -34,6 +35,33 @@ beforeEach(function (): void {
         'nvl-translatable.fallback_locales' => ['en'],
         'nvl-metafields.owners' => ['products' => ['model' => TestMetafieldOwner::class, 'label' => 'Products', 'sections' => ['general']]],
     ]);
+});
+
+it('does not hand former owner localized values to a reused key after its deletion lifecycle', function (): void {
+    Gate::define('metafields.owner', static fn (SystemActor $actor, string $ability): bool => true);
+    app(MetafieldDefinitions::class)->create([
+        'namespace' => 'product', 'key' => 'lifecycle', 'type' => 'string', 'isTranslatable' => true,
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        'translations' => ['en' => ['title' => 'Lifecycle']],
+    ], SystemActor::Background);
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Former owner']);
+    app(MetafieldValues::class)->set($owner, 'product.lifecycle', 'Former private value', SystemActor::Background, 'en');
+    $key = $owner->getKey();
+    Gate::define('metafields.purge', static fn (SystemActor $actor): bool => true);
+    $owner->getConnection()->transaction(function () use ($owner): void {
+        app(MetafieldValues::class)->purgeBeforeOwnerDeletion($owner, SystemActor::Background);
+        $owner->delete();
+    });
+    TestMetafieldOwner::query()->create(['id' => $key, 'name' => 'Replacement owner']);
+    $replacement = TestMetafieldOwner::query()->findOrFail($key);
+
+    expect(app(MetafieldReader::class)->forOwner($replacement, SystemActor::Background, 'en')->sole()['value'])->toBeNull();
+});
+
+it('indexes definition-scoped owner value lookups independently of the owner-leading identity', function (): void {
+    $indexes = (new Metafield)->getConnection()->getSchemaBuilder()->getIndexes((new Metafield)->getTable());
+
+    expect(array_values(array_filter($indexes, static fn (array $index): bool => array_slice($index['columns'], 0, 2) === ['definition_id', 'metafieldable_type'])))->not->toBeEmpty();
 });
 
 it('keeps all resources unscoped and captures ordinary queued work without Ownership', function (): void {
@@ -574,3 +602,28 @@ it('authorizes locked canonical owners and rolls back earlier writes when a late
         ->and($firstValue->fresh()->revision)->toBe($firstValue->revision)
         ->and($secondValue->fresh()->getValue())->toBe('Second value');
 });
+
+it('round trips accepted structured values and defaults larger than MySQL TEXT capacity', function (bool $localized): void {
+    $payload = ['body' => str_repeat('x', 70_000)];
+    $definition = app(MetafieldDefinitions::class)->create([
+        'namespace' => 'product', 'key' => 'large', 'type' => 'json', 'isTranslatable' => $localized,
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        ...($localized ? [] : ['defaultValue' => $payload]),
+        'translations' => ['en' => ['title' => 'Large payload', ...($localized ? ['defaultValue' => $payload] : [])]],
+    ], SystemActor::Background);
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Product']);
+    $value = app(MetafieldValues::class)->set($owner, 'product.large', $payload, SystemActor::Background, $localized ? 'en' : null);
+
+    expect($value->fresh()->getValue($localized ? 'en' : null))->toBe($payload)
+        ->and($definition->fresh()->getDefaultValue($localized ? 'en' : null))->toBe($payload);
+
+    $schema = $value->getConnection()->getSchemaBuilder();
+    if (in_array($value->getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+        $tables = MetafieldsTables::class;
+        expect($schema->getColumnType($tables::get($localized ? $tables::I18n : $tables::Metafields), 'value'))->toBe('longtext')
+            ->and($schema->getColumnType($tables::get($localized ? $tables::DefinitionsI18n : $tables::Definitions), 'default_value'))->toBe('longtext');
+        $migration = require dirname(__DIR__, 2).'/database/migrations/2026_11_01_081233_nvl_metafields_expand_value_storage.php';
+        expect(fn () => $migration->down())->toThrow(LogicException::class, 'exceed TEXT capacity');
+        expect($value->fresh()->getValue($localized ? 'en' : null))->toBe($payload);
+    }
+})->with(['base' => false, 'localized' => true]);

@@ -41,6 +41,15 @@
             "properties": [],
             "constants": []
         },
+        "Nvl\\Metafields\\Contracts\\MetafieldDiagnosticAccess": {
+            "kind": "interface",
+            "file": "src/Contracts/MetafieldDiagnosticAccess.php",
+            "methods": [
+                "allows"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Metafields\\Contracts\\MetafieldReferenceAuthorization": {
             "kind": "interface",
             "file": "src/Contracts/MetafieldReferenceAuthorization.php",
@@ -133,6 +142,7 @@
                 "ListDefinitions",
                 "ListOwners",
                 "MutateOwner",
+                "PurgeOwnerValues",
                 "UpdateDefinition",
                 "ViewDefinition",
                 "ViewOwner"
@@ -606,6 +616,7 @@
             "methods": [
                 "__construct",
                 "delete",
+                "purgeBeforeOwnerDeletion",
                 "set",
                 "sync"
             ],

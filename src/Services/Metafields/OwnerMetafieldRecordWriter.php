@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\Metafields;
 
+use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Models\MetafieldTranslation;
 use Nvl\Metafields\Support\ModelIdentifier;
 use Nvl\Support\Ownership\Contracts\OwnershipWriter;
 use Nvl\Translatable\Enums\TranslationSyncMode;
 use Nvl\Translatable\Services\RelatedTranslationStore;
+use RuntimeException;
 
 /**
  * Persists owner metafield records and delegates locale-row synchronization to Translatable.
@@ -39,6 +42,29 @@ final readonly class OwnerMetafieldRecordWriter
 
         $this->translations->deleteExcept($metafield, $metafield->translationDefinition(), []);
         $metafield->delete();
+    }
+
+    /** Permanently remove localized rows and their locked parent within the owning lifecycle transaction.
+     * @param  Closure(Model): void  $assertSource
+     */
+    public function purge(Metafield $metafield, Closure $assertSource): void
+    {
+        do {
+            $assertSource($metafield);
+            $translations = MetafieldTranslation::query()->useWritePdo()->where('metafield_id', $metafield->id)->orderBy('id')->limit(100)->lockForUpdate()->get();
+            $assertSource($metafield);
+            foreach ($translations as $translation) {
+                if ($translation->deleteForLifecycle($assertSource) !== true) {
+                    throw new RuntimeException('Metafield locale lifecycle cleanup was interrupted.');
+                }
+                $assertSource($translation);
+            }
+        } while ($translations->isNotEmpty());
+        $assertSource($metafield);
+        if ($metafield->forceDeleteForLifecycle($assertSource) !== true) {
+            throw new RuntimeException('Metafield lifecycle cleanup was interrupted.');
+        }
+        $assertSource($metafield);
     }
 
     /**

@@ -13,6 +13,7 @@ use Nvl\Metafields\Console\Commands\MetafieldListCommand;
 use Nvl\Metafields\Contracts\MetafieldAuthorization;
 use Nvl\Metafields\Contracts\MetafieldBatchAuthorization;
 use Nvl\Metafields\Contracts\MetafieldCatalogAccess;
+use Nvl\Metafields\Contracts\MetafieldDiagnosticAccess;
 use Nvl\Metafields\Contracts\MetafieldReferenceAuthorization;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldTranslation;
@@ -22,6 +23,7 @@ use Nvl\Metafields\Ownership\MetafieldResourceRegistrar;
 use Nvl\Metafields\Services\ConfiguredMetafieldAuthorization;
 use Nvl\Metafields\Services\ConfiguredMetafieldReferenceAuthorization;
 use Nvl\Metafields\Services\DenyMetafieldCatalogAccess;
+use Nvl\Metafields\Services\DenyMetafieldDiagnosticAccess;
 use Nvl\Metafields\Services\MetafieldDoctor;
 use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Services\Metafields\MetafieldOwnerModelResolver;
@@ -55,6 +57,7 @@ final class MetafieldsServiceProvider extends ServiceProvider implements Ownersh
         $this->app->scoped(MetafieldOwnerModelResolver::class);
         $this->app->scoped(MetafieldReferenceRecordResolver::class);
         $this->app->bindIf(MetafieldCatalogAccess::class, DenyMetafieldCatalogAccess::class);
+        $this->app->bindIf(MetafieldDiagnosticAccess::class, DenyMetafieldDiagnosticAccess::class);
         $this->app->bindIf(MetafieldAuthorization::class, ConfiguredMetafieldAuthorization::class);
         $this->app->bindIf(MetafieldBatchAuthorization::class, function (): MetafieldBatchAuthorization {
             /** @var MetafieldAuthorization $authorization */
