@@ -5,6 +5,10 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+## [7.0.0] - 2026-11-03
+
+- Adopt the reviewed NVL 7 family for PHP 8.4+ and Laravel 13, with compatible required and optional NVL peers. Review the package upgrade guide before deployment.
+
 ### Fixed
 
 - Add an explicit, default-denied purge-before-owner-deletion lifecycle with bounded hydration, exact transaction/source checks, retained owner/value policies, localized history cleanup and outer-commit events.
