@@ -469,7 +469,9 @@ public function assignments(): Illuminate\Database\Eloquent\Relations\HasMany
 @return HasMany<MetafieldDefinitionAssignment, $this>
 resolved @return Illuminate\Database\Eloquent\Relations\HasMany<Nvl\Metafields\Models\MetafieldDefinitionAssignment, $this>
 public function clearDefaultValue(): void
-public function delete(): ?bool
+public function delete(): mixed
+@return ($this is Pivot ? (bool | int | null) : (bool | null))
+resolved @return ($this is Illuminate\Database\Eloquent\Relations\Pivot ? (bool | int | null) : (bool | null))
 public function displayDescription(?string $locale=null): ?string
 public function displayHint(?string $locale=null): ?string
 public function displayTitle(?string $locale=null): string
@@ -612,7 +614,9 @@ public const string TABLE=\Nvl\Metafields\Definitions\Tables\MetafieldsTables::D
 public function definition(): Illuminate\Database\Eloquent\Relations\BelongsTo
 @return BelongsTo<MetafieldDefinition, $this>
 resolved @return Illuminate\Database\Eloquent\Relations\BelongsTo<Nvl\Metafields\Models\MetafieldDefinition, $this>
-public function delete(): ?bool
+public function delete(): mixed
+@return ($this is Pivot ? (bool | int | null) : (bool | null))
+resolved @return ($this is Illuminate\Database\Eloquent\Relations\Pivot ? (bool | int | null) : (bool | null))
 public function fresh(mixed $with=[]): ?static
 @param (array<array-key, mixed> | string) $with
 public function getConnectionName(): ?string
@@ -647,7 +651,9 @@ public const string TABLE=\Nvl\Metafields\Definitions\Tables\MetafieldsTables::D
 public function definition(): Illuminate\Database\Eloquent\Relations\BelongsTo
 @return BelongsTo<MetafieldDefinition, $this>
 resolved @return Illuminate\Database\Eloquent\Relations\BelongsTo<Nvl\Metafields\Models\MetafieldDefinition, $this>
-public function delete(): ?bool
+public function delete(): mixed
+@return ($this is Pivot ? (bool | int | null) : (bool | null))
+resolved @return ($this is Illuminate\Database\Eloquent\Relations\Pivot ? (bool | int | null) : (bool | null))
 public function fresh(mixed $with=[]): ?static
 @param (array<array-key, mixed> | string) $with
 public function getConnectionName(): ?string
