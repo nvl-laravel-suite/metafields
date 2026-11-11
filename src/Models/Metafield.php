@@ -19,6 +19,7 @@ use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Ownership\MetafieldGraphOwnership;
 use Nvl\Metafields\Ownership\MetafieldOwnership;
 use Nvl\Metafields\Services\MetafieldModelRegistry;
+use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
 use Nvl\Support\Config\PackageStorage;
 use Nvl\Support\Ownership\Contracts\Ownable;
@@ -213,18 +214,14 @@ class Metafield extends Model implements Ownable, TranslatableModel
         }
 
         if ($this->definition->type === MetafieldTypeEnum::ReferenceList) {
-            return collect((array) $this->definition->type->cast($this->value))
-                ->map(
-                    function (mixed $identifier): ?Model {
-                        $reference = MetafieldReferenceModelRegistry::findReferencedRecord(
-                            $this->definition->referenced_model_type,
-                            $identifier,
-                        );
-                        $this->assertReferenceOwnership($reference);
+            $identifiers = (array) $this->definition->type->cast($this->value);
+            $references = Container::getInstance()->make(MetafieldReferenceRecordResolver::class)
+                ->resolveMany($this->definition->referenced_model_type, $identifiers);
 
-                        return $reference;
-                    },
-                )
+            return collect($identifiers)
+                ->map(static fn (mixed $identifier): ?Model => is_string($identifier) || is_int($identifier)
+                    ? ($references[(string) $identifier] ?? null)
+                    : null)
                 ->filter()
                 ->values();
         }
@@ -259,19 +256,21 @@ class Metafield extends Model implements Ownable, TranslatableModel
     /** Reject mismatched loaded parent and locale rows before exposing values. */
     private function assertLoadedGraphOwnership(): void
     {
-        Container::getInstance()->make(OwnershipBoundary::class)->assertRecord($this, 'metafields.values');
-        if (MetafieldOwnership::declared()) {
-            $boundary = Container::getInstance()->make(OwnershipBoundary::class);
-            $boundary->assertRecord($this->definition, 'metafields.definitions');
-            if ($this->definition->id !== $this->definition_id) {
-                throw new OwnershipViolation('A loaded Metafield definition differs from its persisted schema.');
-            }
-            if ($this->relationLoaded('translations')) {
-                foreach ($this->translations as $translation) {
-                    $boundary->assertRecord($translation, 'metafields.value-translations');
-                    if ($translation->getAttribute('metafield_id') !== $this->id) {
-                        throw new OwnershipViolation('A loaded locale row differs from its canonical value.');
-                    }
+        $boundary = Container::getInstance()->make(OwnershipBoundary::class);
+        $boundary->assertRecord($this, 'metafields.values');
+        if (! MetafieldOwnership::declared()) {
+            return;
+        }
+        $boundary->assertRecord($this->definition, 'metafields.definitions');
+        if ($this->definition->id !== $this->definition_id) {
+            throw new OwnershipViolation('A loaded Metafield definition differs from its persisted schema.');
+        }
+        if ($this->relationLoaded('translations')) {
+            Container::getInstance()->make(MetafieldGraphOwnership::class)
+                ->assertLoadedTranslations($this->translations, 'metafields.value-translations', 'metafield_id');
+            foreach ($this->translations as $translation) {
+                if ($translation->getAttribute('metafield_id') !== $this->id) {
+                    throw new OwnershipViolation('A loaded locale row differs from its canonical value.');
                 }
             }
         }

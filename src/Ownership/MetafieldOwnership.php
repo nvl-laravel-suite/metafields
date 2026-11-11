@@ -6,7 +6,6 @@ namespace Nvl\Metafields\Ownership;
 
 use Illuminate\Database\Eloquent\Model;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
-use Nvl\Support\Ownership\Contracts\Ownable;
 use Nvl\Support\Ownership\Exceptions\OwnershipConfigurationInvalid;
 use Nvl\Support\Ownership\Services\OwnershipQueueCapture;
 use Nvl\Support\Ownership\Services\OwnershipResourceRegistry;
@@ -35,17 +34,8 @@ final class MetafieldOwnership
             if (config('nvl-metafields.ownership.owner_resources', []) !== []) {
                 throw new OwnershipConfigurationInvalid('Native Metafield host resources require an owned definition root.');
             }
-            $resources = app(OwnershipResourceRegistry::class)->all();
-            foreach (app(MetafieldOwnerRegistry::class)->all() as $host) {
-                $class = $host['model'];
-                if (is_a($class, Ownable::class, true) && $class::ownershipDefinition()->strategy !== 'unscoped') {
-                    throw new OwnershipConfigurationInvalid('Owned Metafield hosts require an owned definition root and inherited values.');
-                }
-                foreach ($resources as $resource) {
-                    if ($resource->model === $class && $resource->ownership->strategy !== 'unscoped') {
-                        throw new OwnershipConfigurationInvalid('Owned Metafield hosts require an owned definition root and inherited values.');
-                    }
-                }
+            if (app(MetafieldOwnerRegistry::class)->hasOwnedHost(app(OwnershipResourceRegistry::class)->all())) {
+                throw new OwnershipConfigurationInvalid('Owned Metafield hosts require an owned definition root and inherited values.');
             }
         }
     }

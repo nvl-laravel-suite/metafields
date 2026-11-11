@@ -10,7 +10,6 @@ use Nvl\Metafields\Contracts\MetafieldReferenceAuthorization;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Support\MetafieldJsonPropertySchemaValidator;
-use Nvl\Metafields\Support\MetafieldPayloadLimits;
 use Nvl\Metafields\Support\MetafieldValidationRuleCompiler;
 use Nvl\Support\Enums\SystemActor;
 
@@ -69,13 +68,6 @@ final readonly class MetafieldValueValidator
 
         if ($definition->type === MetafieldTypeEnum::ReferenceList) {
             return $this->referenceListPasses($definition, $owner, $actor, $value, $required);
-        }
-
-        if (in_array($definition->type, [
-            MetafieldTypeEnum::Json,
-            MetafieldTypeEnum::ArrayValue,
-        ], true) && ! MetafieldPayloadLimits::accepts($value)) {
-            return false;
         }
 
         if ($definition->type->value === 'json'

@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Support\OwnerRegistry;
+use Nvl\Support\Ownership\Contracts\Ownable;
+use Nvl\Support\Ownership\ValueObjects\OwnershipResourceDefinition;
 
 /**
  * Normalizes configured owner aliases and prevents ambiguous model registrations.
@@ -18,6 +20,16 @@ final class MetafieldOwnerRegistry
 {
     /** @var array<string, array<string, mixed>> */
     private array $registered = [];
+
+    /**
+     * Last normalization and the exact inputs it was computed from.
+     *
+     * @var array{facts: list<mixed>, owners: array<string, array{model: class-string<Model>, label: string, supported_types: array<int, string>, sections: array<int, string>, runtime_status: 'live'|'planned', show_route?: string, show_route_parameters?: array<string, string>}>}|null
+     */
+    private ?array $normalized = null;
+
+    /** @var array{facts: list<mixed>, owned: bool}|null Last host ownership verdict and the exact inputs it was computed from. */
+    private ?array $hostOwnership = null;
 
     /** Create the capability registry against the shared owner identity. */
     public function __construct(private readonly OwnerRegistry $identities) {}
@@ -43,6 +55,9 @@ final class MetafieldOwnerRegistry
     /**
      * Return every normalized owner registration keyed by stable alias.
      *
+     * The result is recomputed whenever the configured owners, a code registration or the
+     * shared owner identities differ from those of the previous normalization.
+     *
      * @return array<string, array{
      * model: class-string<Model>,
      * label: string,
@@ -61,6 +76,11 @@ final class MetafieldOwnerRegistry
             throw new InvalidArgumentException('The [metafields.owners] configuration must be an array.');
         }
 
+        if ($this->normalized !== null && $this->normalized['facts'] === $this->facts($owners)) {
+            return $this->normalized['owners'];
+        }
+
+        $configured = $owners;
         $owners = [...$owners, ...$this->registered];
         $normalized = [];
         $registeredModels = [];
@@ -106,7 +126,53 @@ final class MetafieldOwnerRegistry
             $this->identities->reference($reference, "metafields.owners.{$type}.model");
         }
 
+        $this->normalized = ['facts' => $this->facts($configured), 'owners' => $normalized];
+
         return $normalized;
+    }
+
+    /**
+     * Determine whether a registered host declares ownership, once per registry and resource state.
+     *
+     * @param  array<string, OwnershipResourceDefinition>  $resources
+     *
+     * @internal
+     */
+    public function hasOwnedHost(array $resources): bool
+    {
+        $facts = [$this->all(), $resources];
+        if ($this->hostOwnership !== null && $this->hostOwnership['facts'] === $facts) {
+            return $this->hostOwnership['owned'];
+        }
+
+        $owned = false;
+        foreach ($facts[0] as $host) {
+            $class = $host['model'];
+            if (is_a($class, Ownable::class, true) && $class::ownershipDefinition()->strategy !== 'unscoped') {
+                $owned = true;
+                break;
+            }
+            foreach ($resources as $resource) {
+                if ($resource->model === $class && $resource->ownership->strategy !== 'unscoped') {
+                    $owned = true;
+                    break 2;
+                }
+            }
+        }
+        $this->hostOwnership = ['facts' => $facts, 'owned' => $owned];
+
+        return $owned;
+    }
+
+    /**
+     * Collect every input the normalized registrations are computed from.
+     *
+     * @param  array<array-key, mixed>  $owners
+     * @return list<mixed>
+     */
+    private function facts(array $owners): array
+    {
+        return [$owners, $this->registered, $this->identities->all(), config('nvl-core.owners', [])];
     }
 
     /**

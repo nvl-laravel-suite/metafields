@@ -5,12 +5,16 @@ declare(strict_types=1);
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Auth\User;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
+use Nvl\Metafields\Ownership\MetafieldOwnership;
 use Nvl\Metafields\Services\MetafieldDoctor;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
+use Nvl\Metafields\Tests\Fixtures\CountingMetafieldHost;
+use Nvl\Metafields\Tests\Fixtures\OwnershipMetafieldOwner;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwnerBase;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwnerChild;
+use Nvl\Support\Ownership\Exceptions\OwnershipConfigurationInvalid;
 
 beforeEach(function (): void {
     config([
@@ -103,4 +107,45 @@ it('marks definition-only owner surfaces as planned', function (): void {
 
     expect($owner['runtimeStatus'])->toBe('planned')
         ->and($owner['supportsRuntimeEditing'])->toBeFalse();
+});
+
+it('reads each host ownership declaration once per registry state and again when the registry changes', function (): void {
+    config(['nvl-metafields.owners' => ['counted' => ['model' => CountingMetafieldHost::class, 'label' => 'Counted']]]);
+    CountingMetafieldHost::$declarationReads = 0;
+
+    expect(MetafieldOwnership::declared())->toBeFalse()
+        ->and(MetafieldOwnership::declared())->toBeFalse()
+        ->and(MetafieldOwnership::active())->toBeFalse()
+        ->and(CountingMetafieldHost::$declarationReads)->toBe(1);
+
+    config(['nvl-metafields.owners.counted.label' => 'Recounted']);
+
+    expect(MetafieldOwnership::declared())->toBeFalse()
+        ->and(CountingMetafieldHost::$declarationReads)->toBe(2)
+        ->and(app(MetafieldOwnerRegistry::class)->forType('counted')['label'])->toBe('Recounted');
+});
+
+it('recomputes normalized owners when configuration or code registrations change', function (): void {
+    $registry = app(MetafieldOwnerRegistry::class);
+
+    expect(array_keys($registry->all()))->toBe(['articles', 'archives'])
+        ->and($registry->all())->toBe($registry->all());
+
+    config(['nvl-metafields.owners.archives.runtime_status' => 'live']);
+    expect($registry->supportsRuntimeEditing('archives'))->toBeTrue();
+
+    config(['nvl-metafields.owners' => ['bases' => ['model' => TestMetafieldOwnerBase::class, 'label' => 'Bases']]]);
+    $registry->register('children', TestMetafieldOwnerChild::class, 'Children');
+    expect(fn () => $registry->all())->toThrow(InvalidArgumentException::class, 'ambiguous');
+
+    config(['nvl-metafields.owners' => []]);
+    expect(array_keys($registry->all()))->toBe(['children']);
+});
+
+it('refuses an owned host as soon as it joins an unowned registry', function (): void {
+    expect(MetafieldOwnership::declared())->toBeFalse();
+
+    config(['nvl-metafields.owners.owned' => ['model' => OwnershipMetafieldOwner::class, 'label' => 'Owned']]);
+
+    expect(fn () => MetafieldOwnership::declared())->toThrow(OwnershipConfigurationInvalid::class);
 });

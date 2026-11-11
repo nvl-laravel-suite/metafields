@@ -57,7 +57,7 @@ $updated = app(MetafieldDefinitions::class)->update(
 );
 ```
 
-`MetafieldDefinitions` exposes `create(array $attributes, $actor)`, `update($definition, array $attributes, int $expectedRevision, $actor)`, `archive($definition, bool $archived, int $expectedRevision, $actor)`, `delete($definition, int $expectedRevision, $actor, bool $deleteValues = false)`, `grant(string $definitionId, int $sourceRevision, $actor)`, `revoke(string $grantId, int $expectedRevision, $actor)`, and `import(array $request, $actor)`. Definition and assignment input is allowlisted, and owner type, section, reference target, locale, default, and rules are validated against registered capabilities. `delete` requires explicit cascading when live values exist. Import uses an exact granted catalog snapshot with expected revisions and an idempotency key.
+`MetafieldDefinitions` exposes `create(array $attributes, $actor)`, `update($definition, array $attributes, int $expectedRevision, $actor)`, `archive($definition, bool $archived, int $expectedRevision, $actor)`, `delete($definition, int $expectedRevision, $actor, bool $deleteValues = false)`, `grant(string $definitionId, int $sourceRevision, $actor)`, `revoke(string $grantId, int $expectedRevision, $actor)`, and `import(array $request, $actor)`. Definition and assignment input is allowlisted, and owner type, section, reference target, locale, default, and rules are validated against registered capabilities. `delete` requires explicit cascading when live values exist. Import uses an exact granted catalog snapshot with expected revisions and an idempotency key. A namespace and key held by another active definition, on create or rename, is a `ValidationException` on `key`; a malformed definition identifier is a `ModelNotFoundException`.
 
 ## Values and reads
 
@@ -71,11 +71,11 @@ $fields = app(MetafieldReader::class)->forOwner($product, $actor, 'en');
 
 This example creates the initial value. Subsequent `set` calls must supply `expectedRevision: $value->revision` from the last canonical read; existing localized values also retain their locale-specific input rules.
 
-`MetafieldValues` exposes `set(Model $owner, string $handle, mixed $value, $actor, ?string $locale = null, ?int $expectedRevision = null)`, `delete(Model $owner, MetafieldDefinition|string $definition, int $expectedRevision, $actor)`, and `sync(Model $owner, array $items, $actor)`. Each sync item has `definitionId` and exactly one of `value`, `translations`, or a true `clear`; an existing value requires `expected_revision` in that item. Omission never writes null; use an explicit nullable `value` or `clear`. Localized writes accept `translation_mode` as `TranslationSyncMode::Patch` or `Replace` only alongside `translations`; omitted locales are preserved by patch and explicit null locale values are rejected. A sync validates every item against its persisted definition and commits atomically.
+`MetafieldValues` exposes `set(Model $owner, string $handle, mixed $value, $actor, ?string $locale = null, ?int $expectedRevision = null)`, `delete(Model $owner, MetafieldDefinition|string $definition, int $expectedRevision, $actor)`, and `sync(Model $owner, array $items, $actor)`. Each sync item has `definitionId` and exactly one of `value`, `translations`, or a true `clear`; an existing value requires `expected_revision` in that item. Omission never writes null; use an explicit nullable `value` or `clear`. Localized writes accept `translation_mode` as `TranslationSyncMode::Patch` or `Replace` only alongside `translations`; omitted locales are preserved by patch and explicit null locale values are rejected. A sync validates every item against its persisted definition and commits atomically. Float values must be finite, JSON and array values given as JSON strings are bounded like their decoded form, and a reference identifier must be the exact string form of the target key.
 
 `MetafieldReader` exposes `definitions($actor)`, `forOwner(Model $owner, $actor, ?string $locale = null)`, and `forOwners(array $owners, $actor, ?string $locale = null)`. The first two return collections of native models or arrays containing `definition`, `assignment`, and nullable `value` models. The batch result contains `owners` as a nested JSON object keyed by morph type and exact owner key, plus a separate `order` list. Empty input returns an empty object map. Nonempty batches admit canonical owners under host scopes, apply SQL visibility, and reject unavailable or denied stored and default references. Batches have bounded owner, definition, value, reference, and locale limits.
 
-For stored scalar comparisons on active filterable definitions, use `whereNvlMetafield($handle, $value, $actor, $batchPolicy, $operator = '=')` on a registered owner query. Missing and default-only values do not match.
+For stored scalar comparisons on active filterable definitions, use `whereNvlMetafield($handle, $value, $actor, $batchPolicy, $operator = '=')` on a registered owner query. Missing and default-only values do not match. Text `=` and `!=` compare exactly, including case and trailing spaces, on every supported database; numeric types compare by value.
 
 ## Events and diagnostics
 
@@ -91,6 +91,6 @@ From the suite root, run the owning Pest suite with its package configuration:
 vendor/bin/pest --test-directory=packages/nvl/metafields/tests --configuration=packages/nvl/metafields/phpunit.xml.dist --bootstrap=vendor/autoload.php
 ```
 
-The suite's `tests/Historical` directory preserves retired HTTP, Action, DTO, and Tenancy bridge tests outside active discovery. Native service, ownership, localization, reference, and batch tests are active.
+Tests are not part of the distributed package. In the source repository, `tests/Historical` preserves retired HTTP, Action, DTO, and Tenancy bridge tests outside active discovery. Native service, ownership, localization, reference, and batch tests are active.
 
 Shared [service contracts, model extensions and composition](https://github.com/nvl-laravel-suite/laravel-suite/blob/main/docs/consumer-api.md) apply alongside the package-specific rules above.

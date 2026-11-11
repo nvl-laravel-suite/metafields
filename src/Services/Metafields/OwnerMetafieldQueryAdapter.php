@@ -104,6 +104,11 @@ final readonly class OwnerMetafieldQueryAdapter
                 }
                 $column = $values->getQuery()->getGrammar()->wrap((new Metafield)->qualifyColumn('value'));
                 $values->whereRaw(new NumericMetafieldComparison($column, $operator, $values->getModel()->getConnection()->getDriverName()), [$encoded]);
+            } elseif ($operator === '=') {
+                // Equality is exact on every driver; MySQL's default collation ignores case and trailing spaces.
+                MetafieldOwnerPredicate::equal($values, (new Metafield)->qualifyColumn('value'), (string) $encoded);
+            } elseif ($operator === '!=') {
+                $values->whereNot(static fn (Builder $exact) => MetafieldOwnerPredicate::equal($exact, (new Metafield)->qualifyColumn('value'), (string) $encoded));
             } else {
                 $values->where('value', $operator, $encoded);
             }

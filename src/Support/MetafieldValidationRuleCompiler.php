@@ -139,10 +139,10 @@ final class MetafieldValidationRuleCompiler
         mixed $value,
     ): bool {
         try {
-            return Validator::make(
-                ['value' => self::normalizeValue($type, $value)],
-                self::compile($type, $isRequired, $customRules),
-            )->passes();
+            $normalized = self::normalizeValue($type, $value);
+
+            return (! is_array($normalized) || MetafieldPayloadLimits::accepts($normalized))
+                && Validator::make(['value' => $normalized], self::compile($type, $isRequired, $customRules))->passes();
         } catch (InvalidArgumentException|JsonException) {
             return false;
         }
@@ -288,10 +288,21 @@ final class MetafieldValidationRuleCompiler
         return match ($type) {
             MetafieldTypeEnum::Json => self::normalizeJsonValue($value),
             MetafieldTypeEnum::ArrayValue => self::normalizeArrayValue($value),
+            MetafieldTypeEnum::Float => self::normalizeFloatValue($value),
             MetafieldTypeEnum::Reference => self::normalizeReferenceValue($value),
             MetafieldTypeEnum::ReferenceList => self::normalizeArrayValue($value),
             default => $value,
         };
+    }
+
+    /** Reject numeric input that no stored float can represent or cast back. */
+    private static function normalizeFloatValue(mixed $value): mixed
+    {
+        if (is_numeric($value) && ! is_finite((float) $value)) {
+            throw new InvalidArgumentException('Float metafields require a finite number.');
+        }
+
+        return $value;
     }
 
     private static function normalizeReferenceValue(mixed $value): ?string

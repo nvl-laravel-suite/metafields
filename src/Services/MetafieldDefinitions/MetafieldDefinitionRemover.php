@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services\MetafieldDefinitions;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\ValidationException;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
@@ -27,25 +28,11 @@ final class MetafieldDefinitionRemover
         }
 
         if ($deleteValues) {
-            /** @var list<string> $metafieldIds */
-            $metafieldIds = Metafield::query()
-                ->where('definition_id', $definition->id)
-                ->pluck('id')
-                ->all();
-
-            if ($metafieldIds !== []) {
-                MetafieldTranslation::query()
-                    ->whereIn('metafield_id', $metafieldIds)
-                    ->get()
-                    ->each
-                    ->delete();
-
-                Metafield::query()
-                    ->whereIn('id', $metafieldIds)
-                    ->get()
-                    ->each
-                    ->delete();
-            }
+            // A hundred values at a time, so no statement binds an unbounded identifier list.
+            Metafield::query()->where('definition_id', $definition->id)->chunkById(100, static function (Collection $values): void {
+                MetafieldTranslation::query()->whereIn('metafield_id', $values->modelKeys())->get()->each->delete();
+                $values->each->delete();
+            });
         }
 
         $definition->assignments()->get()->each->delete();

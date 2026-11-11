@@ -5,6 +5,22 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Resolve a reference list in one admitted query and verify loaded value and definition locale rows in one admitted query per read, instead of one ownership check per reference and locale row; default accessors verify the loaded graph once per call.
+- Normalize registered owners and read host ownership declarations once per registry state, recomputing when configuration, code registrations or shared owner identities change.
+- Apply the JSON depth, item and byte limits to structured values and defaults supplied as JSON strings, which previously bypassed the depth and item bounds.
+- Reject infinite, not-a-number and overflowing float values and defaults; they were stored and then failed to read.
+- Reject reference identifiers an integer target key cannot hold (non-numeric, signed, zero-padded or out-of-range) as validation failures instead of sending them to the database, where PostgreSQL raised and MySQL matched a different record.
+- Report a namespace and key already held by another active definition as a validation failure on create and rename instead of a raw unique-constraint exception; a concurrent race is still decided by the unique index.
+- Report a malformed definition identifier as not found on update, archive and delete instead of a PostgreSQL type error.
+- Compare stored text exactly in `whereNvlMetafield` `=` and `!=`; MySQL and MariaDB previously ignored case and trailing spaces.
+- Delete a definition's values in batches of 100 when cascading, instead of binding every value identifier in one statement.
+
+### Removed
+
+- Remove the unreferenced internal `MetafieldValueSerializer` and `OwnerMetafieldBooleanFilter` helpers; use `whereNvlMetafield` for stored boolean comparisons.
+
 ## [7.0.1] - 2026-11-09
 
 ### Changed

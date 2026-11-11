@@ -216,38 +216,22 @@ class MetafieldDefinition extends Model implements Ownable, TranslatableModel
     public function hasDefaultValue(?string $locale = null): bool
     {
         $this->assertLoadedTranslationOwnership();
-        if ($this->is_translatable) {
-            return $this->translated('default_value', $locale) !== null;
-        }
 
-        return match ($this->type) {
-            MetafieldTypeEnum::Reference => is_string($this->default_referenced_id)
-                && $this->default_referenced_id !== '',
-            default => $this->default_value !== null,
-        };
+        return $this->storedDefault($locale)['present'];
     }
 
     public function getDefaultValue(?string $locale = null): mixed
     {
         $this->assertLoadedTranslationOwnership();
-        if (! $this->hasDefaultValue($locale)) {
-            return null;
-        }
 
-        if ($this->type === MetafieldTypeEnum::Reference) {
-            return $this->resolveDefaultReference();
-        }
-
-        $translatedDefault = $this->is_translatable
-            ? $this->translated('default_value', $locale)
-            : null;
-
-        return $this->type->cast($this->is_translatable ? $translatedDefault : $this->default_value);
+        return $this->castDefault($this->storedDefault($locale));
     }
 
     public function getSerializableDefaultValue(?string $locale = null): mixed
     {
-        if (! $this->hasDefaultValue($locale)) {
+        $this->assertLoadedTranslationOwnership();
+        $default = $this->storedDefault($locale);
+        if (! $default['present']) {
             return null;
         }
 
@@ -255,13 +239,50 @@ class MetafieldDefinition extends Model implements Ownable, TranslatableModel
             return $this->default_referenced_id;
         }
 
-        $defaultValue = $this->getDefaultValue($locale);
+        $defaultValue = $this->castDefault($default);
 
         if ($defaultValue instanceof Carbon) {
             return $defaultValue->format('Y-m-d H:i:s');
         }
 
         return $defaultValue;
+    }
+
+    /**
+     * Read the stored default once, after the calling operation verified the loaded graph.
+     *
+     * @return array{present: bool, value: mixed}
+     */
+    private function storedDefault(?string $locale): array
+    {
+        if ($this->is_translatable) {
+            $value = $this->translated('default_value', $locale);
+
+            return ['present' => $value !== null, 'value' => $value];
+        }
+
+        return [
+            'present' => $this->type === MetafieldTypeEnum::Reference
+                ? is_string($this->default_referenced_id) && $this->default_referenced_id !== ''
+                : $this->default_value !== null,
+            'value' => $this->default_value,
+        ];
+    }
+
+    /**
+     * Cast a stored default to its typed value.
+     *
+     * @param  array{present: bool, value: mixed}  $default
+     */
+    private function castDefault(array $default): mixed
+    {
+        if (! $default['present']) {
+            return null;
+        }
+
+        return $this->type === MetafieldTypeEnum::Reference
+            ? $this->resolveDefaultReference()
+            : $this->type->cast($default['value']);
     }
 
     /**
@@ -385,15 +406,14 @@ class MetafieldDefinition extends Model implements Ownable, TranslatableModel
     private function assertLoadedTranslationOwnership(): void
     {
         Container::getInstance()->make(OwnershipBoundary::class)->assertRecord($this, 'metafields.definitions');
-        if (! $this->relationLoaded('translations')) {
+        if (! $this->relationLoaded('translations') || ! MetafieldOwnership::declared()) {
             return;
         }
-        if (MetafieldOwnership::declared()) {
-            foreach ($this->translations as $translation) {
-                Container::getInstance()->make(OwnershipBoundary::class)->assertRecord($translation, 'metafields.definition-translations');
-                if ($translation->getAttribute('metafield_definition_id') !== $this->id) {
-                    throw new OwnershipViolation('Loaded definition locales require their canonical parent.');
-                }
+        Container::getInstance()->make(MetafieldGraphOwnership::class)
+            ->assertLoadedTranslations($this->translations, 'metafields.definition-translations', 'metafield_definition_id');
+        foreach ($this->translations as $translation) {
+            if ($translation->getAttribute('metafield_definition_id') !== $this->id) {
+                throw new OwnershipViolation('Loaded definition locales require their canonical parent.');
             }
         }
     }

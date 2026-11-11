@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Services;
 
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Nvl\Metafields\Contracts\MetafieldAuthorization;
 use Nvl\Metafields\Enums\MetafieldAbility;
@@ -48,11 +50,34 @@ final readonly class MetafieldDefinitions
         $attributes = $this->input->validate($attributes, true);
 
         return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($attributes): MetafieldDefinition {
+            $this->assertHandleAvailable($attributes['namespace'], $attributes['key']);
             $definition = $this->writer->create($attributes);
             $this->assignments->sync($definition, $attributes['assignment'] ?? throw new \LogicException('Creation requires a validated assignment.'));
 
             return $definition->refresh()->load(['assignments', 'translations']);
         });
+    }
+
+    /** Report a handle another active definition holds; the unique index still decides a concurrent race. */
+    private function assertHandleAvailable(string $namespace, string $key, ?string $exceptId = null): void
+    {
+        $taken = MetafieldModelRegistry::query()->active()->where('active_handle', MetafieldDefinition::generateHandle($namespace, $key));
+        if ($exceptId !== null) {
+            $taken->whereKeyNot($exceptId);
+        }
+        if ($taken->exists()) {
+            throw ValidationException::withMessages(['key' => [trans('nvl-metafields::metafields/validation.custom.definition.handle_taken')]]);
+        }
+    }
+
+    /** Lock the canonical definition, treating an identifier its key cannot hold as not found. */
+    private function locked(string $id): MetafieldDefinition
+    {
+        if (! Str::isUuid($id)) {
+            throw (new ModelNotFoundException)->setModel(MetafieldModelRegistry::modelClass(), [$id]);
+        }
+
+        return MetafieldModelRegistry::query()->lockForUpdate()->findOrFail($id);
     }
 
     /** @param array<string, mixed> $attributes */
@@ -62,7 +87,7 @@ final readonly class MetafieldDefinitions
         $id = $definition instanceof MetafieldDefinition ? $definition->id : $definition;
 
         return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($id, $attributes, $expectedRevision, $actor): MetafieldDefinition {
-            $definition = MetafieldModelRegistry::query()->lockForUpdate()->findOrFail($id);
+            $definition = $this->locked($id);
             $this->authorization->authorizeDefinition($actor, MetafieldAbility::UpdateDefinition, $definition);
             if ($definition->revision !== $expectedRevision) {
                 throw StaleMetafieldVersionException::forResource('metafield definition', $definition->id);
@@ -77,6 +102,9 @@ final readonly class MetafieldDefinitions
                 $attributes['referencedModelType'] = $definition->referenced_model_type;
             }
             $attributes = $this->input->validate($attributes, false);
+            if ($definition->archived_at === null) {
+                $this->assertHandleAvailable($attributes['namespace'], $attributes['key'], $definition->id);
+            }
             $this->guard->ensureUpdateIsSafe($definition, $attributes);
             $definition = $this->writer->update($definition, $attributes);
             if (array_key_exists('assignment', $attributes)) {
@@ -94,7 +122,7 @@ final readonly class MetafieldDefinitions
         $id = $definition instanceof MetafieldDefinition ? $definition->id : $definition;
 
         return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($id, $archived, $expectedRevision, $actor): MetafieldDefinition {
-            $definition = MetafieldModelRegistry::query()->lockForUpdate()->findOrFail($id);
+            $definition = $this->locked($id);
             $this->authorization->authorizeDefinition($actor, MetafieldAbility::UpdateDefinition, $definition);
             if ($definition->revision !== $expectedRevision) {
                 throw StaleMetafieldVersionException::forResource('metafield definition', $definition->id);
@@ -116,7 +144,7 @@ final readonly class MetafieldDefinitions
         $id = $definition instanceof MetafieldDefinition ? $definition->id : $definition;
 
         return MetafieldModelRegistry::newInstance()->getConnection()->transaction(function () use ($id, $expectedRevision, $deleteValues, $actor): bool {
-            $definition = MetafieldModelRegistry::query()->lockForUpdate()->findOrFail($id);
+            $definition = $this->locked($id);
             $this->authorization->authorizeDefinition($actor, MetafieldAbility::DeleteDefinition, $definition);
             if ($definition->revision !== $expectedRevision) {
                 throw StaleMetafieldVersionException::forResource('metafield definition', $definition->id);
