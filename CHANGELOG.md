@@ -5,6 +5,8 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+## [7.0.2] - 2026-11-11
+
 ### Fixed
 
 - Resolve a reference list in one admitted query and verify loaded value and definition locale rows in one admitted query per read, instead of one ownership check per reference and locale row; default accessors verify the loaded graph once per call.
@@ -20,6 +22,12 @@ All notable changes to `nvl/metafields` are documented here.
 ### Removed
 
 - Remove the unreferenced internal `MetafieldValueSerializer` and `OwnerMetafieldBooleanFilter` helpers; use `whereNvlMetafield` for stored boolean comparisons.
+
+<!-- NVL GENERATED CHANGES START -->
+### Changed
+
+- harden input, reference reads and stored-value filters
+<!-- NVL GENERATED CHANGES END -->
 
 ## [7.0.1] - 2026-11-09
 
