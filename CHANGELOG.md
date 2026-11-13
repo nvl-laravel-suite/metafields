@@ -5,9 +5,17 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+## [7.0.3] - 2026-11-13
+
 ### Fixed
 
 - Harden stored-value query predicates across SQLite and PostgreSQL, tighten JSON property schema and definition mutation guards, and isolate Doctor schema probes safely.
+
+<!-- NVL GENERATED CHANGES START -->
+### Changed
+
+- harden package runtime safety, PostgreSQL portability and test performance
+<!-- NVL GENERATED CHANGES END -->
 
 ## [7.0.2] - 2026-11-11
 
