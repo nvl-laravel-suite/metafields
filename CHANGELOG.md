@@ -5,6 +5,10 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+### Fixed
+
+- Harden stored-value query predicates across SQLite and PostgreSQL, tighten JSON property schema and definition mutation guards, and isolate Doctor schema probes safely.
+
 ## [7.0.2] - 2026-11-11
 
 ### Fixed
@@ -13,10 +17,10 @@ All notable changes to `nvl/metafields` are documented here.
 - Normalize registered owners and read host ownership declarations once per registry state, recomputing when configuration, code registrations or shared owner identities change.
 - Apply the JSON depth, item and byte limits to structured values and defaults supplied as JSON strings, which previously bypassed the depth and item bounds.
 - Reject infinite, not-a-number and overflowing float values and defaults; they were stored and then failed to read.
-- Reject reference identifiers an integer target key cannot hold (non-numeric, signed, zero-padded or out-of-range) as validation failures instead of sending them to the database, where PostgreSQL raised and MySQL matched a different record.
+- Reject reference identifiers an integer target key cannot hold (non-numeric, signed, zero-padded or out-of-range) as validation failures instead of sending them to the database.
 - Report a namespace and key already held by another active definition as a validation failure on create and rename instead of a raw unique-constraint exception; a concurrent race is still decided by the unique index.
 - Report a malformed definition identifier as not found on update, archive and delete instead of a PostgreSQL type error.
-- Compare stored text exactly in `whereNvlMetafield` `=` and `!=`; MySQL and MariaDB previously ignored case and trailing spaces.
+- Compare stored text exactly in `whereNvlMetafield` `=` and `!=` including case and trailing spaces.
 - Delete a definition's values in batches of 100 when cascading, instead of binding every value identifier in one statement.
 
 ### Removed
@@ -49,7 +53,6 @@ All notable changes to `nvl/metafields` are documented here.
 
 - Add an explicit, default-denied purge-before-owner-deletion lifecycle with bounded hydration, exact transaction/source checks, retained owner/value policies, localized history cleanup and outer-commit events.
 - Add definition-leading value lookup support through a non-destructive forward migration and bounded, explicitly authorized owner-reference diagnostics.
-- Compare native MariaDB UUID owner keys as exact text, including MySQL-labelled MariaDB sources, while retaining case-sensitive scalar, list and column comparisons.
 
 ### Changed
 

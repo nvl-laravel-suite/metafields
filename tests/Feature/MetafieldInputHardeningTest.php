@@ -136,3 +136,21 @@ it('cascades a definition deletion over its values in bounded statements', funct
         ->and(Metafield::withTrashed()->count())->toBe(230)
         ->and(MetafieldTranslation::query()->count())->toBe(0);
 });
+
+it('rejects duplicate JSON property schema keys and validates JSON string payloads', function (): void {
+    expect(fn () => hardeningDefinition('spec', 'json', [
+        'jsonPropertySchema' => [
+            ['key' => 'weight', 'type' => 'float', 'isRequired' => true],
+            ['key' => 'weight', 'type' => 'string', 'isRequired' => false],
+        ],
+    ]))->toThrow(ValidationException::class);
+
+    $definition = hardeningDefinition('spec', 'json', [
+        'jsonPropertySchema' => [
+            ['key' => 'weight', 'type' => 'float', 'isRequired' => true],
+        ],
+        'defaultValue' => '{"weight": 12.5}',
+    ]);
+
+    expect($definition->getSerializableDefaultValue())->toBe(['weight' => 12.5]);
+});

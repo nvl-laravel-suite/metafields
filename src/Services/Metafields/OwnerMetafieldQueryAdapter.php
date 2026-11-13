@@ -94,18 +94,26 @@ final readonly class OwnerMetafieldQueryAdapter
             }
             $values->whereNull('value', 'and', $operator === '!=');
         } else {
+            if (is_float($value) && ! is_finite($value)) {
+                throw new MetafieldBatchReadException('Numeric Metafield comparisons require a finite numeric value.');
+            }
             $encoded = $definition->type->storeCast($value);
             if (! is_string($encoded) && ! is_int($encoded) && ! is_float($encoded)) {
                 throw new MetafieldBatchReadException('Metafield comparison values must have scalar storage encoding.');
             }
             if (in_array($definition->type, [MetafieldTypeEnum::Integer, MetafieldTypeEnum::Decimal, MetafieldTypeEnum::Float], true)) {
-                if (! is_numeric($encoded)) {
+                $validNumeric = $definition->type === MetafieldTypeEnum::Float
+                    ? is_numeric($encoded) && is_finite((float) $encoded)
+                    : is_numeric($encoded)
+                        && strlen((string) $encoded) <= 1000
+                        && preg_match('/^[+-]?(?:\d+\.?\d*|\.\d+)\z/', (string) $encoded) === 1;
+                if (! $validNumeric) {
                     throw new MetafieldBatchReadException('Numeric Metafield comparisons require a numeric value.');
                 }
                 $column = $values->getQuery()->getGrammar()->wrap((new Metafield)->qualifyColumn('value'));
                 $values->whereRaw(new NumericMetafieldComparison($column, $operator, $values->getModel()->getConnection()->getDriverName()), [$encoded]);
             } elseif ($operator === '=') {
-                // Equality is exact on every driver; MySQL's default collation ignores case and trailing spaces.
+                // Compare case and trailing spaces independently of the database's default collation.
                 MetafieldOwnerPredicate::equal($values, (new Metafield)->qualifyColumn('value'), (string) $encoded);
             } elseif ($operator === '!=') {
                 $values->whereNot(static fn (Builder $exact) => MetafieldOwnerPredicate::equal($exact, (new Metafield)->qualifyColumn('value'), (string) $encoded));

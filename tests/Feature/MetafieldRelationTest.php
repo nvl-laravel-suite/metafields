@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
-use Illuminate\Database\MySqlConnection;
 use Illuminate\Support\Facades\DB;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Support\MetafieldOwnerPredicate;
@@ -19,40 +18,26 @@ it('compares native UUID owner keys as exact text on the actual source', functio
     foreach ([$identity, ...$forged] as $key) {
         $connection->table('test_batch_string_metafield_owners')->insert(['id' => $key, 'name' => 'Text key marker']);
     }
-    $sources = [$connection];
-    if ($connection instanceof MySqlConnection && $connection->isMaria()) {
-        config()->set('database.connections.uuid_owner_mysql_alias', [...$connection->getConfig(), 'driver' => 'mysql']);
-        $sources[] = DB::connection('uuid_owner_mysql_alias');
-        $sources[1]->setPdo($connection->getPdo());
-        expect($sources[1]->getDriverName())->toBe('mysql');
+    $owner = new class extends Model
+    {
+        protected $table = 'test_uuid_metafield_owners';
+
+        protected $keyType = 'string';
+
+        public $incrementing = false;
+    };
+    $owner->setConnection($connection->getName());
+    foreach ([$identity, ...$forged] as $key) {
+        $query = $owner->newQuery();
+        MetafieldOwnerPredicate::equal($query, 'id', $key);
+        expect($query->count())->toBe($key === $identity ? 1 : 0);
+        $query = $owner->newQuery();
+        MetafieldOwnerPredicate::identifiers($query, 'id', [$key]);
+        expect($query->count())->toBe($key === $identity ? 1 : 0);
     }
-
-    try {
-        foreach ($sources as $source) {
-            $owner = new class extends Model
-            {
-                protected $table = 'test_uuid_metafield_owners';
-
-                protected $keyType = 'string';
-
-                public $incrementing = false;
-            };
-            $owner->setConnection($source->getName());
-            foreach ([$identity, ...$forged] as $key) {
-                $query = $owner->newQuery();
-                MetafieldOwnerPredicate::equal($query, 'id', $key);
-                expect($query->count())->toBe($key === $identity ? 1 : 0);
-                $query = $owner->newQuery();
-                MetafieldOwnerPredicate::identifiers($query, 'id', [$key]);
-                expect($query->count())->toBe($key === $identity ? 1 : 0);
-            }
-            $query = $owner->newQuery()->crossJoin('test_batch_string_metafield_owners as native_key_markers');
-            MetafieldOwnerPredicate::columns($query, 'test_uuid_metafield_owners.id', 'native_key_markers.id');
-            expect($query->count())->toBe(1);
-        }
-    } finally {
-        DB::purge('uuid_owner_mysql_alias');
-    }
+    $query = $owner->newQuery()->crossJoin('test_batch_string_metafield_owners as native_key_markers');
+    MetafieldOwnerPredicate::columns($query, 'test_uuid_metafield_owners.id', 'native_key_markers.id');
+    expect($query->count())->toBe(1);
 });
 
 it('supports integer owner keys across relation reads writes and existence queries', function (): void {

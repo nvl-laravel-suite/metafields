@@ -350,27 +350,6 @@ it('detects forbidden package reads regardless of SQL identifier quoting', funct
         ->and(batchMetafieldStorageQueries($queries)->first()['query'])->toBe($packageSql);
 })->with(['"', '`', '']);
 
-it('generates an exact string owner key while preserving case-insensitive table defaults', function (string $driver): void {
-    config(['database.connections.fixture_ddl' => [
-        'driver' => $driver,
-        'host' => 'localhost',
-        'database' => 'unused',
-        'username' => 'unused',
-        'password' => 'unused',
-        'charset' => 'utf8mb4',
-        'collation' => 'utf8mb4_unicode_ci',
-    ]]);
-    $connection = DB::connection('fixture_ddl');
-    $connection->useDefaultSchemaGrammar();
-    $blueprint = new Blueprint($connection, 'test_batch_string_metafield_owners');
-    $blueprint->create();
-    $this->defineBatchStringOwnerSchema($blueprint, $driver);
-    $sql = implode("\n", $blueprint->toSql());
-
-    expect($sql)->toContain('`id` varchar(255) collate \'utf8mb4_bin\'')
-        ->and($sql)->toContain('default character set utf8mb4 collate \'utf8mb4_unicode_ci\'');
-})->with(['mysql', 'mariadb']);
-
 it('fails unsupported imperative policies with an actionable package exception', function (): void {
     $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
     expect(fn () => app(ListAuthorizedOwnersMetafieldsContract::class)->execute([$owner]))
@@ -623,6 +602,4 @@ it('generates exact portable owner text correlations for each supported SQL driv
     expect($query->toSql())->toContain($expected)->and($query->getBindings())->toBe(['CaseSensitive']);
 })->with([
     ['pgsql', 'CAST("package"."owner_id" AS TEXT) COLLATE "C" = CAST("host"."id" AS TEXT) COLLATE "C"'],
-    ['mysql', 'CAST(`package`.`owner_id` AS BINARY) = CAST(`host`.`id` AS BINARY)'],
-    ['mariadb', 'CAST(`package`.`owner_id` AS BINARY) = CAST(`host`.`id` AS BINARY)'],
 ]);

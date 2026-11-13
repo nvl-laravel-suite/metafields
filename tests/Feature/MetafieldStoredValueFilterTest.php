@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Gate;
+use Nvl\Metafields\Exceptions\MetafieldBatchReadException;
 use Nvl\Metafields\Services\MetafieldDefinitions;
 use Nvl\Metafields\Services\MetafieldValues;
 use Nvl\Metafields\Tests\Fixtures\BatchMetafieldPolicy;
@@ -71,4 +72,8 @@ it('compares stored numbers and booleans by value', function (): void {
         ->and(filteredOwners('product.weight', 10, '>'))->toBe([$exponent])
         ->and(filteredOwners('product.enabled', true))->toBe([$enabled])
         ->and(filteredOwners('product.enabled', false))->toBe([$disabled]);
+
+    expect(fn () => filteredOwners('product.weight', NAN))->toThrow(MetafieldBatchReadException::class)
+        ->and(fn () => filteredOwners('product.weight', INF))->toThrow(MetafieldBatchReadException::class)
+        ->and(fn () => filteredOwners('product.weight', '1e500'))->toThrow(MetafieldBatchReadException::class);
 });

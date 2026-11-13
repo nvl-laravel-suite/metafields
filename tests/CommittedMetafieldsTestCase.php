@@ -79,9 +79,9 @@ abstract class CommittedMetafieldsTestCase extends TestCase
             throw new RuntimeException('Committed Metafields tests require their dedicated package database.');
         }
         $driver = getenv('NVL_C1_TEST_DRIVER');
-        if (in_array($driver, ['pgsql', 'mysql', 'mariadb'], true)) {
+        if ($driver === 'pgsql') {
             $this->assertSame($driver, $connection->getDriverName());
-            $this->assertSame($driver === 'pgsql' ? 'pgsql' : 'mysql', $connection->getPdo()->getAttribute(PDO::ATTR_DRIVER_NAME));
+            $this->assertSame('pgsql', $connection->getPdo()->getAttribute(PDO::ATTR_DRIVER_NAME));
         }
         $migration = $this->artisan('migrate:fresh', ['--force' => true]);
         if ($migration instanceof PendingCommand) {

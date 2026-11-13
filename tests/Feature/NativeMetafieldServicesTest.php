@@ -6,7 +6,6 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
-use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Enums\MetafieldAbility;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
 use Nvl\Metafields\Models\Metafield;
@@ -603,7 +602,7 @@ it('authorizes locked canonical owners and rolls back earlier writes when a late
         ->and($secondValue->fresh()->getValue())->toBe('Second value');
 });
 
-it('round trips accepted structured values and defaults larger than MySQL TEXT capacity', function (bool $localized): void {
+it('round trips accepted structured values and defaults larger than 64 KiB', function (bool $localized): void {
     $payload = ['body' => str_repeat('x', 70_000)];
     $definition = app(MetafieldDefinitions::class)->create([
         'namespace' => 'product', 'key' => 'large', 'type' => 'json', 'isTranslatable' => $localized,
@@ -617,13 +616,4 @@ it('round trips accepted structured values and defaults larger than MySQL TEXT c
     expect($value->fresh()->getValue($localized ? 'en' : null))->toBe($payload)
         ->and($definition->fresh()->getDefaultValue($localized ? 'en' : null))->toBe($payload);
 
-    $schema = $value->getConnection()->getSchemaBuilder();
-    if (in_array($value->getConnection()->getDriverName(), ['mysql', 'mariadb'], true)) {
-        $tables = MetafieldsTables::class;
-        expect($schema->getColumnType($tables::get($localized ? $tables::I18n : $tables::Metafields), 'value'))->toBe('longtext')
-            ->and($schema->getColumnType($tables::get($localized ? $tables::DefinitionsI18n : $tables::Definitions), 'default_value'))->toBe('longtext');
-        $migration = require dirname(__DIR__, 2).'/database/migrations/2026_11_01_081233_nvl_metafields_expand_value_storage.php';
-        expect(fn () => $migration->down())->toThrow(LogicException::class, 'exceed TEXT capacity');
-        expect($value->fresh()->getValue($localized ? 'en' : null))->toBe($payload);
-    }
 })->with(['base' => false, 'localized' => true]);

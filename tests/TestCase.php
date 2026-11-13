@@ -67,9 +67,11 @@ abstract class TestCase extends Orchestra
             $table->uuid('id')->primary();
         });
 
-        $driver = Schema::getConnection()->getDriverName();
-        Schema::create('test_batch_string_metafield_owners', function (Blueprint $table) use ($driver): void {
-            $this->defineBatchStringOwnerSchema($table, $driver);
+        Schema::create('test_batch_string_metafield_owners', static function (Blueprint $table): void {
+            $table->string('id')->primary();
+            $table->string('name');
+            $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create((new BatchSoftDeletingMetafieldOwner)->getTable(), static function (Blueprint $table): void {
@@ -78,17 +80,5 @@ abstract class TestCase extends Orchestra
             $table->timestamps();
             $table->softDeletes(BatchSoftDeletingMetafieldOwner::DELETED_AT);
         });
-    }
-
-    /** Define the native string owner fixture before the test transaction begins. */
-    protected function defineBatchStringOwnerSchema(Blueprint $table, string $driver): void
-    {
-        $id = $table->string('id')->primary();
-        if (in_array($driver, ['mysql', 'mariadb'], true)) {
-            $id->collation('utf8mb4_bin');
-        }
-        $table->string('name');
-        $table->timestamps();
-        $table->softDeletes();
     }
 }

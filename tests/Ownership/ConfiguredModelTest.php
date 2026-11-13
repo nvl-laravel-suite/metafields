@@ -15,11 +15,12 @@ use Nvl\Metafields\Tests\Fixtures\OwnershipMetafieldDefinition;
 use Nvl\Metafields\Tests\Fixtures\OwnershipMetafieldScenario;
 use Nvl\Metafields\Tests\OwnershipTestCase;
 use Nvl\Ownership\Services\OwnershipRunner;
+use Nvl\Ownership\Tests\Fixtures\OptsIntoAdoptedSchemaReuse;
 use Nvl\Support\OwnerRegistry;
 use Nvl\Support\Ownership\Exceptions\OwnershipConfigurationInvalid;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
-uses(OwnershipTestCase::class);
+uses(OwnershipTestCase::class, OptsIntoAdoptedSchemaReuse::class);
 it('uses configured factories and relationships while rejecting stale bases and absent enforcement', function (): void {
     app(OwnershipRunner::class)->run(OwnershipCompany::findOrFail(7), OwnershipActor::firstOrFail(), function (): void {
         expect(MetafieldDefinition::factory()->make()::class)->toBe(OwnershipMetafieldDefinition::class);

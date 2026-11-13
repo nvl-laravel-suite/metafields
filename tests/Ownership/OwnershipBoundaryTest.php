@@ -28,12 +28,13 @@ use Nvl\Metafields\Tests\Fixtures\OwnershipMetafieldScenario;
 use Nvl\Metafields\Tests\OwnershipTestCase;
 use Nvl\Ownership\Services\OwnershipRunner;
 use Nvl\Ownership\Services\OwnershipWriter;
+use Nvl\Ownership\Tests\Fixtures\OptsIntoAdoptedSchemaReuse;
 use Nvl\Ownership\ValueObjects\OwnershipAssignment;
 use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Ownership\Contracts\OwnershipQueuedJob;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
-uses(OwnershipTestCase::class);
+uses(OwnershipTestCase::class, OptsIntoAdoptedSchemaReuse::class);
 
 it('purges a native owner value graph inside its source transaction without touching another owner', function (): void {
     Gate::define('metafields.purge', static fn (OwnershipActor $actor): bool => $actor->exists);

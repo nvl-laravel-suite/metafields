@@ -53,7 +53,7 @@ final readonly class MetafieldDefinitionInput
             'validationRules.*' => ['string', 'max:255'],
             'jsonPropertySchema' => ['sometimes', 'nullable', 'array', 'list', 'max:'.MetafieldConfiguration::positiveInteger('nvl-metafields.limits.maximum_schema_properties', 100)],
             'jsonPropertySchema.*' => ['array:key,type,isRequired'],
-            'jsonPropertySchema.*.key' => ['required', 'string', 'max:255', 'regex:/^[a-z0-9_-]+$/'],
+            'jsonPropertySchema.*.key' => ['required', 'distinct', 'string', 'max:255', 'regex:/^[a-z0-9_-]+$/'],
             'jsonPropertySchema.*.type' => ['required', Rule::enum(MetafieldJsonPropertyTypeEnum::class)],
             'jsonPropertySchema.*.isRequired' => ['sometimes', 'boolean'],
             'defaultValue' => ['sometimes', 'nullable'],
@@ -131,7 +131,7 @@ final readonly class MetafieldDefinitionInput
             if (($attributes['isTranslatable'] ?? false) || ! MetafieldPayloadLimits::accepts($default)) {
                 throw ValidationException::withMessages(['defaultValue' => ['Invalid nonlocalized default.']]);
             }
-            $valid = $type === MetafieldTypeEnum::Json && is_array($schema)
+            $valid = $type === MetafieldTypeEnum::Json && is_array($schema) && $schema !== []
                 ? MetafieldJsonPropertySchemaValidator::passes($schema, $default, false)
                 : MetafieldValidationRuleCompiler::passes($type, false, $rules, $default);
             if (! $valid) {
@@ -156,7 +156,7 @@ final readonly class MetafieldDefinitionInput
             if (! ($attributes['isTranslatable'] ?? false) || ! MetafieldPayloadLimits::accepts($default)) {
                 throw ValidationException::withMessages(["translations.{$locale}.defaultValue" => ['Localized defaults require a localized definition and an accepted value.']]);
             }
-            $valid = $type === MetafieldTypeEnum::Json && is_array($schema)
+            $valid = $type === MetafieldTypeEnum::Json && is_array($schema) && $schema !== []
                 ? MetafieldJsonPropertySchemaValidator::passes($schema, $default, false)
                 : MetafieldValidationRuleCompiler::passes($type, false, $rules, $default);
             if (! $valid) {

@@ -10,9 +10,10 @@ use Nvl\Metafields\Tests\Fixtures\OwnershipActor;
 use Nvl\Metafields\Tests\Fixtures\OwnershipCompany;
 use Nvl\Metafields\Tests\OwnershipCatalogTestCase;
 use Nvl\Ownership\Services\OwnershipRunner;
+use Nvl\Ownership\Tests\Fixtures\OptsIntoAdoptedSchemaReuse;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
-uses(OwnershipCatalogTestCase::class);
+uses(OwnershipCatalogTestCase::class, OptsIntoAdoptedSchemaReuse::class);
 it('copies explicitly granted central definitions and fences stale or revoked imports', function (bool $stringRevisions): void {
     Event::fake([MetafieldDefinitionCatalogGrantAudited::class]);
     app()->bind(MetafieldCatalogAccess::class, fn () => new class implements MetafieldCatalogAccess

@@ -31,6 +31,6 @@ return new class extends Migration
         $schema->table($table, static fn (Blueprint $table) => $table->index(['definition_id', 'metafieldable_type'], $name));
     }
 
-    /** Retain non-unique support, which MySQL-family engines may adopt for the existing foreign key. */
+    /** Retain the non-unique lookup index during rollback. */
     public function down(): void {}
 };

@@ -6,7 +6,7 @@ Light requires PHP 8.4 and Laravel 13. Replace retired package Actions, transpor
 
 Upgrade the selected family together. Preserve stored identities, migration ownership, source connections, queue state and operation recovery journals. Review and apply the relevant storage/adoption procedure before accepting writes; installing new code alone does not migrate existing data.
 
-Apply `2026_11_01_183342_nvl_metafields_index_definition_owner_type.php` to the canonical Metafields connection. It adds non-unique definition-first lookup support without changing owner uniqueness or retained rows, honors configured table names, and skips already-covered indexes. The index remains on rollback because MySQL-family engines may use it to support the existing foreign key; removal needs a reviewed schema change.
+Apply `2026_11_01_183342_nvl_metafields_index_definition_owner_type.php` to the canonical Metafields connection. It adds non-unique definition-first lookup support without changing owner uniqueness or retained rows, honors configured table names, and skips already-covered indexes. The index remains on rollback. Remove it through a reviewed schema change.
 
 Before permanently deleting a registered owner, adopt the explicit `MetafieldValues::purgeBeforeOwnerDeletion($owner, $actor)` lifecycle. This requires a dedicated `metafields.purge` grant, `PurgeOwnerValues`, normal owner mutation and every retained definition's `DeleteOwnerValue` policy. Host implementations matching `MetafieldAbility` must decide the new capability deliberately. Start a transaction on the exact owner/value source, invoke the service while the owner still exists (soft-deleted owners are supported), and permanently delete the owner within that same transaction. If host deletion is refused or cancelled, throw so the transaction rolls back. Do not call this for ordinary soft deletion or commit cleanup before later deleting the owner. Aliases and independent transactions do not provide atomicity. Existing raw deletion hooks and mass SQL deletes bypass this contract; no automatic destructive hooks are installed.
 
@@ -68,7 +68,7 @@ Non-SoftDeletes owners retain their existing behavior. Caller OR predicates stay
 inside the mandatory guards, and UNION queries fail before definition lookup.
 Host filters require active assigned filterable definitions and an explicit SQL policy;
 localized/reference/structured comparisons reject unsupported adapters. SQLite
-execution and PostgreSQL/MySQL/MariaDB SQL generation are covered; native execution
+execution and PostgreSQL SQL generation are covered; native execution
 on supported versions remains a family release gate.
 
 ## Tenant ownership adoption
@@ -128,7 +128,7 @@ The command validates released columns and relational keys plus creating migrati
 
 Declare each published path and canonical identity explicitly in `nvl-core.migrations.published`; retimestamped history also needs an exact `legacy` mapping. Use `--migration-owner=vendor` after manually archiving declared copies outside loaded paths, or `--migration-owner=published` after manually replacing executable copies with current migration code and disabling vendor loading. The plan verifies ownership and preserves batches; checksums do not automatically claim files. Modified host copies remain host-owned. No migration files or stored morph types are rewritten.
 
-DDL transactions are driver dependent and per connection. Inspect dry-run warnings for MySQL/MariaDB or split storage; after a failure, inspect completed steps before resuming. Schema-qualified rename targets require an explicit host schema move first. Re-enable your selected migration owner, run `nvl:schema:preflight` with the same selected paths and connection, then migrate remaining package changes and rerun Doctor before resuming writes. See the suite upgrade guide for shared owner/locale inputs, Core option defaults and one-major deprecation rules.
+DDL transactions are per connection. Inspect dry-run warnings for split storage; after a failure, inspect completed steps before resuming. Schema-qualified rename targets require an explicit host schema move first. Re-enable your selected migration owner, run `nvl:schema:preflight` with the same selected paths and connection, then migrate remaining package changes and rerun Doctor before resuming writes. See the suite upgrade guide for shared owner/locale inputs, Core option defaults and one-major deprecation rules.
 
 ## Tagged consumer PHP boundary
 

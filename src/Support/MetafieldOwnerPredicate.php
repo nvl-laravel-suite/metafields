@@ -19,7 +19,7 @@ final class MetafieldOwnerPredicate
      */
     public static function equal(Builder $query, string $column, string $value): void
     {
-        $query->whereRaw(new TextColumnComparison(self::text($query, $column), self::parameter($query)), [$value]);
+        $query->whereRaw(new TextColumnComparison(self::text($query, $column), '?'), [$value]);
     }
 
     /**
@@ -51,17 +51,5 @@ final class MetafieldOwnerPredicate
     private static function text(Builder $query, string $column): string
     {
         return (new ExactOwnerTextColumn($column, $query->getModel()->getConnection()))->getValue($query->getQuery()->getGrammar());
-    }
-
-    /**
-     * @template T of Model
-     *
-     * @param  Builder<T>  $query
-     */
-    private static function parameter(Builder $query): string
-    {
-        return in_array($query->getModel()->getConnection()->getDriverName(), ['mysql', 'mariadb'], true)
-            ? 'CAST(? AS BINARY)'
-            : '?';
     }
 }

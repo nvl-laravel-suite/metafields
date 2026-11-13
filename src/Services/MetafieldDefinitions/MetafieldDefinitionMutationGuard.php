@@ -366,7 +366,7 @@ final class MetafieldDefinitionMutationGuard
         ?string $referencedModelType,
         mixed $value,
     ): bool {
-        if ($type === MetafieldTypeEnum::Json && $jsonPropertySchema !== null) {
+        if ($type === MetafieldTypeEnum::Json && is_array($jsonPropertySchema) && $jsonPropertySchema !== []) {
             try {
                 $value = $type->cast($value);
             } catch (InvalidArgumentException|JsonException) {

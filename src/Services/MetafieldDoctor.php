@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Nvl\Metafields\Services;
 
+use Closure;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Database\QueryException;
@@ -57,17 +59,24 @@ final readonly class MetafieldDoctor
             $checks[] = ['key' => 'registry.references', 'severity' => 'error', 'passed' => false, 'message' => $exception->getMessage()];
         }
         if ($valuesExist) {
-            $indexes = $schema->getIndexes(MetafieldsTables::get(MetafieldsTables::Metafields));
-            $covered = array_any($indexes, static fn (array $index): bool => array_slice($index['columns'], 0, 2) === ['definition_id', 'metafieldable_type']);
-            $checks[] = ['key' => 'schema.index.definition_owner', 'severity' => 'warning', 'passed' => $covered, 'message' => 'Definition-first value lookups require a definition_id/metafieldable_type leading index.'];
+            try {
+                $indexes = $this->probe(
+                    $connection,
+                    static fn (): array => $schema->getIndexes(MetafieldsTables::get(MetafieldsTables::Metafields)),
+                );
+                $covered = array_any($indexes, static fn (array $index): bool => array_slice($index['columns'], 0, 2) === ['definition_id', 'metafieldable_type']);
+                $checks[] = ['key' => 'schema.index.definition_owner', 'severity' => 'warning', 'passed' => $covered, 'message' => 'Definition-first value lookups require a definition_id/metafieldable_type leading index.'];
+            } catch (QueryException $exception) {
+                $checks[] = ['key' => 'schema.index.definition_owner', 'severity' => 'warning', 'passed' => false, 'message' => $exception->getMessage()];
+            }
         }
-        $checks[] = $this->ownerReferences($valuesExist);
+        $checks[] = $this->ownerReferences($connection, $valuesExist);
 
         return $checks;
     }
 
     /** @return array{key:string,severity:string,passed:bool,message:string} */
-    private function ownerReferences(bool $valuesExist): array
+    private function ownerReferences(ConnectionInterface $connection, bool $valuesExist): array
     {
         $check = ['key' => 'data.owner_references', 'severity' => 'warning', 'passed' => false, 'message' => 'Owner-reference sampling skipped; no references inspected. An explicit MetafieldDiagnosticAccess read grant for SystemActor::Background is required.'];
         if (! $this->diagnostics->allows(SystemActor::Background)) {
@@ -79,37 +88,54 @@ final readonly class MetafieldDoctor
             return $check;
         }
         try {
-            $prototype = new Metafield;
-            $sample = Metafield::withTrashed()->useWritePdo()->orderBy('id')->limit(101)->get(['id', 'metafieldable_type', 'metafieldable_id']);
-            $partial = $sample->count() > 100;
-            $sample = $sample->take(100);
-            $models = [];
-            foreach ($this->owners->all() as $owner) {
-                if ($owner['runtime_status'] === 'live') {
-                    $model = new ($owner['model']);
-                    $models[$model->getMorphClass()] = $model;
+            [$sampleCount, $partial, $unresolved] = $this->probe($connection, function (): array {
+                $prototype = new Metafield;
+                $sample = Metafield::withTrashed()->useWritePdo()->orderBy('id')->limit(101)->get(['id', 'metafieldable_type', 'metafieldable_id']);
+                $partial = $sample->count() > 100;
+                $sample = $sample->take(100);
+                $models = [];
+                foreach ($this->owners->all() as $owner) {
+                    if ($owner['runtime_status'] === 'live') {
+                        $model = new ($owner['model']);
+                        $models[$model->getMorphClass()] = $model;
+                    }
                 }
-            }
-            $unresolved = 0;
-            foreach ($sample->groupBy('metafieldable_type') as $type => $records) {
-                $identifiers = array_values($records->map(static fn (Metafield $value): string => $value->metafieldable_id)->unique()->all());
-                $model = $models[$type] ?? null;
-                if ($model === null || $model->getConnection() !== $prototype->getConnection()) {
-                    $unresolved += count($identifiers);
+                $unresolved = 0;
+                foreach ($sample->groupBy('metafieldable_type') as $type => $records) {
+                    $identifiers = array_values($records->map(static fn (Metafield $value): string => $value->metafieldable_id)->unique()->all());
+                    $model = $models[$type] ?? null;
+                    if ($model === null || $model->getConnection() !== $prototype->getConnection()) {
+                        $unresolved += count($identifiers);
 
-                    continue;
+                        continue;
+                    }
+                    $query = $model->newQuery()->withoutGlobalScope(SoftDeletingScope::class)->withoutEagerLoads()->useWritePdo();
+                    MetafieldOwnerPredicate::identifiers($query, $model->getQualifiedKeyName(), $identifiers);
+                    $found = $query->get([$model->getQualifiedKeyName()])->map(static fn (Model $owner): string => ModelIdentifier::required($owner))->all();
+                    $unresolved += count(array_diff($identifiers, $found));
                 }
-                $query = $model->newQuery()->withoutGlobalScope(SoftDeletingScope::class)->withoutEagerLoads()->useWritePdo();
-                MetafieldOwnerPredicate::identifiers($query, $model->getQualifiedKeyName(), $identifiers);
-                $found = $query->get([$model->getQualifiedKeyName()])->map(static fn (Model $owner): string => ModelIdentifier::required($owner))->all();
-                $unresolved += count(array_diff($identifiers, $found));
-            }
+
+                return [$sample->count(), $partial, $unresolved];
+            });
             $check['passed'] = $unresolved === 0;
-            $check['message'] = 'Sampled '.$sample->count().' visible value references'.($partial ? ' (more rows remain)' : '').'; '.$unresolved.' unresolved owner references within host scopes. Scoped-out or unregistered records are not proven deleted.';
+            $check['message'] = 'Sampled '.$sampleCount.' visible value references'.($partial ? ' (more rows remain)' : '').'; '.$unresolved.' unresolved owner references within host scopes. Scoped-out or unregistered records are not proven deleted.';
         } catch (OwnershipException|QueryException) {
             $check['message'] = 'Owner-reference sampling skipped in the current admitted scope or source; no global orphan result is asserted.';
         }
 
         return $check;
+    }
+
+    /**
+     * @template TReturn
+     *
+     * @param  Closure(): TReturn  $callback
+     * @return TReturn
+     */
+    private function probe(ConnectionInterface $connection, Closure $callback): mixed
+    {
+        return $connection->transactionLevel() > 0
+            ? $connection->transaction($callback)
+            : $callback();
     }
 }

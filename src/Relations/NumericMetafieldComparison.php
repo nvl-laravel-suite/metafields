@@ -24,7 +24,6 @@ final readonly class NumericMetafieldComparison implements Expression
     {
         $type = match ($this->driver) {
             'sqlite', 'pgsql' => 'NUMERIC',
-            'mysql', 'mariadb' => 'DECIMAL(65, 30)',
             default => throw new MetafieldBatchReadException('Unsupported Metafield SQL comparison driver.'),
         };
 

@@ -18,10 +18,11 @@ use Nvl\Metafields\Tests\Fixtures\OwnershipMetafieldOwner;
 use Nvl\Metafields\Tests\Fixtures\OwnershipMetafieldScenario;
 use Nvl\Metafields\Tests\OwnershipTestCase;
 use Nvl\Ownership\Services\OwnershipRunner;
+use Nvl\Ownership\Tests\Fixtures\OptsIntoAdoptedSchemaReuse;
 use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 
-uses(OwnershipTestCase::class);
+uses(OwnershipTestCase::class, OptsIntoAdoptedSchemaReuse::class);
 
 /** Count the storage queries one read performs. */
 function metafieldReadQueries(Closure $read): int
