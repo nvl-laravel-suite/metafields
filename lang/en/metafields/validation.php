@@ -54,6 +54,7 @@ return [
             'active_values_delete' => 'This definition still has active owner values. Set deleteValues to true to delete them explicitly.',
             'active_handle_conflict' => 'This definition cannot be restored because another active definition uses the same handle.',
             'handle_taken' => 'Another active definition already uses this namespace and key.',
+            'handle_too_long' => 'The combined namespace and key handle may not be greater than 255 characters.',
         ],
         'jsonPropertySchema' => [
             'required_for_json' => 'JSON metafields must define at least one JSON property.',

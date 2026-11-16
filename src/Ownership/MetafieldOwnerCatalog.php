@@ -253,17 +253,22 @@ final readonly class MetafieldOwnerCatalog
     private function normalizedReferenceMap(array $source, array $data): array
     {
         $definition = $source['definition'];
-        $sourceIds = match ($definition['type']) {
-            MetafieldTypeEnum::Reference => is_string($definition['defaultValue']) ? [$definition['defaultValue']] : [],
+        $defaults = match ($definition['type']) {
+            MetafieldTypeEnum::Reference => [$definition['defaultValue']],
             MetafieldTypeEnum::ReferenceList => is_array($definition['defaultValue']) ? array_values($definition['defaultValue']) : [],
             default => [],
         };
-        $sourceIds = array_values(array_unique(array_filter($sourceIds, is_string(...))));
+        $sourceIds = [];
+        foreach ($defaults as $identifier) {
+            if (is_int($identifier) || (is_string($identifier) && $identifier !== '')) {
+                $sourceIds[] = (string) $identifier;
+            }
+        }
         $map = $data['referenceMap'];
-        ksort($map);
-        $expected = $sourceIds;
-        sort($expected);
-        if (array_keys($map) !== $expected || ($sourceIds === [] && $map !== [])) {
+        ksort($map, SORT_STRING);
+        $expected = array_values(array_unique($sourceIds));
+        sort($expected, SORT_STRING);
+        if (array_map(strval(...), array_keys($map)) !== $expected) {
             throw new OwnershipViolation('Metafield reference defaults require one exact total reference map.');
         }
 
@@ -284,10 +289,10 @@ final readonly class MetafieldOwnerCatalog
                 throw new OwnershipViolation('A mapped Metafield reference target is unavailable.');
             }
             $targetId = $target->getAttribute($target->getKeyName());
-            if (! is_string($targetId) || $targetId === '') {
+            if ((! is_string($targetId) && ! is_int($targetId)) || $targetId === '') {
                 throw new OwnershipViolation('A mapped Metafield reference target has no canonical identifier.');
             }
-            $map[$sourceId] = $targetId;
+            $map[$sourceId] = (string) $targetId;
         }
         $mapped = match ($definition['type']) {
             MetafieldTypeEnum::Reference => $sourceIds === [] ? null : $map[$sourceIds[0]],

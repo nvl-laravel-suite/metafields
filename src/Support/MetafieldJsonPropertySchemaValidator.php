@@ -131,7 +131,7 @@ final class MetafieldJsonPropertySchemaValidator
             }
 
             $rules["value.{$key}"] = array_merge(
-                [data_get($property, 'isRequired') === true ? 'required' : 'nullable'],
+                [in_array(data_get($property, 'isRequired'), [true, 1, '1'], true) ? 'required' : 'nullable'],
                 $type->getValidationRules(),
             );
         }

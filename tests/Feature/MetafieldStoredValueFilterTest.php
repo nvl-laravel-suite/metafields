@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Gate;
 use Nvl\Metafields\Exceptions\MetafieldBatchReadException;
+use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Services\MetafieldDefinitions;
 use Nvl\Metafields\Services\MetafieldValues;
 use Nvl\Metafields\Tests\Fixtures\BatchMetafieldPolicy;
@@ -77,3 +78,22 @@ it('compares stored numbers and booleans by value', function (): void {
         ->and(fn () => filteredOwners('product.weight', INF))->toThrow(MetafieldBatchReadException::class)
         ->and(fn () => filteredOwners('product.weight', '1e500'))->toThrow(MetafieldBatchReadException::class);
 });
+
+it('handles blank null and zero numeric values consistently', function (string $type): void {
+    $owners = filterableOwners('amount', $type, ['', '   ', null, '0', '5']);
+    [$blank, $padded, , $zero, $five] = $owners;
+    $values = Metafield::query()->pluck('value', 'metafieldable_id');
+    $stored = array_map(static fn (int $owner): ?string => $values[(string) $owner], $owners);
+
+    expect($stored)->toBe([null, null, null, '0', '5'])
+        ->and(filteredOwners('product.amount', 0))->toBe([$zero])
+        ->and(filteredOwners('product.amount', 0, '!='))->toBe([$five])
+        ->and(filteredOwners('product.amount', -1, '>'))->toBe([$zero, $five]);
+
+    Metafield::query()->where('metafieldable_id', $blank)->toBase()->update(['value' => '']);
+    Metafield::query()->where('metafieldable_id', $padded)->toBase()->update(['value' => 'not a number']);
+
+    expect(filteredOwners('product.amount', -1, '>'))->toBe([$zero, $five])
+        ->and(filteredOwners('product.amount', 0))->toBe([$zero])
+        ->and(filteredOwners('product.amount', 0, '<='))->toBe([$zero]);
+})->with(['integer', 'decimal', 'float']);

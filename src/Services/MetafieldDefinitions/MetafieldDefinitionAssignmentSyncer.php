@@ -24,9 +24,8 @@ final class MetafieldDefinitionAssignmentSyncer
     ): void {
         $ownerType = $assignment['ownerType'];
         $uiConfig = $assignment['uiConfig'] ?? null;
-        $definitionAssignment = $definition->assignments()
-            ->withTrashed()
-            ->firstOrNew(['owner_type' => $ownerType]);
+        $definitionAssignment = $this->current($definition, $ownerType)
+            ?? new MetafieldDefinitionAssignment(['definition_id' => $definition->id, 'owner_type' => $ownerType]);
 
         $definitionAssignment->fill([
             'section' => $assignment['section'],
@@ -55,5 +54,22 @@ final class MetafieldDefinitionAssignmentSyncer
             ->get()
             ->each
             ->delete();
+    }
+
+    /**
+     * Return the active assignment for an owner type, or else its newest deleted generation.
+     *
+     * Adopted history can keep several deleted generations beside the active one, so the choice must be deterministic.
+     */
+    private function current(MetafieldDefinition $definition, string $ownerType): ?MetafieldDefinitionAssignment
+    {
+        return $definition->assignments()
+            ->withTrashed()
+            ->reorder()
+            ->where('owner_type', $ownerType)
+            ->orderByRaw('CASE WHEN deleted_at IS NULL THEN 0 ELSE 1 END')
+            ->orderByDesc('deleted_at')
+            ->orderByDesc('id')
+            ->first();
     }
 }

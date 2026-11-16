@@ -31,6 +31,7 @@ use Nvl\Metafields\Services\Metafields\OwnerMetafieldSyncValidator;
 use Nvl\Metafields\Support\MetafieldConfiguration;
 use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
+use Nvl\Metafields\Support\MetafieldValidationRuleCompiler;
 use Nvl\Metafields\Support\ModelIdentifier;
 use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Events\DomainEventDispatcher;
@@ -250,6 +251,9 @@ final class MetafieldValues
                     continue;
                 }
 
+                if (array_key_exists('value', $item)) {
+                    $item['value'] = MetafieldValidationRuleCompiler::canonicalInput($definition->type, $item['value']);
+                }
                 $this->syncValidator->validateNonTranslatableValue(
                     $item,
                     $definition,

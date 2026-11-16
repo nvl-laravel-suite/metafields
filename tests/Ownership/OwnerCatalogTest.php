@@ -8,6 +8,7 @@ use Nvl\Metafields\Ownership\MetafieldOwnerCatalog;
 use Nvl\Metafields\Services\MetafieldDefinitions;
 use Nvl\Metafields\Tests\Fixtures\OwnershipActor;
 use Nvl\Metafields\Tests\Fixtures\OwnershipCompany;
+use Nvl\Metafields\Tests\Fixtures\OwnershipMetafieldScenario;
 use Nvl\Metafields\Tests\OwnershipCatalogTestCase;
 use Nvl\Ownership\Services\OwnershipRunner;
 use Nvl\Ownership\Tests\Fixtures\OptsIntoAdoptedSchemaReuse;
@@ -50,3 +51,29 @@ it('copies explicitly granted central definitions and fences stale or revoked im
     Event::assertDispatched(MetafieldDefinitionCatalogGrantAudited::class, static fn (MetafieldDefinitionCatalogGrantAudited $event): bool => $event->operation === 'granted' && $event->grantId === $grant->id && $event->ownerScopeKey !== '');
     Event::assertDispatched(MetafieldDefinitionCatalogGrantAudited::class, static fn (MetafieldDefinitionCatalogGrantAudited $event): bool => $event->operation === 'revoked' && $event->grantId === $grant->id && $event->ownerScopeKey !== '');
 })->with([false, true]);
+
+it('preserves integer reference identities and repeated defaults', function (): void {
+    app()->bind(MetafieldCatalogAccess::class, fn () => new class implements MetafieldCatalogAccess
+    {
+        public function assertCanGrant(string $sourceId, int $revision): void {}
+
+        public function assertCanRevoke(string $grantId): void {}
+    });
+    $runner = app(OwnershipRunner::class);
+    $actor = OwnershipActor::firstOrFail();
+    $source = $runner->central('metafields-maintain', $actor, fn () => app(MetafieldDefinitions::class)->create(['namespace' => 'catalog', 'key' => 'related', 'type' => 'reference_list', 'referencedModelType' => 'products', 'assignment' => ['ownerType' => 'products', 'section' => 'general'], 'translations' => ['en' => ['title' => 'Related']]], $actor));
+    $source->newQuery()->withoutGlobalScopes()->whereKey($source->id)->toBase()->update(['default_value' => '[5,"7",5]']);
+    $runner->run(OwnershipCompany::findOrFail(7), $actor, function () use ($source): void {
+        $first = OwnershipMetafieldScenario::owner();
+        $second = OwnershipMetafieldScenario::owner();
+        $grant = app(MetafieldDefinitions::class)->grant($source->id, $source->revision, OwnershipActor::firstOrFail());
+        $copy = app(MetafieldDefinitions::class)->import([
+            'grantId' => $grant->id, 'expectedGrantRevision' => $grant->revision, 'expectedSourceRevision' => $source->revision,
+            'idempotency_key' => '01900000-0000-7000-8000-000000000003', 'namespace' => 'product', 'key' => 'related',
+            'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+            'referenceMap' => ['5' => $first->id, '7' => $second->id],
+        ], OwnershipActor::firstOrFail());
+
+        expect($copy->getSerializableDefaultValue())->toBe([$first->id, $second->id, $first->id]);
+    });
+});

@@ -5,6 +5,25 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- `2026_11_16_120000_nvl_metafields_limit_assignment_uniqueness_to_active_rows.php` replaces the unconditional `(definition_id, owner_type)` assignment uniqueness with a PostgreSQL/SQLite partial unique index over active rows, so deleted assignment generations can sit beside their active replacement.
+- `LegacyMetafieldAdoptionAdapter::assertCheckpoint()` re-maps the committed source prefix of a step and refuses to resume when a staged row or definition copy behind the cursor is missing or differs. Resuming an `nvl:adopt metafields` run requires the Core release that calls it.
+
+### Changed
+
+- Definition updates reject a `namespace` or `key` change, and an `assignment.ownerType` change, while the definition has values. Omitted fields keep their stored values.
+- Definition input rejects a combined `namespace.key` handle longer than 255 characters, including catalog imports.
+- Legacy adoption checks assignment identity collisions only among active rows and adopts deleted assignment generations with their IDs. Updating a definition's assignment restores the active row, or else the newest deleted generation, for that owner type.
+
+### Fixed
+
+- Integer and padded reference IDs are normalized to their canonical string once, before validation and storage. They no longer persist as a null `referenced_id`.
+- `jsonPropertySchema[*].isRequired` accepts `1` and `'1'` as required, matching its boolean validation.
+- A blank optional integer, decimal or float value is stored as null. Numeric `whereNvlMetafield()` comparisons skip stored text that is not a number instead of raising a PostgreSQL cast error.
+- A reference-list default supplied as a JSON string has every target checked, like an array default.
+- Catalog imports accept integer and numeric-string reference IDs in `referenceMap` and keep repeated reference-list defaults such as `[A, B, A]`.
+
 ## [7.2.0] - 2026-11-16
 
 ### Added

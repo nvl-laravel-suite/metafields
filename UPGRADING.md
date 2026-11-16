@@ -20,6 +20,18 @@ Each sync item must explicitly select `value`, `translations`, or true `clear`. 
 
 Legacy Metafield adoption can now run as `php artisan nvl:adopt metafields plan|apply|verify|activate <manifest.json>`. The manifest is a JSON object with `locale` plus the source options `LegacyMetafieldImporter` takes (`connection`, `owner_types`, `owner_morphs`, `owner_ids`, `reference_types`, `reference_ids`). Enable `nvl-core.adoption.migrations.enabled` and migrate the core adoption tables on the Metafields connection first. Adoption runs through nvl:adopt with reviewed, checkpointed batches and an explicit activate step. Committed batches survive a failure. Keep writers stopped until verify and activate pass. `LegacyMetafieldImporter::plan()`, `apply()` and `verify()` keep their behaviour and signatures.
 
+### Unreleased
+
+Apply `2026_11_16_120000_nvl_metafields_limit_assignment_uniqueness_to_active_rows.php` on the canonical Metafields connection. On PostgreSQL and SQLite it drops `metafield_definition_assignments_unique` and creates `nvl_metafields_active_assignment_identity_unique` on `(definition_id, owner_type) WHERE deleted_at IS NULL`. Existing rows are unchanged. Rollback refuses while deleted and active assignment generations share an owner type; resolve that history first.
+
+Definition updates now refuse to change `namespace`, `key` or `assignment.ownerType` while the definition has values, with a validation error on that field. Renaming would break handle callers, and moving the owner type would orphan stored values. Omit those fields, or send their current values, to keep them. To move or rename a field that has values, create a new definition and migrate the values in host code.
+
+Definition input also refuses a `namespace.key` handle longer than 255 characters. Catalog imports apply the same limit. Shorten existing requests that relied on the database to reject the handle.
+
+Reference values supplied as integers or padded strings are stored as their trimmed string ID. Blank optional numbers are stored as null. Values written before this release with a null `referenced_id` cannot be recovered by the package; set them again. Stored blank numeric text no longer matches numeric `whereNvlMetafield()` comparisons on SQLite, where it used to compare as zero.
+
+Custom adapters for `nvl:adopt` are unaffected by this package. The bundled Metafield adapter implements `assertCheckpoint()`, so resuming a failed `apply --run` checks that every staged row behind each checkpoint still matches. Restore a missing or changed staged row, or start a new run on a clean target, when a resume reports that a checkpoint is not staged.
+
 ## Historical upgrade notes
 
 The following sections describe pre-Light releases and their old APIs, compatibility windows and commands. They remain useful for understanding existing installations, but are not Light setup instructions. The old Tenancy bridge, DTO/Action contracts, package HTTP and type generation are retired in Light.

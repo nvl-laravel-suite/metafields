@@ -15,6 +15,7 @@ use Nvl\Metafields\Services\MetafieldDefinitions;
 use Nvl\Metafields\Services\MetafieldReader;
 use Nvl\Metafields\Services\MetafieldValues;
 use Nvl\Metafields\Tests\Fixtures\BatchMetafieldPolicy;
+use Nvl\Metafields\Tests\Fixtures\BatchSoftDeletingMetafieldOwner;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldActor;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
 use Nvl\Support\Enums\SystemActor;
@@ -677,3 +678,63 @@ it('round trips accepted structured values and defaults larger than 64 KiB', fun
         ->and($definition->fresh()->getDefaultValue($localized ? 'en' : null))->toBe($payload);
 
 })->with(['base' => false, 'localized' => true]);
+
+it('rejects live definition identity and owner reassignment', function (): void {
+    config(['nvl-metafields.owners.softproducts' => ['model' => BatchSoftDeletingMetafieldOwner::class, 'label' => 'Soft products', 'sections' => ['general']]]);
+    $definitions = app(MetafieldDefinitions::class);
+    $definition = $definitions->create([
+        'namespace' => 'product', 'key' => 'identity', 'type' => 'string',
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        'translations' => ['en' => ['title' => 'Identity']],
+    ], SystemActor::Background);
+    $renamed = $definitions->update($definition, ['key' => 'renamed'], $definition->revision, SystemActor::Background);
+    expect($renamed->handle)->toBe('product.renamed');
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
+    $value = app(MetafieldValues::class)->set($owner, 'product.renamed', 'Live', SystemActor::Background);
+
+    foreach ([
+        'namespace' => ['namespace' => 'order'],
+        'key' => ['key' => 'moved'],
+        'assignment.ownerType' => ['assignment' => ['ownerType' => 'softproducts', 'section' => 'general']],
+    ] as $field => $patch) {
+        try {
+            $definitions->update($renamed, $patch, $renamed->revision, SystemActor::Background);
+            $this->fail("The {$field} change was accepted.");
+        } catch (ValidationException $exception) {
+            expect($exception->errors())->toHaveKey($field);
+        }
+    }
+
+    $patched = $definitions->update($renamed, [
+        'translations' => ['en' => ['hint' => 'Kept']],
+        'assignment' => ['ownerType' => 'products', 'section' => 'general', 'displayOrder' => 3],
+    ], $renamed->revision, SystemActor::Background);
+    expect($patched->handle)->toBe('product.renamed')
+        ->and($patched->assignments->pluck('owner_type')->all())->toBe(['products'])
+        ->and(app(MetafieldValues::class)->set($owner, 'product.renamed', 'Still live', SystemActor::Background, expectedRevision: $value->revision)->getValue())->toBe('Still live');
+});
+
+it('round trips required references through set and sync', function (): void {
+    config(['nvl-metafields.authorization.reference_ability' => 'metafields.reference']);
+    Gate::define('metafields.reference', static fn (SystemActor $actor): bool => true);
+    Gate::define('metafields.owner', static fn (SystemActor $actor): bool => true);
+    $definition = app(MetafieldDefinitions::class)->create([
+        'namespace' => 'product', 'key' => 'required_related', 'type' => 'reference', 'referencedModelType' => 'products', 'isRequired' => true,
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        'translations' => ['en' => ['title' => 'Required related']],
+    ], SystemActor::Background);
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
+    $first = TestMetafieldOwner::query()->create(['name' => 'First']);
+    $second = TestMetafieldOwner::query()->create(['name' => 'Second']);
+    $values = app(MetafieldValues::class);
+
+    $set = $values->set($owner, 'product.required_related', $first->id, SystemActor::Background);
+    expect($set->referenced_id)->toBe((string) $first->id)
+        ->and($set->fresh()->referenced_id)->toBe((string) $first->id);
+
+    $synced = $values->sync($owner, [
+        ['definitionId' => $definition->id, 'value' => '  '.$second->id.' ', 'expected_revision' => $set->revision],
+    ], SystemActor::Background)->sole();
+    expect($synced->referenced_id)->toBe((string) $second->id)
+        ->and(app(MetafieldReader::class)->forOwner($owner, SystemActor::Background)->sole()['value'])->not->toBeNull();
+});

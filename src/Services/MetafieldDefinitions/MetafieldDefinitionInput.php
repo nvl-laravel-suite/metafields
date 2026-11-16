@@ -9,6 +9,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Nvl\Metafields\Enums\MetafieldJsonPropertyTypeEnum;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
+use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
 use Nvl\Metafields\Support\MetafieldConfiguration;
 use Nvl\Metafields\Support\MetafieldJsonPropertySchemaValidator;
@@ -78,6 +79,9 @@ final readonly class MetafieldDefinitionInput
         /** @var array{namespace:string,key:string,type:MetafieldTypeEnum|string,referencedModelType?:string|null,isTranslatable?:bool,isRequired?:bool,isFilterable?:bool,validationRules?:list<string>|null,jsonPropertySchema?:list<array<string,mixed>>|null,defaultValue?:mixed,displayOrder?:int,translations?:array<array-key,DefinitionTranslation>,assignment?:DefinitionAssignment} $validated */
         $validated = $attributes;
         $attributes = $validated;
+        if (strlen(MetafieldDefinition::generateHandle($attributes['namespace'], $attributes['key'])) > 255) {
+            throw ValidationException::withMessages(['key' => [(string) trans('nvl-metafields::metafields/validation.custom.definition.handle_too_long')]]);
+        }
         foreach (['isTranslatable', 'isRequired', 'isFilterable'] as $boolean) {
             if (array_key_exists($boolean, $attributes)) {
                 $attributes[$boolean] = (bool) $attributes[$boolean];
@@ -95,6 +99,15 @@ final readonly class MetafieldDefinitionInput
         }
         if (array_key_exists('displayOrder', $attributes)) {
             $attributes['displayOrder'] = (int) $attributes['displayOrder'];
+        }
+        if (isset($attributes['jsonPropertySchema'])) {
+            $attributes['jsonPropertySchema'] = array_map(static function (array $property): array {
+                if (array_key_exists('isRequired', $property)) {
+                    $property['isRequired'] = (bool) $property['isRequired'];
+                }
+
+                return $property;
+            }, $attributes['jsonPropertySchema']);
         }
         $allowed = ['namespace', 'key', 'type', 'referencedModelType', 'isTranslatable', 'isRequired', 'isFilterable', 'validationRules', 'jsonPropertySchema', 'defaultValue', 'displayOrder', 'translations', 'assignment'];
         if (array_diff(array_keys($attributes), $allowed) !== []) {
@@ -143,8 +156,9 @@ final readonly class MetafieldDefinitionInput
             if ($type === MetafieldTypeEnum::Reference && ! $this->references->exists($attributes['referencedModelType'], $default)) {
                 throw ValidationException::withMessages(['defaultValue' => ['The default reference is unavailable.']]);
             }
-            if ($type === MetafieldTypeEnum::ReferenceList && is_array($default)) {
-                foreach ($default as $identifier) {
+            if ($type === MetafieldTypeEnum::ReferenceList) {
+                $identifiers = $type->cast($default);
+                foreach (is_array($identifiers) ? $identifiers : [] as $identifier) {
                     if (! $this->references->exists($attributes['referencedModelType'], $identifier)) {
                         throw ValidationException::withMessages(['defaultValue' => ['A default reference is unavailable.']]);
                     }

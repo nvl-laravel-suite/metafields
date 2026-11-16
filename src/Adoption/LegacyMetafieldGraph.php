@@ -146,7 +146,7 @@ final readonly class LegacyMetafieldGraph
                         continue;
                     }
                     hash_update($digest, json_encode([$mapped, $copy], JSON_THROW_ON_ERROR)."\n");
-                    if ($kind === 'assignments' || $mapped['deleted_at'] === null) {
+                    if ($mapped['deleted_at'] === null) {
                         $key = json_encode(array_intersect_key($mapped, array_flip($identity)), JSON_THROW_ON_ERROR);
                         if (isset($seen[$key])) {
                             $conflicts[] = "{$legacy} [{$id}] collides with source row [{$seen[$key]}].";
@@ -257,17 +257,49 @@ final readonly class LegacyMetafieldGraph
      */
     public function stage(string $kind, array $rows, array $copies, string $locale): int
     {
+        [$pending, $pendingCopy] = $this->pending($kind, $rows, $copies, $locale);
+        $this->insert($this->target(), MetafieldsTables::get(self::Graph[$kind][1]), $pending, MetafieldsTables::get(MetafieldsTables::DefinitionsI18n), $pendingCopy);
+
+        return count($pending) + count($pendingCopy);
+    }
+
+    /**
+     * Throw unless every mapped row of one kind, with each definition's copy, is still staged exactly.
+     *
+     * @param  list<array<string,mixed>>  $rows
+     * @param  list<array<string,mixed>>  $copies
+     */
+    public function assertStaged(string $kind, array $rows, array $copies, string $locale): void
+    {
+        [$pending, $pendingCopy] = $this->pending($kind, $rows, $copies, $locale);
+        if ($pending !== []) {
+            $table = MetafieldsTables::get(self::Graph[$kind][1]);
+            $id = $pending[0]['id'] ?? null;
+            throw new LogicException("{$table} [".(is_string($id) ? $id : '?').'] is no longer staged.');
+        }
+        if ($pendingCopy !== []) {
+            $id = $pendingCopy[0]['metafield_definition_id'] ?? null;
+            throw new LogicException('Definition ['.(is_string($id) ? $id : '?').'] no longer has its staged localized copy.');
+        }
+    }
+
+    /**
+     * Return the mapped rows and copies that are not staged yet; throw when a staged row differs.
+     *
+     * @param  list<array<string,mixed>>  $rows
+     * @param  list<array<string,mixed>>  $copies
+     * @return array{list<array<string,mixed>>, list<array<string,mixed>>}
+     */
+    private function pending(string $kind, array $rows, array $copies, string $locale): array
+    {
         $target = $this->target();
         $table = MetafieldsTables::get(self::Graph[$kind][1]);
         $copyTable = MetafieldsTables::get(MetafieldsTables::DefinitionsI18n);
         $existing = $target->table($table)->useWritePdo()->whereIn('id', array_column($rows, 'id'))->get()->keyBy('id');
         $existingCopies = $target->table($copyTable)->useWritePdo()
             ->whereIn('metafield_definition_id', array_column($copies, 'metafield_definition_id'))->where('locale', $locale)->get()->keyBy('metafield_definition_id');
-        $pending = $this->absent($rows, $existing, 'id', $table);
-        $pendingCopy = $this->absent($copies, $existingCopies, 'metafield_definition_id', $copyTable);
-        $this->insert($target, $table, $pending, $copyTable, $pendingCopy);
 
-        return count($pending) + count($pendingCopy);
+        return [$this->absent($rows, $existing, 'id', $table), $this->absent($copies, $existingCopies, 'metafield_definition_id', $copyTable)];
     }
 
     /**

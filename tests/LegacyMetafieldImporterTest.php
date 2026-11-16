@@ -13,6 +13,7 @@ use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Services\LegacyMetafieldImporter;
+use Nvl\Metafields\Services\MetafieldDefinitions;
 use Nvl\Metafields\Services\MetafieldReader;
 use Nvl\Metafields\Services\MetafieldValues;
 use Nvl\Metafields\Tests\CommittedMetafieldsTestCase;
@@ -139,6 +140,39 @@ it('stages definitions and scoped Metafield history with their original identiti
         ->and(fn () => DB::transaction(fn () => Metafield::factory()->forDefinition($definition)->forOwner($owner)->create()))->toThrow(QueryException::class);
 });
 
+it('adopts historical and active assignment generations', function (): void {
+    ['source' => $source, 'definitionId' => $definitionId, 'assignmentId' => $assignmentId, 'time' => $time] = legacyMetafieldGraphFixture();
+    DB::statement('CREATE UNIQUE INDEX gct_assignment_active_unique ON metafield_definition_assignments (definition_id, owner_type) WHERE deleted_at IS NULL');
+    [$older, $newer] = ['00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000002'];
+    $generation = ['definition_id' => $definitionId, 'owner_type' => 'old-products', 'section' => 'general', 'display_order' => 0, 'is_required' => '0', 'is_active' => '1', 'created_at' => $time, 'updated_at' => $time];
+    DB::table('metafield_definition_assignments')->insert([
+        ['id' => $older, ...$generation, 'deleted_at' => '2026-05-01 00:00:00'],
+        ['id' => $newer, ...$generation, 'deleted_at' => '2026-05-03 00:00:00'],
+    ]);
+    $actor = SystemActor::Background;
+    $importer = app(LegacyMetafieldImporter::class);
+    $plan = $importer->plan($actor, 'bg', $source);
+    expect($plan['conflicts'])->toBeEmpty()
+        ->and($plan['source']['assignments'])->toBe(3);
+    $importer->apply($actor, 'bg', $plan['fingerprint'], $source);
+    expect($importer->verify($actor, 'bg', $plan['fingerprint'], $source)['staged'])->toBe($plan['source']);
+
+    Gate::define('metafields.update', static fn (SystemActor $actor): bool => true);
+    $definitions = app(MetafieldDefinitions::class);
+    $assignments = static fn (): array => DB::table(MetafieldsTables::get(MetafieldsTables::DefinitionAssignments))->orderBy('id')->get(['id', 'deleted_at', 'display_order'])
+        ->map(static fn (object $row): array => [$row->id, $row->deleted_at === null, (int) $row->display_order])->all();
+    $definition = $definitions->update($definitionId, ['assignment' => ['ownerType' => 'products', 'section' => 'general', 'displayOrder' => 7]], 1, $actor);
+    expect($definition->assignments->sole()->id)->toBe($assignmentId)
+        ->and($assignments())->toEqualCanonicalizing([[$older, false, 0], [$newer, false, 0], [$assignmentId, true, 7]]);
+
+    DB::table(MetafieldsTables::get(MetafieldsTables::DefinitionAssignments))->where('id', $assignmentId)->update(['deleted_at' => '2026-05-02 00:00:00']);
+    $definition = $definitions->update($definitionId, ['assignment' => ['ownerType' => 'products', 'section' => 'general', 'displayOrder' => 8]], $definition->revision, $actor);
+    expect($definition->assignments->sole()->id)->toBe($newer)
+        ->and($assignments())->toEqualCanonicalizing([[$older, false, 0], [$newer, true, 8], [$assignmentId, false, 7]])
+        ->and(fn () => DB::table(MetafieldsTables::get(MetafieldsTables::DefinitionAssignments))->where('id', $older)->update(['deleted_at' => null]))
+        ->toThrow(QueryException::class);
+});
+
 /**
  * Install the core adoption tables, write the reviewed manifest and return the nvl:adopt runner for it.
  *
@@ -242,3 +276,25 @@ it('resumes a batched adoption with its references intact and activates it after
         ->and([$drifted['missing'], $drifted['changed'], $drifted['extra']])->toBe([0, 1, 0])
         ->and($drifted['problems'])->toContain("{$valuesTable} [{$referenceValue}] differs from the reviewed row.");
 });
+
+it('refuses to resume past a staged row deleted behind its cursor', function (string $deleted): void {
+    ['source' => $source] = legacyMetafieldGraphFixture();
+    $adopt = legacyMetafieldAdoption($source);
+    $plan = $adopt('plan');
+    $valuesTable = MetafieldsTables::get(MetafieldsTables::Metafields);
+    interruptMetafieldInsert($valuesTable, 2);
+    $adopt('apply', ['--fingerprint' => $plan['fingerprint'], '--batch-size' => '1']);
+    $runId = (string) DB::table(AdoptionStore::Runs)->value('id');
+    $checkpoints = DB::table(AdoptionStore::Checkpoints)->orderBy('step')->get()->all();
+    expect(DB::table($valuesTable)->count())->toBe(1);
+
+    $table = MetafieldsTables::get($deleted === 'value' ? MetafieldsTables::Metafields : MetafieldsTables::DefinitionsI18n);
+    DB::table($table)->where('id', DB::table($table)->orderBy('id')->value('id'))->delete();
+    $resumed = $adopt('apply', ['--fingerprint' => $plan['fingerprint'], '--batch-size' => '1', '--run' => $runId]);
+
+    expect($resumed['status'])->toBe(1)
+        ->and($resumed['error'])->toContain('is not staged')
+        ->and(DB::table($valuesTable)->count())->toBe($deleted === 'value' ? 0 : 1)
+        ->and(DB::table(MetafieldsTables::get(MetafieldsTables::I18n))->count())->toBe(0)
+        ->and(DB::table(AdoptionStore::Checkpoints)->orderBy('step')->get()->all())->toEqual($checkpoints);
+})->with(['value' => 'value', 'completed definition copy' => 'copy']);

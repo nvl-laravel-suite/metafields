@@ -154,3 +154,45 @@ it('rejects duplicate JSON property schema keys and validates JSON string payloa
 
     expect($definition->getSerializableDefaultValue())->toBe(['weight' => 12.5]);
 });
+
+it('normalizes JSON property requiredness', function (mixed $required): void {
+    $definition = hardeningDefinition('spec', 'json', [
+        'jsonPropertySchema' => [['key' => 'weight', 'type' => 'float', 'isRequired' => $required]],
+    ]);
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
+
+    expect($definition->json_property_schema[0]['isRequired'])->toBeTrue()
+        ->and(fn () => app(MetafieldValues::class)->set($owner, 'product.spec', ['other' => 1], SystemActor::Background))
+        ->toThrow(ValidationException::class)
+        ->and(app(MetafieldValues::class)->set($owner, 'product.spec', ['weight' => 1.5], SystemActor::Background)->getValue())
+        ->toBe(['weight' => 1.5]);
+})->with([1, '1', true]);
+
+it('enforces combined handle storage length', function (): void {
+    $create = static fn (string $key): MetafieldDefinition => app(MetafieldDefinitions::class)->create([
+        'namespace' => str_repeat('n', 127), 'key' => $key, 'type' => 'string',
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        'translations' => ['en' => ['title' => 'Long']],
+    ], SystemActor::Background);
+
+    expect(fn () => $create(str_repeat('k', 128)))->toThrow(ValidationException::class);
+    $definition = $create(str_repeat('k', 127));
+    expect(strlen($definition->handle))->toBe(255)
+        ->and(fn () => app(MetafieldDefinitions::class)->update($definition, ['key' => str_repeat('k', 128)], $definition->revision, SystemActor::Background))
+        ->toThrow(ValidationException::class);
+});
+
+it('validates array and JSON reference defaults equivalently', function (bool $asJson): void {
+    $target = TestMetafieldOwner::query()->create(['name' => 'Target']);
+    $default = static fn (array $identifiers): array|string => $asJson ? json_encode($identifiers, JSON_THROW_ON_ERROR) : $identifiers;
+
+    expect(fn () => hardeningDefinition('missing_targets', 'reference_list', [
+        'referencedModelType' => 'products', 'defaultValue' => $default([(string) $target->id, '999999']),
+    ]))->toThrow(ValidationException::class)
+        ->and(MetafieldDefinition::query()->count())->toBe(0);
+
+    $definition = hardeningDefinition('targets', 'reference_list', [
+        'referencedModelType' => 'products', 'defaultValue' => $default([(string) $target->id]),
+    ]);
+    expect($definition->getSerializableDefaultValue())->toBe([(string) $target->id]);
+})->with(['array' => false, 'JSON string' => true]);

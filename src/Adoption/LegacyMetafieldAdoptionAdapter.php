@@ -130,6 +130,36 @@ final class LegacyMetafieldAdoptionAdapter extends AdoptionAdapter
         return null;
     }
 
+    /**
+     * Re-map the committed source prefix and refuse the checkpoint unless each mapped row and definition copy is staged.
+     */
+    public function assertCheckpoint(AdoptionStep $step, ?array $cursor, int $processed): void
+    {
+        $origin = $this->graph->origin($this->source);
+        $committed = 0;
+        foreach ($step->through($origin->table($this->graph->legacyTable($step->id))->useWritePdo(), $cursor)->lazy(100)->chunk(100) as $page) {
+            $rows = $copies = [];
+            foreach ($this->graph->mapPage($origin, $step->id, array_values($page->all()), $this->locale, $this->source) as $entry) {
+                if ($entry['error'] !== null || $entry['mapped'] === null) {
+                    throw new AdoptionException('Metafield adoption collision: '.$entry['error']);
+                }
+                $rows[] = $entry['mapped'];
+                if ($entry['copy'] !== null) {
+                    $copies[] = $entry['copy'];
+                }
+            }
+            $committed += count($rows);
+            try {
+                $this->graph->assertStaged($step->id, $rows, $copies, $this->locale);
+            } catch (LogicException $exception) {
+                throw new AdoptionException("Metafield adoption checkpoint for [{$step->id}] is not staged: ".$exception->getMessage());
+            }
+        }
+        if ($committed !== $processed) {
+            throw new AdoptionException("Metafield adoption checkpoint for [{$step->id}] counts {$processed} source rows, but {$committed} precede its cursor.");
+        }
+    }
+
     public function verify(AdoptionPlan $plan): AdoptionVerification
     {
         $this->admit();

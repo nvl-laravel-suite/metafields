@@ -19,14 +19,15 @@ final readonly class NumericMetafieldComparison implements Expression
         }
     }
 
-    /** Render a numeric expression without interpolating consumer values. */
+    /** Render a numeric expression that skips stored text no numeric cast accepts, without interpolating consumer values. */
     public function getValue(Grammar $grammar): string
     {
-        $type = match ($this->driver) {
-            'sqlite', 'pgsql' => 'NUMERIC',
+        $isNumeric = match ($this->driver) {
+            'pgsql' => $this->column." ~ '^[[:space:]]*[+-]?([0-9]+[.]?[0-9]*|[.][0-9]+)([eE][+-]?[0-9]+)?[[:space:]]*$'",
+            'sqlite' => 'TRIM('.$this->column.") <> '' AND TRIM(".$this->column.") NOT GLOB '*[^0-9.eE+-]*'",
             default => throw new MetafieldBatchReadException('Unsupported Metafield SQL comparison driver.'),
         };
 
-        return 'CAST('.$this->column.' AS '.$type.') '.$this->operator.' CAST(? AS '.$type.')';
+        return 'CASE WHEN '.$isNumeric.' THEN CAST('.$this->column.' AS NUMERIC) END '.$this->operator.' CAST(? AS NUMERIC)';
     }
 }

@@ -283,6 +283,28 @@ final class MetafieldValidationRuleCompiler
         }
     }
 
+    /**
+     * Return the canonical owner input that is both validated and stored.
+     *
+     * Reference identifiers become trimmed strings, and blank numbers become null.
+     */
+    public static function canonicalInput(MetafieldTypeEnum $type, mixed $value): mixed
+    {
+        if ($type === MetafieldTypeEnum::Reference && (is_int($value) || is_string($value))) {
+            $identifier = trim((string) $value);
+
+            return $identifier === '' ? null : $identifier;
+        }
+
+        if (in_array($type, [MetafieldTypeEnum::Integer, MetafieldTypeEnum::Decimal, MetafieldTypeEnum::Float], true)
+            && is_string($value)
+            && trim($value) === '') {
+            return null;
+        }
+
+        return $value;
+    }
+
     private static function normalizeValue(MetafieldTypeEnum $type, mixed $value): mixed
     {
         return match ($type) {

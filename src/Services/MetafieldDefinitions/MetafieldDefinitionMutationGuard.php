@@ -227,6 +227,19 @@ final class MetafieldDefinitionMutationGuard
     ): array {
         $changes = [];
 
+        if ($definition->namespace !== $data['namespace']) {
+            $changes['namespace'] = 'namespace';
+        }
+
+        if ($definition->key !== $data['key']) {
+            $changes['key'] = 'key';
+        }
+
+        if (array_key_exists('assignment', $data)
+            && $definition->assignments()->where('owner_type', '!=', $data['assignment']['ownerType'])->exists()) {
+            $changes['assignment.ownerType'] = 'owner type';
+        }
+
         if ($definition->type !== $data['type']) {
             $changes['type'] = 'type';
         }
