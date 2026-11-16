@@ -185,7 +185,7 @@ final readonly class MetafieldDefinitions
             'idempotency_key' => ['required', 'uuid'],
             'namespace' => ['required', 'string', 'max:255', 'regex:/^[a-z0-9_-]+$/'],
             'key' => ['required', 'string', 'max:255', 'regex:/^[a-z0-9_-]+$/'],
-            'assignment' => ['required', 'array:ownerType,section,displayOrder,isRequired,isActive,uiConfig'],
+            'assignment' => ['required', 'array:ownerType,section,displayOrder,isRequired,isActive,uiConfig,ownerScopes'],
             'assignment.ownerType' => ['required', 'string'],
             'assignment.section' => ['required', 'string', 'max:255'],
             'referenceMap' => ['sometimes', 'array'],
@@ -208,7 +208,14 @@ final readonly class MetafieldDefinitions
             throw ValidationException::withMessages(['grantId' => ['The requested catalog revision is stale.']]);
         }
         $source = $snapshot['definition'];
-        $this->input->validate([
+        if (! array_key_exists('ownerScopes', $request['assignment']) && isset($source['scopedAssignments'])) {
+            $sourceScopes = $source['scopedAssignments'][$request['assignment']['ownerType']] ?? null;
+            if ($sourceScopes === null) {
+                throw ValidationException::withMessages(['assignment.ownerScopes' => ['Map the source scopes explicitly when importing into another owner type.']]);
+            }
+            $request['assignment']['ownerScopes'] = $sourceScopes;
+        }
+        $validated = $this->input->validate([
             'type' => $source['type'],
             'referencedModelType' => $source['referencedModelType'],
             'isTranslatable' => $source['isTranslatable'],
@@ -222,6 +229,9 @@ final readonly class MetafieldDefinitions
             'key' => $request['key'],
             'assignment' => $request['assignment'],
         ], true);
+        if (array_key_exists('ownerScopes', $request['assignment'])) {
+            $request['assignment']['ownerScopes'] = $validated['assignment']['ownerScopes'] ?? null;
+        }
 
         return MetafieldModelRegistry::newInstance()->getConnection()->transaction(
             fn (): MetafieldDefinition => $this->catalog->persist($snapshot, $request),

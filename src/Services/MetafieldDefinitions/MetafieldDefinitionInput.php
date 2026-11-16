@@ -13,6 +13,7 @@ use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
 use Nvl\Metafields\Support\MetafieldConfiguration;
 use Nvl\Metafields\Support\MetafieldJsonPropertySchemaValidator;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
+use Nvl\Metafields\Support\MetafieldOwnerScope;
 use Nvl\Metafields\Support\MetafieldPayloadLimits;
 use Nvl\Metafields\Support\MetafieldReferenceModelRegistry;
 use Nvl\Metafields\Support\MetafieldValidationRuleCompiler;
@@ -23,7 +24,7 @@ use Nvl\Support\Contracts\LocaleCatalog;
  *
  * @internal
  *
- * @phpstan-type DefinitionAssignment array{ownerType:string,section:string,displayOrder?:int,isRequired?:bool,isActive?:bool,uiConfig?:array<array-key,mixed>|null}
+ * @phpstan-type DefinitionAssignment array{ownerType:string,section:string,displayOrder?:int,isRequired?:bool,isActive?:bool,uiConfig?:array<array-key,mixed>|null,ownerScopes?:list<string>|null}
  * @phpstan-type DefinitionTranslation array{title?:string,description?:string|null,hint?:string|null,defaultValue?:mixed,properties?:array<array-key,mixed>|null}
  * @phpstan-type DefinitionMutation array{namespace:string,key:string,type:MetafieldTypeEnum,referencedModelType?:string|null,isTranslatable?:bool,isRequired?:bool,isFilterable?:bool,validationRules?:list<string>|null,jsonPropertySchema?:list<array<string,mixed>>|null,defaultValue?:mixed,displayOrder?:int,translations?:array<string,DefinitionTranslation>,assignment?:DefinitionAssignment}
  */
@@ -64,13 +65,15 @@ final readonly class MetafieldDefinitionInput
             'translations.*.description' => ['nullable', 'string'],
             'translations.*.hint' => ['nullable', 'string', 'max:255'],
             'translations.*.properties' => ['nullable', 'array'],
-            'assignment' => [$creating ? 'required' : 'sometimes', 'array:ownerType,section,displayOrder,isRequired,isActive,uiConfig'],
+            'assignment' => [$creating ? 'required' : 'sometimes', 'array:ownerType,section,displayOrder,isRequired,isActive,uiConfig,ownerScopes'],
             'assignment.ownerType' => [$creating ? 'required' : 'required_with:assignment', 'string', Rule::in(array_keys($this->owners->all()))],
             'assignment.section' => [$creating ? 'required' : 'required_with:assignment', 'string', 'max:255'],
             'assignment.displayOrder' => ['sometimes', 'integer', 'min:0'],
             'assignment.isRequired' => ['sometimes', 'boolean'],
             'assignment.isActive' => ['sometimes', 'boolean'],
             'assignment.uiConfig' => ['sometimes', 'nullable', 'array'],
+            'assignment.ownerScopes' => ['sometimes', 'nullable', 'array', 'list', 'max:100'],
+            'assignment.ownerScopes.*' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9][A-Za-z0-9_.-]*$/D', 'distinct:strict'],
         ])->validate();
         /** @var array{namespace:string,key:string,type:MetafieldTypeEnum|string,referencedModelType?:string|null,isTranslatable?:bool,isRequired?:bool,isFilterable?:bool,validationRules?:list<string>|null,jsonPropertySchema?:list<array<string,mixed>>|null,defaultValue?:mixed,displayOrder?:int,translations?:array<array-key,DefinitionTranslation>,assignment?:DefinitionAssignment} $validated */
         $validated = $attributes;
@@ -170,6 +173,14 @@ final readonly class MetafieldDefinitionInput
             $types = $owner['supported_types'];
             if (! in_array($type->value, $types, true) || ! in_array($assignment['section'], $owner['sections'], true)) {
                 throw ValidationException::withMessages(['assignment' => ['The registered owner does not admit this field type or section.']]);
+            }
+            if (array_key_exists('ownerScopes', $assignment)) {
+                $scopes = $assignment['ownerScopes'] ?? [];
+                $allowedScopes = MetafieldOwnerScope::options($owner['model']);
+                if (array_diff($scopes, $allowedScopes) !== []) {
+                    throw ValidationException::withMessages(['assignment.ownerScopes' => ['The registered owner does not admit one or more assignment scopes.']]);
+                }
+                $attributes['assignment']['ownerScopes'] = $scopes === [] ? null : array_values(array_intersect($allowedScopes, $scopes));
             }
         }
 

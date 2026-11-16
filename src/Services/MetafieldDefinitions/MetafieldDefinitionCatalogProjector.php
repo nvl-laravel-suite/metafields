@@ -6,6 +6,7 @@ namespace Nvl\Metafields\Services\MetafieldDefinitions;
 
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Models\MetafieldDefinitionOwnerGrant;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
 use Nvl\Support\Contracts\LocaleCatalog;
@@ -18,7 +19,7 @@ use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
  *
  * @phpstan-import-type DefinitionTranslation from MetafieldDefinitionInput
  *
- * @phpstan-type CatalogDefinition array{namespace:string,key:string,type:MetafieldTypeEnum,title:string,description:?string,hint:?string,referencedModelType:?string,isTranslatable:bool,isRequired:bool,isFilterable:bool,validationRules:list<string>|null,jsonPropertySchema:list<array{key:string,type:string,isRequired:bool}>|null,defaultValue:mixed,displayOrder:int,revision:int,translations:array<string,DefinitionTranslation>}
+ * @phpstan-type CatalogDefinition array{namespace:string,key:string,type:MetafieldTypeEnum,title:string,description:?string,hint:?string,referencedModelType:?string,isTranslatable:bool,isRequired:bool,isFilterable:bool,validationRules:list<string>|null,jsonPropertySchema:list<array{key:string,type:string,isRequired:bool}>|null,defaultValue:mixed,displayOrder:int,revision:int,translations:array<string,DefinitionTranslation>,scopedAssignments?:array<string,list<string>>}
  * @phpstan-type CatalogSnapshot array{grantId:string,grantRevision:int,sourceId:string,sourceRevision:int,sourceHash:string,definition:CatalogDefinition}
  */
 final readonly class MetafieldDefinitionCatalogProjector
@@ -27,9 +28,10 @@ final readonly class MetafieldDefinitionCatalogProjector
 
     /**
      * @param  iterable<MetafieldDefinitionTranslation>  $rows
+     * @param  iterable<MetafieldDefinitionAssignment>  $assignments
      * @return CatalogSnapshot
      */
-    public function project(MetafieldDefinition $source, MetafieldDefinitionOwnerGrant $grant, iterable $rows): array
+    public function project(MetafieldDefinition $source, MetafieldDefinitionOwnerGrant $grant, iterable $rows, iterable $assignments = []): array
     {
         $translations = [];
         foreach ($rows as $translation) {
@@ -49,6 +51,12 @@ final readonly class MetafieldDefinitionCatalogProjector
             MetafieldTypeEnum::Reference => $source->default_referenced_id,
             default => $source->default_value === null ? null : $source->type->cast($source->default_value),
         };
+        $scopedAssignments = [];
+        foreach ($assignments as $assignment) {
+            if ($assignment->is_active && $assignment->owner_scopes !== null) {
+                $scopedAssignments[$assignment->owner_type] = $assignment->owner_scopes;
+            }
+        }
         $payload = [
             'namespace' => $source->namespace,
             'key' => $source->key,
@@ -67,6 +75,9 @@ final readonly class MetafieldDefinitionCatalogProjector
             'revision' => $source->revision,
             'translations' => $translations,
         ];
+        if ($scopedAssignments !== []) {
+            $payload['scopedAssignments'] = $scopedAssignments;
+        }
         $hash = hash('sha256', json_encode($this->canonical($payload), JSON_THROW_ON_ERROR));
 
         return [

@@ -12,6 +12,7 @@ use Nvl\Metafields\Contracts\MetafieldCatalogAccess;
 use Nvl\Metafields\Enums\MetafieldTypeEnum;
 use Nvl\Metafields\Events\MetafieldDefinitionCatalogGrantAudited;
 use Nvl\Metafields\Models\MetafieldDefinition;
+use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Models\MetafieldDefinitionOwnerGrant;
 use Nvl\Metafields\Models\MetafieldDefinitionTranslation;
 use Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionAssignmentSyncer;
@@ -188,11 +189,15 @@ final readonly class MetafieldOwnerCatalog
             throw new OwnershipViolation('The definition grant or source revision is unavailable.');
         }
         $translations = MetafieldDefinitionTranslation::query()->withoutGlobalScope(OwnershipScope::class)->useWritePdo()->where('metafield_definition_id', $source->id)->where('owner_scope_key', 'central')->orderBy('locale');
+        $this->readiness->assertActive('metafields.definition-assignments');
+        $assignments = MetafieldDefinitionAssignment::query()->withoutGlobalScope(OwnershipScope::class)->useWritePdo()
+            ->where('definition_id', $source->id)->where('owner_scope_key', 'central')->whereNotNull('owner_scopes')->orderBy('id');
         if ($lock) {
             $translations->lockForUpdate();
+            $assignments->lockForUpdate();
         }
 
-        return $this->projection->project($source, $grant, $translations->get());
+        return $this->projection->project($source, $grant, $translations->get(), $assignments->get());
     }
 
     private function source(string $id, bool $lock): MetafieldDefinition

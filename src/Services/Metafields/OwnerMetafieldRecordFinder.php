@@ -58,6 +58,7 @@ final class OwnerMetafieldRecordFinder
             ->where('definition_id', $definitionId)
             ->orderByDesc('deleted_at')
             ->orderByDesc('updated_at')
+            ->orderByDesc('id')
             ->first();
 
         return $trashedRecord;

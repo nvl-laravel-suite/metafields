@@ -21,6 +21,7 @@ use Nvl\Metafields\Relations\ExactOwnerTextColumn;
 use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
+use Nvl\Metafields\Support\MetafieldOwnerScope;
 use Nvl\Support\Contracts\LocaleCatalog;
 use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Owners\OwnerBatch;
@@ -88,9 +89,11 @@ final readonly class OwnerMetafieldBatchReader
         $definitions = [];
         foreach ($batch->owners() as $index => $owner) {
             $identity = $batch->identities()[$index];
+            $scope = MetafieldOwnerScope::key($owner);
             foreach ($assignments as $assignment) {
                 $definition = $assignment->definition;
                 if ($assignment->owner_type === $aliases[$index] && $definition instanceof MetafieldDefinition
+                    && MetafieldOwnerScope::accepts($assignment->owner_scopes, $scope)
                     && $this->policy->allowsDefinition($actor, $owner, $definition)) {
                     $selected[$identity->type][$identity->id][$definition->id] = $assignment;
                     $definitions[$definition->id] = $definition;

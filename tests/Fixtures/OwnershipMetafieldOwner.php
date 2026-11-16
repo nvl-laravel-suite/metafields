@@ -6,6 +6,7 @@ namespace Nvl\Metafields\Tests\Fixtures;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Nvl\Metafields\Contracts\HasMetafieldScope;
 use Nvl\Metafields\Traits\HasMetafields;
 use Nvl\Support\Config\PackageStorage;
 use Nvl\Support\Ownership\Contracts\Ownable;
@@ -18,7 +19,7 @@ use Nvl\Support\Ownership\ValueObjects\OwnershipDefinition;
  * @property string $name
  * @property string $owner_scope_key
  */
-class OwnershipMetafieldOwner extends Model implements Ownable
+class OwnershipMetafieldOwner extends Model implements HasMetafieldScope, Ownable
 {
     use HasMetafields;
     use HasOwnership, HasUuids;
@@ -28,6 +29,16 @@ class OwnershipMetafieldOwner extends Model implements Ownable
     protected $guarded = [];
 
     public $timestamps = false;
+
+    public function metafieldScopeKey(): ?string
+    {
+        return 'digital';
+    }
+
+    public static function metafieldScopeOptions(): array
+    {
+        return [['value' => 'digital', 'label' => 'Digital']];
+    }
 
     public function getConnectionName(): ?string
     {

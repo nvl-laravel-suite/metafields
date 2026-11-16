@@ -34,6 +34,7 @@ final class MetafieldDefinitionAssignmentSyncer
             'is_required' => ($assignment['isRequired'] ?? false),
             'is_active' => ($assignment['isActive'] ?? true),
             'ui_config' => $uiConfig,
+            ...(array_key_exists('ownerScopes', $assignment) ? ['owner_scopes' => $assignment['ownerScopes']] : []),
         ]);
         if ($definitionAssignment->exists) {
             $definitionAssignment->save();

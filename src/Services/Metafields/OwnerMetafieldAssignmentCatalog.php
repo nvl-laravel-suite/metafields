@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Nvl\Metafields\Services\Metafields;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Support\MetafieldOwnerPredicate;
+use Nvl\Metafields\Support\MetafieldOwnerScope;
 
 /**
  * Reads active definition assignments for registered owner types and sections.
@@ -33,5 +35,13 @@ final class OwnerMetafieldAssignmentCatalog
         $assignments = $query->get()->keyBy('definition_id');
 
         return $assignments;
+    }
+
+    /** @return Collection<string, MetafieldDefinitionAssignment> */
+    public function activeForOwner(string $ownerType, Model $owner): Collection
+    {
+        $key = MetafieldOwnerScope::key($owner);
+
+        return $this->activeForOwnerType($ownerType)->filter(static fn (MetafieldDefinitionAssignment $assignment): bool => MetafieldOwnerScope::accepts($assignment->owner_scopes, $key));
     }
 }

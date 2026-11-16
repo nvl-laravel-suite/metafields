@@ -47,7 +47,7 @@ final class MetafieldCasWorkerProvider extends ServiceProvider
             Gate::define('metafields.'.$ability, static fn (TestMetafieldActor $actor): bool => $actor->getKey() === 1 && $actor->name === 'CAS operator');
         }
         Gate::define('metafields.cas-owner', static fn (TestMetafieldActor $actor, string $ability, TestMetafieldOwner $owner): bool => $actor->getKey() === 1
-            && $actor->name === 'CAS operator' && $ability === MetafieldAbility::MutateOwner->value
+            && $actor->name === 'CAS operator' && in_array($ability, [MetafieldAbility::MutateOwner->value, MetafieldAbility::DeleteOwnerValue->value], true)
             && $owner->getKey() === 1 && $owner->getAttribute('name') === 'Concurrent owner');
     }
 }

@@ -18,6 +18,7 @@ use Nvl\Support\Ownership\Traits\HasOwnership;
 
 /**
  * @property string $id
+ * @property string|null $owner_scope_key Canonical technical partition when adopted
  * @property string|null $ownership_key Canonical definition partition identity
  * @property string $definition_id
  * @property string $owner_type
@@ -26,6 +27,7 @@ use Nvl\Support\Ownership\Traits\HasOwnership;
  * @property bool $is_required
  * @property bool $is_active
  * @property array<string, mixed>|null $ui_config
+ * @property list<string>|null $owner_scopes
  * @property-read MetafieldDefinition|null $definition
  *
  * @api
@@ -56,6 +58,7 @@ class MetafieldDefinitionAssignment extends Model implements Ownable
         'is_required',
         'is_active',
         'ui_config',
+        'owner_scopes',
     ];
 
     /**
@@ -68,6 +71,7 @@ class MetafieldDefinitionAssignment extends Model implements Ownable
             'is_required' => 'boolean',
             'is_active' => 'boolean',
             'ui_config' => 'array',
+            'owner_scopes' => 'array',
         ];
     }
 

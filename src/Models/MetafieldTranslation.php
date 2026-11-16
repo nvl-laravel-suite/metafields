@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Nvl\Metafields\Database\Factories\MetafieldTranslationFactory;
 use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Ownership\MetafieldOwnership;
@@ -39,6 +40,7 @@ class MetafieldTranslation extends Model implements Ownable
     use HasOwnership { save as private saveOwned;
         delete as private deleteOwned; }
     use HasUuids;
+    use SoftDeletes { performDeleteOnModel as private performNativeDeleteOnModel; }
 
     /** @var (Closure(Model): void)|null */
     private ?Closure $lifecycleSourceGuard = null;
@@ -51,7 +53,7 @@ class MetafieldTranslation extends Model implements Ownable
         $previous = $this->lifecycleSourceGuard;
         $this->lifecycleSourceGuard = $assertSource;
         try {
-            return $this->delete();
+            return $this->forceDelete();
         } finally {
             $this->lifecycleSourceGuard = $previous;
         }
@@ -63,7 +65,7 @@ class MetafieldTranslation extends Model implements Ownable
         if ($this->lifecycleSourceGuard !== null) {
             ($this->lifecycleSourceGuard)($this);
         }
-        parent::performDeleteOnModel();
+        $this->performNativeDeleteOnModel();
     }
 
     /** @param array<string,mixed> $options */

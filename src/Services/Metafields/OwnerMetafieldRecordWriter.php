@@ -51,7 +51,7 @@ final readonly class OwnerMetafieldRecordWriter
     {
         do {
             $assertSource($metafield);
-            $translations = MetafieldTranslation::query()->useWritePdo()->where('metafield_id', $metafield->id)->orderBy('id')->limit(100)->lockForUpdate()->get();
+            $translations = MetafieldTranslation::query()->withTrashed()->useWritePdo()->where('metafield_id', $metafield->id)->orderBy('id')->limit(100)->lockForUpdate()->get();
             $assertSource($metafield);
             foreach ($translations as $translation) {
                 if ($translation->deleteForLifecycle($assertSource) !== true) {

@@ -6,6 +6,27 @@
         "Nvl\\Metafields\\Database\\Factories\\": "database/factories"
     },
     "symbols": {
+        "Nvl\\Metafields\\Contracts\\HasMetafieldScope": {
+            "kind": "interface",
+            "file": "src/Contracts/HasMetafieldScope.php",
+            "methods": [
+                "metafieldScopeKey",
+                "metafieldScopeOptions"
+            ],
+            "properties": [],
+            "constants": []
+        },
+        "Nvl\\Metafields\\Contracts\\HasSqlMetafieldScope": {
+            "kind": "interface",
+            "file": "src/Contracts/HasSqlMetafieldScope.php",
+            "methods": [
+                "metafieldScopeColumn",
+                "metafieldScopeKey",
+                "metafieldScopeOptions"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Metafields\\Contracts\\MetafieldAuthorization": {
             "kind": "interface",
             "file": "src/Contracts/MetafieldAuthorization.php",
@@ -483,6 +504,8 @@
                 "id",
                 "is_active",
                 "is_required",
+                "owner_scope_key",
+                "owner_scopes",
                 "owner_type",
                 "ownership_key",
                 "section",
@@ -561,6 +584,18 @@
             "properties": [],
             "constants": []
         },
+        "Nvl\\Metafields\\Services\\LegacyMetafieldImporter": {
+            "kind": "class",
+            "file": "src/Services/LegacyMetafieldImporter.php",
+            "methods": [
+                "__construct",
+                "apply",
+                "plan",
+                "verify"
+            ],
+            "properties": [],
+            "constants": []
+        },
         "Nvl\\Metafields\\Services\\MetafieldDefinitions": {
             "kind": "class",
             "file": "src/Services/MetafieldDefinitions.php",
@@ -627,6 +662,7 @@
             "kind": "class",
             "file": "src/Services/Metafields/OwnerMetafieldAssignmentCatalog.php",
             "methods": [
+                "activeForOwner",
                 "activeForOwnerType"
             ],
             "properties": [],

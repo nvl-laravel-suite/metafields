@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Services\MetafieldDefinitions;
@@ -16,7 +17,7 @@ use Symfony\Component\Process\Process;
 
 uses(CommittedMetafieldsTestCase::class);
 
-it('accepts exactly one localized set at the same revision across independent PostgreSQL processes', function (): void {
+it('accepts exactly one localized set or restore across independent PostgreSQL processes', function (bool $restore): void {
     if (getenv('NVL_C1_TEST_DRIVER') !== 'pgsql') {
         $this->markTestSkipped('Requires the explicitly isolated committed PostgreSQL package database.');
     }
@@ -40,6 +41,12 @@ it('accepts exactly one localized set at the same revision across independent Po
     $source = MetafieldPostgreSqlSource::capture($owner->getConnection());
     $parent = $source['_nvl_metafield_cas_parent'];
     expect($initial->revision)->toBe(1);
+    if ($restore) {
+        app(MetafieldValues::class)->sync($owner, [[
+            'definitionId' => $definition->id, 'clear' => true, 'expected_revision' => 1,
+        ]], $actor);
+        expect(Metafield::onlyTrashed()->sole()->id)->toBe($initial->id);
+    }
 
     $directory = sys_get_temp_dir().'/nvl-metafield-cas-'.bin2hex(random_bytes(8));
     if (! mkdir($directory, 0700)) {
@@ -57,6 +64,7 @@ it('accepts exactly one localized set at the same revision across independent Po
                     'directory' => $directory, 'index' => $index, 'value' => $value,
                     'actor' => $actor->getKey(), 'owner' => $owner->getKey(),
                     'definition' => $definition->id, 'handle' => $definition->handle,
+                    'restore' => $restore,
                 ], JSON_THROW_ON_ERROR),
             ], env: ['XDEBUG_MODE' => 'off'], timeout: 25);
             $worker->start();
@@ -110,10 +118,10 @@ it('accepts exactly one localized set at the same revision across independent Po
             ->and($stored->metafieldable_id)->toBe((string) $owner->getKey())
             ->and($stored->revision)->toBe(2)
             ->and($stored->translations->pluck('value', 'locale')->sortKeys()->all())->toBe([
-                'bg' => $winner['value'], 'en' => 'Untouched English',
+                'bg' => $winner['value'], ...($restore ? [] : ['en' => 'Untouched English']),
             ])
             ->and($stored->getValue('bg'))->toBe($winner['value'])
-            ->and($stored->getValue('en'))->toBe('Untouched English')
+            ->and($stored->getValue('en'))->toBe($restore ? null : 'Untouched English')
             ->and($winner['revision'])->toBe(2)
             ->and($winner['metafield_id'])->toBe($initial->id)
             ->and($winner['set_events'])->toBe([[
@@ -122,7 +130,7 @@ it('accepts exactly one localized set at the same revision across independent Po
                 'revision' => 2, 'transaction_level' => 0,
             ]])
             ->and($winner['sync_events'])->toBe([[$initial->id]])
-            ->and($loser['exception'])->toBe(StaleMetafieldVersionException::class)
+            ->and($loser['exception'])->toBe($restore ? ValidationException::class : StaleMetafieldVersionException::class)
             ->and($loser['set_events'])->toBe([])
             ->and($loser['sync_events'])->toBe([])
             ->and($owner->getConnection()->transactionLevel())->toBe(0);
@@ -135,4 +143,4 @@ it('accepts exactly one localized set at the same revision across independent Po
         }
         rmdir($directory);
     }
-});
+})->with(['update' => false, 'restore' => true]);

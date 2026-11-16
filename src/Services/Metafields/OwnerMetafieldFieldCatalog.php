@@ -12,6 +12,7 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Models\MetafieldDefinitionAssignment;
 use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
+use Nvl\Metafields\Support\MetafieldOwnerScope;
 
 /**
  * Builds consumer-safe assigned field payloads for one registered owner.
@@ -45,7 +46,8 @@ final readonly class OwnerMetafieldFieldCatalog
             })
             ->orderBy('display_order');
         MetafieldOwnerPredicate::equal($query, 'owner_type', $ownerType);
-        $assignments = $query->get();
+        $scope = MetafieldOwnerScope::key($owner);
+        $assignments = $query->get()->filter(static fn (MetafieldDefinitionAssignment $assignment): bool => MetafieldOwnerScope::accepts($assignment->owner_scopes, $scope));
 
         if ($assignments->isEmpty()) {
             /** @var Collection<int, array{definition: MetafieldDefinition, assignment: MetafieldDefinitionAssignment, value: ?Metafield}> $empty */

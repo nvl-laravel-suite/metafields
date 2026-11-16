@@ -120,7 +120,7 @@ final class MetafieldValues
             $owner = $this->ownerResolver->canonical($owner, lock: true);
             $ownerType = $this->ownerRegistry->resolveOwnerType($owner);
             $this->authorization->authorizeOwner($actor, MetafieldAbility::MutateOwner, $owner);
-            $ownerAssignments = $this->assignmentCatalog->activeForOwnerType($ownerType);
+            $ownerAssignments = $this->assignmentCatalog->activeForOwner($ownerType, $owner);
             $assignments = $ownerAssignments->filter(
                 static fn (MetafieldDefinitionAssignment $assignment): bool => in_array(
                     $assignment->definition_id,
@@ -140,7 +140,7 @@ final class MetafieldValues
                 ->lockForUpdate()
                 ->get();
 
-            $ownerAssignments = $this->assignmentCatalog->activeForOwnerType($ownerType);
+            $ownerAssignments = $this->assignmentCatalog->activeForOwner($ownerType, $owner);
             $assignments = $ownerAssignments->filter(
                 static fn (MetafieldDefinitionAssignment $assignment): bool => in_array(
                     $assignment->definition_id,

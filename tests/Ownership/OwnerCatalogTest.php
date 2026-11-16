@@ -24,7 +24,7 @@ it('copies explicitly granted central definitions and fences stale or revoked im
     });
     $runner = app(OwnershipRunner::class);
     $actor = OwnershipActor::firstOrFail();
-    $source = $runner->central('metafields-maintain', $actor, fn () => app(MetafieldDefinitions::class)->create(['namespace' => 'catalog', 'key' => 'source', 'type' => 'string', 'assignment' => ['ownerType' => 'products', 'section' => 'general'], 'translations' => ['en' => ['title' => 'Source schema']]], $actor));
+    $source = $runner->central('metafields-maintain', $actor, fn () => app(MetafieldDefinitions::class)->create(['namespace' => 'catalog', 'key' => 'source', 'type' => 'string', 'assignment' => ['ownerType' => 'products', 'section' => 'general', 'ownerScopes' => ['digital']], 'translations' => ['en' => ['title' => 'Source schema']]], $actor));
     $grant = null;
     $copy = null;
     $runner->run(OwnershipCompany::findOrFail(7), $actor, function () use ($source, $stringRevisions, &$grant, &$copy): void {
@@ -37,7 +37,9 @@ it('copies explicitly granted central definitions and fences stale or revoked im
         }
         $copy = app(MetafieldDefinitions::class)->import($data, OwnershipActor::firstOrFail());
         expect($copy->id)->not->toBe($source->id)->and($copy->catalog_source_id)->toBe($source->id)->and($copy->translations->first()->title)->toBe('Source schema');
+        expect($copy->assignments->sole()->owner_scopes)->toBe(['digital']);
         $snapshot = $catalog->inspect($grant->id);
+        expect($snapshot['definition']['scopedAssignments'])->toBe(['products' => ['digital']]);
         app(MetafieldDefinitions::class)->revoke($grant->id, $grant->revision, OwnershipActor::firstOrFail());
         expect(fn () => $copy->getConnection()->transaction(fn () => $catalog->persist($snapshot, $data)))->toThrow(OwnershipViolation::class);
         expect($copy->fresh())->not->toBeNull();

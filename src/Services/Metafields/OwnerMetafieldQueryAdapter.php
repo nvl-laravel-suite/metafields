@@ -19,6 +19,7 @@ use Nvl\Metafields\Services\MetafieldActorPolicy;
 use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
+use Nvl\Metafields\Support\MetafieldOwnerScope;
 use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
@@ -79,10 +80,11 @@ final readonly class OwnerMetafieldQueryAdapter
             throw new MetafieldBatchReadException('Localized, reference and structured Metafield comparisons require a separately supported SQL adapter.');
         }
         $values = Metafield::query()->where('definition_id', $definition->id)
-            ->whereHas('definition', static function (Builder $definitions) use ($alias): void {
-                $definitions->whereNotNull('active_handle')->whereHas('assignments', static function (Builder $assignments) use ($alias): void {
+            ->whereHas('definition', static function (Builder $definitions) use ($alias, $owner): void {
+                $definitions->whereNotNull('active_handle')->whereHas('assignments', static function (Builder $assignments) use ($alias, $owner): void {
                     MetafieldOwnerPredicate::equal($assignments, 'owner_type', $alias);
                     $assignments->getQuery()->where('is_active', true);
+                    MetafieldOwnerScope::constrainSql($assignments, $owner);
                 });
             });
         MetafieldOwnerPredicate::equal($values, (new Metafield)->qualifyColumn('metafieldable_type'), $owner->getMorphClass());

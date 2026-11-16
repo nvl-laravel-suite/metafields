@@ -28,6 +28,8 @@ Configure stable aliases in `nvl-metafields.owners` and `nvl-metafields.referenc
 
 Owners and reference targets must be persisted, registered models. Values store the host model's native morph identity and exact string representation of its key. Configure native Ownership resources when isolating definitions or owners; unscoped hosts can use ordinary models.
 
+Implement `HasMetafieldScope` when a model's records have different eligible fields. Return the record's scope key and declare the allowed `value` and `label` pairs. Set `assignment.ownerScopes` to select keys. A null assignment applies to every record. Lists, defaults, required-field checks and writes all use the canonical owner's scope. For SQL comparisons of scoped fields, implement `HasSqlMetafieldScope` with the persisted column representing that key. A computed PHP scope remains available through the record and batch APIs.
+
 ## Authorize native operations
 
 Every public operation requires an explicit persisted `Authenticatable` actor or `SystemActor::Background`. Host Gate abilities named `metafields.create`, `metafields.update`, `metafields.archive`, `metafields.delete`, `metafields.grant`, `metafields.revoke`, `metafields.import`, `metafields.write`, and `metafields.read` authorize the respective operations. Undefined abilities deny both people and background work. The package does not infer an actor from a guard.
@@ -76,6 +78,16 @@ This example creates the initial value. Subsequent `set` calls must supply `expe
 `MetafieldReader` exposes `definitions($actor)`, `forOwner(Model $owner, $actor, ?string $locale = null)`, and `forOwners(array $owners, $actor, ?string $locale = null)`. The first two return collections of native models or arrays containing `definition`, `assignment`, and nullable `value` models. The batch result contains `owners` as a nested JSON object keyed by morph type and exact owner key, plus a separate `order` list. Empty input returns an empty object map. Nonempty batches admit canonical owners under host scopes, apply SQL visibility, and reject unavailable or denied stored and default references. Batches have bounded owner, definition, value, reference, and locale limits.
 
 For stored scalar comparisons on active filterable definitions, use `whereNvlMetafield($handle, $value, $actor, $batchPolicy, $operator = '=')` on a registered owner query. Missing and default-only values do not match. Text `=` and `!=` compare exactly, including case and trailing spaces, on every supported database; numeric types compare by value.
+
+PostgreSQL and SQLite enforce one active value per owner and definition while retaining cleared history. A subsequent set can restore the newest cleared value when the owner has no active value. Localized clears retain earlier translations as history. Catalog copies inherit reviewed scopes when the owner type matches. Supply `assignment.ownerScopes` explicitly when mapping to another owner type.
+
+## Legacy adoption
+
+Enable the native schema on an empty standalone target and retain the legacy `metafields_definitions`, `metafield_definition_assignments`, `metafields`, and `metafields_translations` tables. Freeze source and target writes during staging. Use a separate source connection when legacy and native PostgreSQL index names conflict.
+
+`LegacyMetafieldImporter::plan($actor, $sourceLocale, $source)` requires the `metafields.import` capability and an explicit supported locale. Options accept `connection`, `owner_types` for assignment aliases, `owner_morphs` for value owner aliases, and `reference_types` for reference aliases. `owner_ids` and `reference_ids` map original type and key pairs to target keys. Adopted definitions seed copy in the single source locale. Existing definition, assignment, value and value-translation IDs and timestamps are preserved.
+
+Review the plan and resolve its conflicts before calling `apply($actor, $sourceLocale, $fingerprint, $source)`. Retrying with the same fingerprint reuses exact staged rows. Call `verify($actor, $sourceLocale, $fingerprint, $source)` before switching the host's readers and writers.
 
 ## Events and diagnostics
 

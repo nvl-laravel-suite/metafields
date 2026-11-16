@@ -6,6 +6,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
+use Nvl\Metafields\Contracts\MetafieldBatchAuthorization;
 use Nvl\Metafields\Enums\MetafieldAbility;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
 use Nvl\Metafields\Models\Metafield;
@@ -13,6 +14,7 @@ use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Services\MetafieldDefinitions;
 use Nvl\Metafields\Services\MetafieldReader;
 use Nvl\Metafields\Services\MetafieldValues;
+use Nvl\Metafields\Tests\Fixtures\BatchMetafieldPolicy;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldActor;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
 use Nvl\Support\Enums\SystemActor;
@@ -34,6 +36,42 @@ beforeEach(function (): void {
         'nvl-translatable.fallback_locales' => ['en'],
         'nvl-metafields.owners' => ['products' => ['model' => TestMetafieldOwner::class, 'label' => 'Products', 'sections' => ['general']]],
     ]);
+});
+
+it('enforces per-record assignments in single and batched reads, defaults and writes', function (): void {
+    Gate::define('metafields.owner', static fn (SystemActor $actor): bool => true);
+    app()->instance(MetafieldBatchAuthorization::class, new BatchMetafieldPolicy);
+    $definitions = app(MetafieldDefinitions::class);
+    $reader = app(MetafieldReader::class);
+    $values = app(MetafieldValues::class);
+    $actor = SystemActor::Background;
+    $create = static fn (string $key, ?array $scopes): MetafieldDefinition => $definitions->create([
+        'namespace' => 'visible', 'key' => $key, 'type' => 'string',
+        'assignment' => ['ownerType' => 'products', 'section' => 'general', 'ownerScopes' => $scopes],
+        'translations' => ['en' => ['title' => $key]],
+        'defaultValue' => 'Shared default', 'isFilterable' => true,
+    ], $actor);
+    $specific = $create('special', ['digital']);
+    $all = $create('shared', null);
+    $digital = TestMetafieldOwner::query()->create(['name' => 'Digital', 'category' => 'digital']);
+    $physical = TestMetafieldOwner::query()->create(['name' => 'Physical', 'category' => 'physical']);
+    $none = TestMetafieldOwner::query()->create(['name' => 'Unclassified']);
+
+    expect($reader->forOwner($digital, $actor)->pluck('definition.id')->all())->toEqualCanonicalizing([$specific->id, $all->id])
+        ->and($reader->forOwner($physical, $actor)->pluck('definition.id')->all())->toBe([$all->id])
+        ->and($reader->forOwner($none, $actor)->pluck('definition.id')->all())->toBe([$all->id]);
+    $batch = $reader->forOwners([$digital, $physical], $actor);
+    expect($batch['owners']->{TestMetafieldOwner::class}->{(string) $digital->getKey()}->fields)->toHaveCount(2)
+        ->and($batch['owners']->{TestMetafieldOwner::class}->{(string) $physical->getKey()}->fields)->toHaveCount(1)
+        ->and(fn () => $create('forged', ['unknown']))->toThrow(ValidationException::class)
+        ->and(fn () => $values->set($physical, 'visible.special', 'Forged', $actor))->toThrow(ValidationException::class);
+
+    $record = $values->set($digital, 'visible.special', 'Current', $actor);
+    expect($record?->getValue())->toBe('Current')
+        ->and(TestMetafieldOwner::query()->whereNvlMetafield('visible.special', 'Current', $actor, new BatchMetafieldPolicy)->exists())->toBeTrue();
+    $digital->update(['category' => 'physical']);
+    expect($reader->forOwner($digital, $actor)->pluck('definition.id')->all())->toBe([$all->id])
+        ->and(TestMetafieldOwner::query()->whereNvlMetafield('visible.special', 'Current', $actor, new BatchMetafieldPolicy)->exists())->toBeFalse();
 });
 
 it('does not hand former owner localized values to a reused key after its deletion lifecycle', function (): void {

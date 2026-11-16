@@ -46,6 +46,7 @@ abstract class CommittedMetafieldsTestCase extends TestCase
         $schema->create($owner->getTable(), static function (Blueprint $table): void {
             $table->unsignedBigInteger('id')->primary();
             $table->string('name');
+            $table->string('category')->nullable();
             $table->timestamps();
         });
         $schema->create((new Metafield)->getTable(), static function (Blueprint $table): void {
@@ -65,6 +66,7 @@ abstract class CommittedMetafieldsTestCase extends TestCase
             $table->string('locale');
             $table->text('value')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
         $foreign->table($owner->getTable())->insert($owner->getRawOriginal());
 

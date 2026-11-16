@@ -34,6 +34,6 @@ abstract class LegacyMetafieldValueTestCase extends TestCase
     protected function defineDatabaseMigrationsAfterDatabaseRefreshed(): void
     {
         parent::defineDatabaseMigrationsAfterDatabaseRefreshed();
-        Schema::table((new Metafield)->getTable(), static fn (Blueprint $table) => $table->dropUnique('metafields_owner_definition_unique'));
+        Schema::table((new Metafield)->getTable(), static fn (Blueprint $table) => $table->dropIndex('metafields_owner_definition_unique'));
     }
 }

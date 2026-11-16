@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Validation\ValidationException;
 use Nvl\Metafields\Events\MetafieldSet;
 use Nvl\Metafields\Events\MetafieldsSynced;
 use Nvl\Metafields\Exceptions\StaleMetafieldVersionException;
@@ -31,7 +32,7 @@ if (! is_array($source) || ($source['driver'] ?? null) !== 'pgsql'
     || ! in_array($options['index'] ?? null, [0, 1], true)
     || ! is_int($options['actor'] ?? null) || ! is_int($options['owner'] ?? null)
     || ! is_string($options['definition'] ?? null) || ! is_string($options['handle'] ?? null)
-    || ! is_string($options['value'] ?? null)) {
+    || ! is_string($options['value'] ?? null) || ! is_bool($options['restore'] ?? null)) {
     throw new RuntimeException('Metafield CAS workers require an explicit disposable PostgreSQL fixture and barriers.');
 }
 
@@ -55,8 +56,10 @@ $connection = $app->make('db')->connection();
 $identity = MetafieldPostgreSqlSource::inspect($connection);
 $actor = TestMetafieldActor::query()->findOrFail($options['actor']);
 $owner = TestMetafieldOwner::query()->findOrFail($options['owner']);
-$initial = Metafield::query()->with('translations')->where('definition_id', $options['definition'])->sole();
-if ($initial->revision !== 1 || $initial->getValue('en') !== 'Untouched English' || $initial->getValue('bg') !== 'Начална стойност') {
+$restore = $options['restore'];
+$initial = Metafield::query()->withTrashed()->with('translations')->where('definition_id', $options['definition'])->sole();
+if ($initial->revision !== 1 || $initial->trashed() !== $restore
+    || ($restore ? $initial->translations->isNotEmpty() : $initial->getValue('en') !== 'Untouched English' || $initial->getValue('bg') !== 'Начална стойност')) {
     throw new RuntimeException('Both CAS workers must observe the committed revision-one locale graph before release.');
 }
 $setEvents = [];
@@ -84,9 +87,14 @@ while (! is_file($options['directory'].'/release')) {
 }
 
 try {
-    $written = $app->make(MetafieldValues::class)->set($owner, $options['handle'], $options['value'], $actor, 'bg', expectedRevision: 1);
+    $written = $app->make(MetafieldValues::class)->set($owner, $options['handle'], $options['value'], $actor, 'bg', expectedRevision: $restore ? null : 1);
     $outcome = ['status' => 'written', 'metafield_id' => $written->id, 'revision' => $written->revision, 'value' => $options['value']];
 } catch (StaleMetafieldVersionException $exception) {
+    $outcome = ['status' => 'stale', 'exception' => $exception::class];
+} catch (ValidationException $exception) {
+    if (! $restore || ! isset($exception->errors()['items.0.expected_revision'])) {
+        throw $exception;
+    }
     $outcome = ['status' => 'stale', 'exception' => $exception::class];
 }
 MetafieldPostgreSqlSource::inspect($connection);

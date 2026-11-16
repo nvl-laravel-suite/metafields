@@ -60,6 +60,7 @@ abstract class TestCase extends Orchestra
         Schema::create('test_metafield_owners', function (Blueprint $table): void {
             $table->id();
             $table->string('name');
+            $table->string('category')->nullable();
             $table->timestamps();
         });
 

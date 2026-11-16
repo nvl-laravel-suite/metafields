@@ -6,6 +6,8 @@ Search for the relevant fully qualified service or contract and read only its ma
 
 ## Symbols
 
+- `Nvl\Metafields\Contracts\HasMetafieldScope`
+- `Nvl\Metafields\Contracts\HasSqlMetafieldScope`
 - `Nvl\Metafields\Contracts\MetafieldAuthorization`
 - `Nvl\Metafields\Contracts\MetafieldBatchAuthorization`
 - `Nvl\Metafields\Contracts\MetafieldCatalogAccess`
@@ -34,6 +36,7 @@ Search for the relevant fully qualified service or contract and read only its ma
 - `Nvl\Metafields\Models\MetafieldDefinitionTranslation`
 - `Nvl\Metafields\Models\MetafieldTranslation`
 - `Nvl\Metafields\Ownership\MetafieldOwnerCatalog`
+- `Nvl\Metafields\Services\LegacyMetafieldImporter`
 - `Nvl\Metafields\Services\MetafieldDefinitions`
 - `Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionCatalog`
 - `Nvl\Metafields\Services\MetafieldModelRegistry`
@@ -43,6 +46,25 @@ Search for the relevant fully qualified service or contract and read only its ma
 - `Nvl\Metafields\Services\Metafields\OwnerMetafieldBatchReader`
 - `Nvl\Metafields\Support\MetafieldOwnerRegistry`
 - `Nvl\Metafields\Traits\HasMetafields`
+
+## Nvl\Metafields\Contracts\HasMetafieldScope
+
+```text
+interface Nvl\Metafields\Contracts\HasMetafieldScope
+public abstract function metafieldScopeKey(): ?string
+public abstract static function metafieldScopeOptions(): array
+@return list<array{value: string, label: string}>
+```
+
+## Nvl\Metafields\Contracts\HasSqlMetafieldScope
+
+```text
+interface Nvl\Metafields\Contracts\HasSqlMetafieldScope extends Nvl\Metafields\Contracts\HasMetafieldScope
+public abstract static function metafieldScopeColumn(): string
+public abstract function metafieldScopeKey(): ?string
+public abstract static function metafieldScopeOptions(): array
+@return list<array{value: string, label: string}>
+```
 
 ## Nvl\Metafields\Contracts\MetafieldAuthorization
 
@@ -637,6 +659,8 @@ resolved @property-read (Nvl\Metafields\Models\MetafieldDefinition | null) $defi
 @property string $id
 @property bool $is_active
 @property bool $is_required
+@property (string | null) $owner_scope_key
+@property (list<string> | null) $owner_scopes
 @property string $owner_type
 @property (string | null) $ownership_key
 @property (string | null) $section
@@ -720,6 +744,28 @@ public function grant(string $sourceId, int $revision): Nvl\Metafields\Models\Me
 public function revoke(string $grantId, int $expectedRevision): Nvl\Metafields\Models\MetafieldDefinitionOwnerGrant
 ```
 
+## Nvl\Metafields\Services\LegacyMetafieldImporter
+
+```text
+final readonly class Nvl\Metafields\Services\LegacyMetafieldImporter
+public function __construct(Illuminate\Database\DatabaseManager $database, Nvl\Metafields\Services\MetafieldActorPolicy $actors, Nvl\Support\Contracts\LocaleCatalog $locales, Nvl\Metafields\Support\MetafieldOwnerRegistry $owners, Nvl\Metafields\Services\MetafieldDefinitions\MetafieldDefinitionInput $definitionInput, Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver $references): mixed
+public function apply(Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor $actor, string $sourceLocale, string $fingerprint, array $source=[]): array
+@param Source $source
+resolved @param array{connection?: string, owner_types?: array<string, string>, owner_morphs?: array<string, string>, owner_ids?: array<string, array<string, string>>, reference_types?: array<string, string>, reference_ids?: array<string, array<string, string>>} $source
+@return Review
+resolved @return array{schema_fingerprint: string, fingerprint: string, source: array<string, int>, staged: array<string, int>, conflicts: list<string>}
+public function plan(Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor $actor, string $sourceLocale, array $source=[]): array
+@param Source $source
+resolved @param array{connection?: string, owner_types?: array<string, string>, owner_morphs?: array<string, string>, owner_ids?: array<string, array<string, string>>, reference_types?: array<string, string>, reference_ids?: array<string, array<string, string>>} $source
+@return Review
+resolved @return array{schema_fingerprint: string, fingerprint: string, source: array<string, int>, staged: array<string, int>, conflicts: list<string>}
+public function verify(Illuminate\Contracts\Auth\Authenticatable|Nvl\Support\Enums\SystemActor $actor, string $sourceLocale, string $fingerprint, array $source=[]): array
+@param Source $source
+resolved @param array{connection?: string, owner_types?: array<string, string>, owner_morphs?: array<string, string>, owner_ids?: array<string, array<string, string>>, reference_types?: array<string, string>, reference_ids?: array<string, array<string, string>>} $source
+@return Review
+resolved @return array{schema_fingerprint: string, fingerprint: string, source: array<string, int>, staged: array<string, int>, conflicts: list<string>}
+```
+
 ## Nvl\Metafields\Services\MetafieldDefinitions
 
 ```text
@@ -799,6 +845,9 @@ resolved @return Illuminate\Support\Collection<int, Nvl\Metafields\Models\Metafi
 
 ```text
 final class Nvl\Metafields\Services\Metafields\OwnerMetafieldAssignmentCatalog
+public function activeForOwner(string $ownerType, Illuminate\Database\Eloquent\Model $owner): Illuminate\Support\Collection
+@return Collection<string, MetafieldDefinitionAssignment>
+resolved @return Illuminate\Support\Collection<string, Nvl\Metafields\Models\MetafieldDefinitionAssignment>
 public function activeForOwnerType(string $ownerType): Illuminate\Support\Collection
 @return Collection<string, MetafieldDefinitionAssignment>
 resolved @return Illuminate\Support\Collection<string, Nvl\Metafields\Models\MetafieldDefinitionAssignment>
