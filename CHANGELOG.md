@@ -5,6 +5,19 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+## [7.1.0] - 2026-11-16
+
+### Highlights
+
+- Import legacy metafields, limit assignments to declared owner scopes, and restore cleared values while retaining history.
+
+<!-- NVL GENERATED CHANGES START -->
+### Changed
+
+- close NVL consumer adoption and portability gaps
+- Merge pull request #21 from nicolasvlachos/codex/consumer-postgresql-validation
+<!-- NVL GENERATED CHANGES END -->
+
 ## [7.0.3] - 2026-11-13
 
 ### Fixed
