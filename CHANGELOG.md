@@ -5,6 +5,8 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+## [7.3.0] - 2026-11-17
+
 ### Added
 
 - `2026_11_16_120000_nvl_metafields_limit_assignment_uniqueness_to_active_rows.php` replaces the unconditional `(definition_id, owner_type)` assignment uniqueness with a PostgreSQL/SQLite partial unique index over active rows, so deleted assignment generations can sit beside their active replacement.
@@ -23,6 +25,12 @@ All notable changes to `nvl/metafields` are documented here.
 - A blank optional integer, decimal or float value is stored as null. Numeric `whereNvlMetafield()` comparisons skip stored text that is not a number instead of raising a PostgreSQL cast error.
 - A reference-list default supplied as a JSON string has every target checked, like an array default.
 - Catalog imports accept integer and numeric-string reference IDs in `referenceMap` and keep repeated reference-list defaults such as `[A, B, A]`.
+
+<!-- NVL GENERATED CHANGES START -->
+### Changed
+
+- implement the Final spec audit for one release
+<!-- NVL GENERATED CHANGES END -->
 
 ## [7.2.0] - 2026-11-16
 
