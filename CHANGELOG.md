@@ -5,6 +5,8 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+## [7.2.0] - 2026-11-16
+
 ### Added
 
 - `nvl:adopt metafields plan|apply|verify|activate <manifest.json>` adopts the legacy Metafield graph: definitions with their source-locale copy, then assignments, values and value translations. A definition and its copy always commit in the same batch. The manifest holds `locale` plus the `LegacyMetafieldImporter` source options. Adoption runs through nvl:adopt with reviewed, checkpointed batches and an explicit activate step. Committed batches survive a failure. Keep writers stopped until verify and activate pass.
@@ -12,6 +14,12 @@ All notable changes to `nvl/metafields` are documented here.
 ### Changed
 
 - Metafield value translations declare `RelatedTranslationDeletedRowPolicy::KeepHistory`, keeping cleared translations as history now that Translatable's default Reject policy refuses a deleted blocker. Requires the Translatable release that adds the policy.
+
+<!-- NVL GENERATED CHANGES START -->
+### Changed
+
+- adoption flow, PostgreSQL proof, release health and 7.2 floors
+<!-- NVL GENERATED CHANGES END -->
 
 ## [7.1.0] - 2026-11-16
 
