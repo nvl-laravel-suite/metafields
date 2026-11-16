@@ -18,6 +18,8 @@ Value writes now require the owner authorization boundary as well as `metafields
 
 Each sync item must explicitly select `value`, `translations`, or true `clear`. Remove conflicting keys instead of supplying unused nulls. Neutral nullable fields accept explicit `value => null`; missing values never clear a field. Supply `expected_revision` for existing rows and `translation_mode` only alongside `translations`. No schema migration is required for these changes.
 
+Legacy Metafield adoption can now run as `php artisan nvl:adopt metafields plan|apply|verify|activate <manifest.json>`. The manifest is a JSON object with `locale` plus the source options `LegacyMetafieldImporter` takes (`connection`, `owner_types`, `owner_morphs`, `owner_ids`, `reference_types`, `reference_ids`). Enable `nvl-core.adoption.migrations.enabled` and migrate the core adoption tables on the Metafields connection first. Adoption runs through nvl:adopt with reviewed, checkpointed batches and an explicit activate step. Committed batches survive a failure. Keep writers stopped until verify and activate pass. `LegacyMetafieldImporter::plan()`, `apply()` and `verify()` keep their behaviour and signatures.
+
 ## Historical upgrade notes
 
 The following sections describe pre-Light releases and their old APIs, compatibility windows and commands. They remain useful for understanding existing installations, but are not Light setup instructions. The old Tenancy bridge, DTO/Action contracts, package HTTP and type generation are retired in Light.

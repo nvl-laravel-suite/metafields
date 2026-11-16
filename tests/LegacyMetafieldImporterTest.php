@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Nvl\Metafields\Definitions\Tables\MetafieldsTables;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Models\MetafieldDefinition;
 use Nvl\Metafields\Services\LegacyMetafieldImporter;
@@ -15,11 +17,20 @@ use Nvl\Metafields\Services\MetafieldReader;
 use Nvl\Metafields\Services\MetafieldValues;
 use Nvl\Metafields\Tests\CommittedMetafieldsTestCase;
 use Nvl\Metafields\Tests\Fixtures\TestMetafieldOwner;
+use Nvl\Support\Adoption\AdoptionProgress;
+use Nvl\Support\Adoption\AdoptionStore;
 use Nvl\Support\Enums\SystemActor;
 
 uses(CommittedMetafieldsTestCase::class);
 
-it('stages definitions and scoped Metafield history with their original identities', function (): void {
+/**
+ * Create the committed legacy graph: a localized definition with one assignment, two cleared values and a deleted
+ * translation, plus a reference definition with one reference value.
+ *
+ * @return array{owner: TestMetafieldOwner, source: array<string, mixed>, time: string, definitionId: string, assignmentId: string, oldId: string, lastId: string, translationId: string, referenceDefinition: string, referenceValue: string}
+ */
+function legacyMetafieldGraphFixture(): array
+{
     foreach (['import', 'write', 'read'] as $ability) {
         Gate::define('metafields.'.$ability, static fn (SystemActor $actor): bool => $actor === SystemActor::Background);
     }
@@ -81,6 +92,15 @@ it('stages definitions and scoped Metafield history with their original identiti
         'owner_types' => ['old-products' => 'products'], 'owner_morphs' => ['OldProduct' => 'products'],
         'owner_ids' => $ids, 'reference_types' => ['OldProduct' => 'products'], 'reference_ids' => $ids,
     ];
+
+    return compact('owner', 'source', 'time', 'definitionId', 'assignmentId', 'oldId', 'lastId', 'translationId', 'referenceDefinition', 'referenceValue');
+}
+
+it('stages definitions and scoped Metafield history with their original identities', function (): void {
+    [
+        'owner' => $owner, 'source' => $source, 'time' => $time, 'definitionId' => $definitionId, 'assignmentId' => $assignmentId,
+        'lastId' => $lastId, 'translationId' => $translationId, 'referenceDefinition' => $referenceDefinition, 'referenceValue' => $referenceValue,
+    ] = legacyMetafieldGraphFixture();
     $actor = SystemActor::Background;
     $importer = app(LegacyMetafieldImporter::class);
     $plan = $importer->plan($actor, 'bg', $source);
@@ -117,4 +137,108 @@ it('stages definitions and scoped Metafield history with their original identiti
         ->and($restored->translations()->sole()->value)->toBe('Ново')
         ->and(DB::table($restored->translations()->getRelated()->getTable())->where('id', $translationId)->whereNotNull('deleted_at')->exists())->toBeTrue()
         ->and(fn () => DB::transaction(fn () => Metafield::factory()->forDefinition($definition)->forOwner($owner)->create()))->toThrow(QueryException::class);
+});
+
+/**
+ * Install the core adoption tables, write the reviewed manifest and return the nvl:adopt runner for it.
+ *
+ * @param  array<string, mixed>  $source
+ * @return Closure(string, array<string, string>=): array<string, mixed>
+ */
+function legacyMetafieldAdoption(array $source): Closure
+{
+    $migrations = dirname((string) (new ReflectionClass(AdoptionStore::class))->getFileName(), 3).'/database/migrations';
+    Artisan::call('migrate', ['--path' => $migrations, '--realpath' => true, '--force' => true]);
+    $manifest = tempnam(sys_get_temp_dir(), 'nvl-metafields-adoption-');
+    file_put_contents((string) $manifest, json_encode(['locale' => 'bg', ...$source], JSON_THROW_ON_ERROR));
+    test()->beforeApplicationDestroyed(static fn (): bool => @unlink((string) $manifest));
+
+    return static function (string $phase, array $options = []) use ($manifest): array {
+        $status = Artisan::call('nvl:adopt', ['package' => 'metafields', 'phase' => $phase, 'manifest' => $manifest, '--format' => 'json', ...$options]);
+
+        return ['status' => $status, ...json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR)];
+    };
+}
+
+/** Throw once, on the given occurrence of an insert into the table. */
+function interruptMetafieldInsert(string $table, int $occurrence = 1): void
+{
+    $seen = 0;
+    DB::connection()->beforeExecuting(static function (string $sql) use ($table, $occurrence, &$seen): void {
+        if (str_starts_with($sql, 'insert into "'.$table.'" (') && ++$seen === $occurrence) {
+            throw new RuntimeException('simulated interruption');
+        }
+    });
+}
+
+it('rolls a definition back together with its copy when its adoption batch fails', function (): void {
+    ['source' => $source] = legacyMetafieldGraphFixture();
+    $adopt = legacyMetafieldAdoption($source);
+    $plan = $adopt('plan');
+    expect($plan['status'])->toBe(0)
+        ->and($plan['collisions'])->toBe([])
+        ->and($plan['counts']['definitions']['expected'])->toBe(2);
+
+    $copyTable = MetafieldsTables::get(MetafieldsTables::DefinitionsI18n);
+    interruptMetafieldInsert($copyTable);
+    $failed = $adopt('apply', ['--fingerprint' => $plan['fingerprint'], '--batch-size' => '1']);
+
+    expect($failed['status'])->toBe(1)
+        ->and($failed['error'])->toBe('simulated interruption')
+        ->and(DB::table(MetafieldsTables::get(MetafieldsTables::Definitions))->count())->toBe(0)
+        ->and(DB::table($copyTable)->count())->toBe(0)
+        ->and(DB::table(AdoptionStore::Checkpoints)->count())->toBe(0)
+        ->and(DB::table(AdoptionStore::Runs)->value('status'))->toBe(AdoptionProgress::Failed);
+
+    $resumed = $adopt('apply', ['--fingerprint' => $plan['fingerprint'], '--batch-size' => '1', '--run' => (string) DB::table(AdoptionStore::Runs)->value('id')]);
+    expect($resumed['state'])->toBe(AdoptionProgress::Applied)
+        ->and(DB::table(MetafieldsTables::get(MetafieldsTables::Definitions))->count())->toBe(2)
+        ->and(DB::table($copyTable)->count())->toBe(2);
+});
+
+it('resumes a batched adoption with its references intact and activates it after verification', function (): void {
+    [
+        'owner' => $owner, 'source' => $source, 'definitionId' => $definitionId, 'lastId' => $lastId,
+        'translationId' => $translationId, 'referenceDefinition' => $referenceDefinition, 'referenceValue' => $referenceValue,
+    ] = legacyMetafieldGraphFixture();
+    $adopt = legacyMetafieldAdoption($source);
+    $plan = $adopt('plan');
+    $valuesTable = MetafieldsTables::get(MetafieldsTables::Metafields);
+    interruptMetafieldInsert($valuesTable, 2);
+
+    $failed = $adopt('apply', ['--fingerprint' => $plan['fingerprint'], '--batch-size' => '1']);
+    $runId = (string) DB::table(AdoptionStore::Runs)->value('id');
+    $replanned = $adopt('plan');
+
+    expect($failed['error'])->toBe('simulated interruption')
+        ->and(DB::table($valuesTable)->count())->toBe(1)
+        ->and($replanned['fingerprint'])->toBe($plan['fingerprint'])
+        ->and($replanned['collisions'])->toBe([])
+        ->and($replanned['counts']['definitions'])->toBe(['expected' => 2, 'processed' => 2, 'complete' => true])
+        ->and($replanned['counts']['values'])->toBe(['expected' => 3, 'processed' => 1, 'complete' => false])
+        ->and($adopt('activate', ['--fingerprint' => $plan['fingerprint']])['error'])->toContain('requires a passed verification');
+
+    $resumed = $adopt('apply', ['--fingerprint' => $plan['fingerprint'], '--batch-size' => '1', '--run' => $runId]);
+    expect($resumed['state'])->toBe(AdoptionProgress::Applied)
+        ->and($resumed['counts']['values'])->toBe(['expected' => 3, 'processed' => 3, 'complete' => true])
+        ->and($resumed['counts']['value_translations'])->toBe(['expected' => 1, 'processed' => 1, 'complete' => true]);
+
+    $verified = $adopt('verify');
+    expect($verified['status'])->toBe(0)
+        ->and($verified['verification']['passed'])->toBeTrue()
+        ->and($adopt('activate', ['--fingerprint' => $plan['fingerprint']])['state'])->toBe(AdoptionProgress::Active);
+
+    $ownerKey = (string) $owner->getKey();
+    expect(MetafieldDefinition::query()->findOrFail($referenceDefinition)->default_referenced_id)->toBe($ownerKey)
+        ->and(Metafield::query()->findOrFail($referenceValue)->referenced_id)->toBe($ownerKey)
+        ->and(Metafield::withTrashed()->findOrFail($lastId)->definition_id)->toBe($definitionId)
+        ->and(DB::table(MetafieldsTables::get(MetafieldsTables::I18n))->where('id', $translationId)->value('metafield_id'))->toBe($lastId)
+        ->and(Metafield::withTrashed()->where('metafieldable_id', $ownerKey)->count())->toBe(3)
+        ->and(DB::table($valuesTable)->count())->toBe(3);
+
+    DB::table($valuesTable)->where('id', $referenceValue)->update(['updated_at' => '2030-01-01 00:00:00']);
+    $drifted = $adopt('verify')['verification'];
+    expect($drifted['passed'])->toBeFalse()
+        ->and([$drifted['missing'], $drifted['changed'], $drifted['extra']])->toBe([0, 1, 0])
+        ->and($drifted['problems'])->toContain("{$valuesTable} [{$referenceValue}] differs from the reviewed row.");
 });

@@ -6,6 +6,7 @@ namespace Nvl\Metafields\Providers;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\ServiceProvider;
+use Nvl\Metafields\Adoption\LegacyMetafieldAdoptionAdapter;
 use Nvl\Metafields\Console\Commands\MetafieldDefinitionAddCommand;
 use Nvl\Metafields\Console\Commands\MetafieldDefinitionRemoveCommand;
 use Nvl\Metafields\Console\Commands\MetafieldDoctorCommand;
@@ -31,6 +32,7 @@ use Nvl\Metafields\Services\Metafields\MetafieldReferenceRecordResolver;
 use Nvl\Metafields\Services\UnsupportedMetafieldBatchAuthorization;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Ownership\Services\OwnershipAdoptionRegistry;
+use Nvl\Support\Adoption\AdoptionRegistry;
 use Nvl\Support\Doctor\PackageDoctorContributor;
 use Nvl\Support\Globals\GlobalNames;
 use Nvl\Support\Ownership\Contracts\OwnershipIntegratedProvider;
@@ -75,6 +77,7 @@ final class MetafieldsServiceProvider extends ServiceProvider implements Ownersh
         if ($this->app->bound(OwnershipAdoptionRegistry::class)) {
             $this->app->make(OwnershipAdoptionRegistry::class)->register('metafields', MetafieldAdoptionAdapter::class);
         }
+        $this->app->make(AdoptionRegistry::class)->register('metafields', LegacyMetafieldAdoptionAdapter::class);
         foreach ([Metafield::class, MetafieldTranslation::class] as $model) {
             $model::addGlobalScope('metafield-ownership-configuration', static function (Builder $query): void {
                 MetafieldOwnership::declared();

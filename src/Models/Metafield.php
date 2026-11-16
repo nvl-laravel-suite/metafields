@@ -28,6 +28,7 @@ use Nvl\Support\Ownership\Contracts\OwnershipModelPersistence;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
 use Nvl\Support\Ownership\Traits\HasOwnership;
 use Nvl\Translatable\Contracts\TranslatableModel;
+use Nvl\Translatable\Enums\RelatedTranslationDeletedRowPolicy;
 use Nvl\Translatable\Enums\TranslationMutationPolicy;
 use Nvl\Translatable\RelatedTranslationDefinition;
 use Nvl\Translatable\Translatable;
@@ -160,6 +161,7 @@ class Metafield extends Model implements Ownable, TranslatableModel
             fields: ['value'],
             mutationPolicy: TranslationMutationPolicy::OwningServiceOnly,
             ownershipResource: MetafieldOwnership::declared() ? 'metafields.values' : null,
+            deletedRowPolicy: RelatedTranslationDeletedRowPolicy::KeepHistory,
         );
     }
 

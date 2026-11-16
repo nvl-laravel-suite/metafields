@@ -89,6 +89,8 @@ Enable the native schema on an empty standalone target and retain the legacy `me
 
 Review the plan and resolve its conflicts before calling `apply($actor, $sourceLocale, $fingerprint, $source)`. Retrying with the same fingerprint reuses exact staged rows. Call `verify($actor, $sourceLocale, $fingerprint, $source)` before switching the host's readers and writers.
 
+For large graphs, run the same adoption through `php artisan nvl:adopt metafields plan|apply|verify|activate manifest.json`. The manifest holds `locale` plus the options above. Definitions and their copy, assignments, values and value translations commit in keyset batches with a checkpoint each; resume a failed apply with `--run`, then verify and activate before switching readers and writers.
+
 ## Events and diagnostics
 
 `MetafieldDefinitionCatalogGrantAudited`, `MetafieldSet`, and `MetafieldsSynced` contain scalar identities and revisions and dispatch after the source transaction commits. See [events](docs/events.md). Run `php artisan nvl:metafields:doctor --strict --format=json` for package diagnostics. Core does not register a shared `nvl:doctor` by default.
@@ -103,6 +105,6 @@ From the suite root, run the owning Pest suite with its package configuration:
 vendor/bin/pest --test-directory=packages/nvl/metafields/tests --configuration=packages/nvl/metafields/phpunit.xml.dist --bootstrap=vendor/autoload.php
 ```
 
-Tests are not part of the distributed package. In the source repository, `tests/Historical` preserves retired HTTP, Action, DTO, and Tenancy bridge tests outside active discovery. Native service, ownership, localization, reference, and batch tests are active.
+Tests are not part of the distributed package.
 
 Shared [service contracts, model extensions and composition](https://github.com/nvl-laravel-suite/laravel-suite/blob/main/docs/consumer-api.md) apply alongside the package-specific rules above.

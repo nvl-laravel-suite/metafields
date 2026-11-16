@@ -372,6 +372,28 @@ it('patches and replaces localized values while advancing revisions', function (
         ->and($replaced->translations->pluck('value', 'locale')->all())->toBe(['en' => 'Updated']);
 });
 
+it('keeps a soft-deleted locale as history when it is patched again', function (): void {
+    $definition = app(MetafieldDefinitions::class)->create([
+        'namespace' => 'product', 'key' => 'caption', 'type' => 'string', 'isTranslatable' => true,
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        'translations' => ['en' => ['title' => 'Caption']],
+    ], SystemActor::Background);
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
+    $values = app(MetafieldValues::class);
+    $first = $values->set($owner, 'product.caption', 'English', SystemActor::Background, 'en');
+    $sync = static fn (array $translations, int $revision, TranslationSyncMode $mode): Metafield => $values->sync($owner, [[
+        'definitionId' => $definition->id, 'translations' => $translations, 'expected_revision' => $revision, 'translation_mode' => $mode,
+    ]], SystemActor::Background)->first();
+    $patched = $sync(['bg' => 'Първо'], $first->revision, TranslationSyncMode::Patch);
+    $replaced = $sync(['en' => 'Updated'], $patched->revision, TranslationSyncMode::Replace);
+    $restored = $sync(['bg' => 'Второ'], $replaced->revision, TranslationSyncMode::Patch);
+    $bg = DB::table($restored->translations()->getRelated()->getTable())->where('metafield_id', $restored->id)->where('locale', 'bg');
+
+    expect($restored->translations->pluck('value', 'locale')->sortKeys()->all())->toBe(['bg' => 'Второ', 'en' => 'Updated'])
+        ->and((clone $bg)->whereNull('deleted_at')->pluck('value')->all())->toBe(['Второ'])
+        ->and((clone $bg)->whereNotNull('deleted_at')->pluck('value')->all())->toBe(['Първо']);
+});
+
 it('clears and restores values with explicit revisions', function (): void {
     $definition = app(MetafieldDefinitions::class)->create([
         'namespace' => 'product', 'key' => 'label', 'type' => 'string',
