@@ -5,6 +5,8 @@ All notable changes to `nvl/metafields` are documented here.
 
 ## [Unreleased]
 
+## [7.4.0] - 2026-11-17
+
 ### Fixed
 
 - SQLite numeric Metafield filters now apply the same numeric grammar as PostgreSQL: surrounding whitespace (space, tab, newline, vertical tab, form feed, carriage return) is ignored, so a stored `"5\n"` compares as 5, while text such as `+` or `1..2` is skipped instead of being cast to a number.
@@ -12,6 +14,12 @@ All notable changes to `nvl/metafields` are documented here.
 - Float and decimal values, defaults and filter values longer than 1000 characters or with an exponent of four or more digits are rejected; PostgreSQL could not cast them to NUMERIC, so one such stored value made every numeric `whereNvlMetafield` filter on that definition fail with SQLSTATE 22003. Numeric filters on both databases also skip legacy stored text outside these bounds.
 - Definition defaults are validated and stored in the canonical form owner values use: a padded reference identifier such as `" 12 "` is stored as `"12"`, and a blank numeric default clears the default.
 - Owner values, defaults, filter comparison text and definition titles, descriptions and hints reject NUL bytes and invalid UTF-8 with a validation error. PostgreSQL silently truncated text at a NUL byte (a filter for `"a\0b"` matched `"a"`) and refused invalid UTF-8 with a raw SQLSTATE 22021 error.
+
+<!-- NVL GENERATED CHANGES START -->
+### Changed
+
+- consumer-audit fixes across the suite, UTC timestamps, core/forms release ordering
+<!-- NVL GENERATED CHANGES END -->
 
 ## [7.3.0] - 2026-11-17
 
