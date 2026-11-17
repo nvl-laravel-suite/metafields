@@ -217,7 +217,7 @@ it('reports unresolved registered references within scopes without misclassifyin
 
     expect($check)->not->toBeNull()->and($check['passed'])->toBeFalse()
         ->and($check['message'])->toContain('1 unresolved', 'within host scopes')
-        ->and($check['message'])->not->toContain('Private value', 'Soft private value');
+        ->and($check['message'])->not->toContain('Private value')->not->toContain('Soft private value');
 });
 
 it('limits diagnostics to a metadata-only sample without asserting global orphan absence', function (): void {

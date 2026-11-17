@@ -20,6 +20,7 @@ use Nvl\Metafields\Services\MetafieldModelRegistry;
 use Nvl\Metafields\Support\MetafieldOwnerPredicate;
 use Nvl\Metafields\Support\MetafieldOwnerRegistry;
 use Nvl\Metafields\Support\MetafieldOwnerScope;
+use Nvl\Metafields\Support\MetafieldValidationRuleCompiler;
 use Nvl\Support\Enums\SystemActor;
 use Nvl\Support\Ownership\Contracts\OwnershipBoundary;
 use Nvl\Support\Ownership\Exceptions\OwnershipViolation;
@@ -103,12 +104,13 @@ final readonly class OwnerMetafieldQueryAdapter
             if (! is_string($encoded) && ! is_int($encoded) && ! is_float($encoded)) {
                 throw new MetafieldBatchReadException('Metafield comparison values must have scalar storage encoding.');
             }
+            if (is_string($encoded) && preg_match(MetafieldValidationRuleCompiler::STORABLE_TEXT_PATTERN, $encoded) !== 1) {
+                throw new MetafieldBatchReadException('Metafield comparison text must be valid UTF-8 without NUL bytes.');
+            }
             if (in_array($definition->type, [MetafieldTypeEnum::Integer, MetafieldTypeEnum::Decimal, MetafieldTypeEnum::Float], true)) {
-                $validNumeric = $definition->type === MetafieldTypeEnum::Float
-                    ? is_numeric($encoded) && is_finite((float) $encoded)
-                    : is_numeric($encoded)
-                        && strlen((string) $encoded) <= 1000
-                        && preg_match('/^[+-]?(?:\d+\.?\d*|\.\d+)\z/', (string) $encoded) === 1;
+                $validNumeric = is_numeric($encoded) && MetafieldValidationRuleCompiler::isComparableNumber($encoded) && ($definition->type === MetafieldTypeEnum::Float
+                    ? is_finite((float) $encoded)
+                    : preg_match('/^[+-]?(?:\d+\.?\d*|\.\d+)\z/', (string) $encoded) === 1);
                 if (! $validNumeric) {
                     throw new MetafieldBatchReadException('Numeric Metafield comparisons require a numeric value.');
                 }

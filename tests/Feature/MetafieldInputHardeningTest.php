@@ -156,16 +156,21 @@ it('rejects duplicate JSON property schema keys and validates JSON string payloa
 });
 
 it('normalizes JSON property requiredness', function (mixed $required): void {
-    $definition = hardeningDefinition('spec', 'json', [
-        'jsonPropertySchema' => [['key' => 'weight', 'type' => 'float', 'isRequired' => $required]],
-    ]);
-    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
+    $schema = static fn (mixed $isRequired): array => ['jsonPropertySchema' => [
+        ['key' => 'weight', 'type' => 'float', 'isRequired' => $isRequired],
+        ['key' => 'note', 'type' => 'string', 'isRequired' => false],
+    ]];
+    $definition = hardeningDefinition('spec', 'json', $schema($required));
+    hardeningDefinition('optional_spec', 'json', $schema(false));
+    $set = static fn (string $handle, array $value): mixed => app(MetafieldValues::class)
+        ->set(TestMetafieldOwner::query()->create(['name' => 'Owner']), $handle, $value, SystemActor::Background)->getValue();
 
     expect($definition->json_property_schema[0]['isRequired'])->toBeTrue()
-        ->and(fn () => app(MetafieldValues::class)->set($owner, 'product.spec', ['other' => 1], SystemActor::Background))
-        ->toThrow(ValidationException::class)
-        ->and(app(MetafieldValues::class)->set($owner, 'product.spec', ['weight' => 1.5], SystemActor::Background)->getValue())
-        ->toBe(['weight' => 1.5]);
+        ->and($set('product.optional_spec', ['weight' => null]))->toBe(['weight' => null])
+        ->and($set('product.optional_spec', ['note' => 'Fragile']))->toBe(['note' => 'Fragile'])
+        ->and(fn () => $set('product.spec', ['weight' => null]))->toThrow(ValidationException::class)
+        ->and(fn () => $set('product.spec', ['note' => 'Fragile']))->toThrow(ValidationException::class)
+        ->and($set('product.spec', ['weight' => 1.5]))->toBe(['weight' => 1.5]);
 })->with([1, '1', true]);
 
 it('enforces combined handle storage length', function (): void {
@@ -196,3 +201,54 @@ it('validates array and JSON reference defaults equivalently', function (bool $a
     ]);
     expect($definition->getSerializableDefaultValue())->toBe([(string) $target->id]);
 })->with(['array' => false, 'JSON string' => true]);
+
+it('rejects display orders wider than their integer columns', function (string $field): void {
+    $create = static function (string $key, int $order) use ($field): MetafieldDefinition {
+        $attributes = [
+            'namespace' => 'product', 'key' => $key, 'type' => 'string',
+            'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+            'translations' => ['en' => ['title' => 'Order']],
+        ];
+        data_set($attributes, $field, $order);
+
+        return app(MetafieldDefinitions::class)->create($attributes, SystemActor::Background);
+    };
+
+    expect(fn () => $create('wide_order', 2147483648))->toThrow(fn (ValidationException $exception) => expect($exception->errors())->toHaveKey($field))
+        ->and($create('widest_order', 2147483647)->exists)->toBeTrue();
+})->with(['displayOrder', 'assignment.displayOrder']);
+
+it('stores defaults in the canonical form owner values use', function (): void {
+    Gate::define('metafields.reference', static fn (SystemActor $actor): bool => true);
+    config(['nvl-metafields.authorization.reference_ability' => 'metafields.reference']);
+    $target = TestMetafieldOwner::query()->create(['name' => 'Target']);
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
+    $padded = ' '.$target->id.' ';
+
+    $reference = hardeningDefinition('related', 'reference', ['referencedModelType' => 'products', 'defaultValue' => $padded]);
+    $count = hardeningDefinition('count', 'integer', ['defaultValue' => '   ']);
+    $stored = app(MetafieldValues::class)->set($owner, 'product.related', $padded, SystemActor::Background);
+
+    expect($reference->getSerializableDefaultValue())->toBe((string) $target->id)
+        ->and($reference->default_referenced_id)->toBe($stored->referenced_id)
+        ->and($reference->getDefaultValue()?->getKey())->toBe($target->id)
+        ->and($count->hasDefaultValue())->toBeFalse();
+});
+
+it('rejects text the database would truncate or refuse instead of storing part of it', function (string $text): void {
+    hardeningDefinition('code', 'string');
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Owner']);
+    $copy = static fn (array $translation): MetafieldDefinition => app(MetafieldDefinitions::class)->create([
+        'namespace' => 'product', 'key' => 'copy', 'type' => 'string',
+        'assignment' => ['ownerType' => 'products', 'section' => 'general'],
+        'translations' => ['en' => $translation + ['title' => 'Copy']],
+    ], SystemActor::Background);
+
+    expect(fn () => app(MetafieldValues::class)->set($owner, 'product.code', $text, SystemActor::Background))->toThrow(ValidationException::class)
+        ->and(fn () => hardeningDefinition('code_default', 'string', ['defaultValue' => $text]))->toThrow(ValidationException::class)
+        ->and(fn () => $copy(['title' => $text]))->toThrow(ValidationException::class)
+        ->and(fn () => $copy(['description' => $text]))->toThrow(ValidationException::class)
+        ->and(fn () => $copy(['hint' => $text]))->toThrow(ValidationException::class)
+        ->and(Metafield::query()->count())->toBe(0)
+        ->and(MetafieldDefinition::query()->count())->toBe(1);
+})->with(['NUL byte' => ["a\0b"], 'invalid UTF-8' => ["a\xFFb"]]);

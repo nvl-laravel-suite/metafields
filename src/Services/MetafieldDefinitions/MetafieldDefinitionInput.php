@@ -59,17 +59,17 @@ final readonly class MetafieldDefinitionInput
             'jsonPropertySchema.*.type' => ['required', Rule::enum(MetafieldJsonPropertyTypeEnum::class)],
             'jsonPropertySchema.*.isRequired' => ['sometimes', 'boolean'],
             'defaultValue' => ['sometimes', 'nullable'],
-            'displayOrder' => ['sometimes', 'integer', 'min:0'],
+            'displayOrder' => ['sometimes', 'integer', 'min:0', 'max:2147483647'],
             'translations' => [$creating ? 'required' : 'sometimes', 'array', 'min:1'],
             'translations.*' => ['array:title,description,hint,defaultValue,properties'],
-            'translations.*.title' => [$creating ? 'required' : 'sometimes', 'string', 'max:255'],
-            'translations.*.description' => ['nullable', 'string'],
-            'translations.*.hint' => ['nullable', 'string', 'max:255'],
+            'translations.*.title' => [$creating ? 'required' : 'sometimes', 'string', 'max:255', 'regex:'.MetafieldValidationRuleCompiler::STORABLE_TEXT_PATTERN],
+            'translations.*.description' => ['nullable', 'string', 'regex:'.MetafieldValidationRuleCompiler::STORABLE_TEXT_PATTERN],
+            'translations.*.hint' => ['nullable', 'string', 'max:255', 'regex:'.MetafieldValidationRuleCompiler::STORABLE_TEXT_PATTERN],
             'translations.*.properties' => ['nullable', 'array'],
             'assignment' => [$creating ? 'required' : 'sometimes', 'array:ownerType,section,displayOrder,isRequired,isActive,uiConfig,ownerScopes'],
             'assignment.ownerType' => [$creating ? 'required' : 'required_with:assignment', 'string', Rule::in(array_keys($this->owners->all()))],
             'assignment.section' => [$creating ? 'required' : 'required_with:assignment', 'string', 'max:255'],
-            'assignment.displayOrder' => ['sometimes', 'integer', 'min:0'],
+            'assignment.displayOrder' => ['sometimes', 'integer', 'min:0', 'max:2147483647'],
             'assignment.isRequired' => ['sometimes', 'boolean'],
             'assignment.isActive' => ['sometimes', 'boolean'],
             'assignment.uiConfig' => ['sometimes', 'nullable', 'array'],
@@ -124,6 +124,10 @@ final readonly class MetafieldDefinitionInput
         }
 
         $attributes['type'] = $type;
+        if (array_key_exists('defaultValue', $attributes)) {
+            // Validate and store the same canonical form owner values use.
+            $attributes['defaultValue'] = MetafieldValidationRuleCompiler::canonicalInput($type, $attributes['defaultValue']);
+        }
         if (($attributes['isTranslatable'] ?? false) && ! $type->supportsTranslations()) {
             throw ValidationException::withMessages(['isTranslatable' => ['This type cannot be localized.']]);
         }

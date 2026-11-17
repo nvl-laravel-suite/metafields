@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Nvl\Metafields\Exceptions\MetafieldBatchReadException;
 use Nvl\Metafields\Models\Metafield;
 use Nvl\Metafields\Services\MetafieldDefinitions;
@@ -97,3 +98,48 @@ it('handles blank null and zero numeric values consistently', function (string $
         ->and(filteredOwners('product.amount', 0))->toBe([$zero])
         ->and(filteredOwners('product.amount', 0, '<='))->toBe([$zero]);
 })->with(['integer', 'decimal', 'float']);
+
+it('applies one numeric grammar with the same whitespace rules on every database', function (): void {
+    [$newline, $tabbed, $sign, $doubleDot] = filterableOwners('amount', 'float', ['1', '2', '3', '4']);
+    foreach ([$newline => "5\n", $tabbed => " \t7.5\r", $sign => '+', $doubleDot => '1..2'] as $owner => $raw) {
+        Metafield::query()->where('metafieldable_id', $owner)->toBase()->update(['value' => $raw]);
+    }
+
+    $nonNegative = filteredOwners('product.amount', 0, '>=');
+
+    expect($nonNegative)->not->toContain($sign)
+        ->and($nonNegative)->not->toContain($doubleDot)
+        ->and($nonNegative)->toBe([$newline, $tabbed])
+        ->and(filteredOwners('product.amount', 5))->toBe([$newline])
+        ->and(filteredOwners('product.amount', 7.5))->toBe([$tabbed]);
+});
+
+it('rejects numeric values that no database numeric comparison can read', function (string $type, string $value): void {
+    filterableOwners('amount', $type, ['5']);
+    $owner = TestMetafieldOwner::query()->create(['name' => 'Wide']);
+
+    expect(fn () => app(MetafieldValues::class)->set($owner, 'product.amount', $value, SystemActor::Background))
+        ->toThrow(ValidationException::class)
+        ->and(filteredOwners('product.amount', 0, '>'))->toHaveCount(1)
+        ->and(fn () => filteredOwners('product.amount', $value))->toThrow(MetafieldBatchReadException::class);
+})->with([
+    'float tiny exponent' => ['float', '1e-1001'],
+    'float wide digits' => ['float', '0.'.str_repeat('1', 20000)],
+    'decimal wide digits' => ['decimal', '0.'.str_repeat('1', 20000)],
+]);
+
+it('skips legacy numeric text that no database numeric comparison can read', function (string $raw): void {
+    [$legacy, $five] = filterableOwners('amount', 'float', ['1', '5']);
+    Metafield::query()->where('metafieldable_id', $legacy)->toBase()->update(['value' => $raw]);
+
+    expect(filteredOwners('product.amount', 0, '>'))->toBe([$five]);
+})->with([
+    'tiny exponent' => ['1e-1001'],
+    'wide digits' => ['0.'.str_repeat('1', 20000)],
+]);
+
+it('rejects comparison text no stored value can hold instead of comparing a truncated prefix', function (string $text): void {
+    filterableOwners('code', 'string', ['a']);
+
+    expect(fn () => filteredOwners('product.code', $text))->toThrow(MetafieldBatchReadException::class);
+})->with(['NUL byte' => ["a\0b"], 'invalid UTF-8' => ["a\xFFb"]]);

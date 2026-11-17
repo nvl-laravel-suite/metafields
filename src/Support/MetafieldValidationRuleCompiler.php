@@ -11,6 +11,12 @@ use Nvl\Metafields\Enums\MetafieldTypeEnum;
 
 final class MetafieldValidationRuleCompiler
 {
+    /** Longest numeric text a stored or compared Metafield number may use. */
+    public const int MAXIMUM_NUMERIC_LENGTH = 1000;
+
+    /** Valid UTF-8 without NUL bytes, which PostgreSQL rejects or silently truncates. */
+    public const string STORABLE_TEXT_PATTERN = '/\A[^\x00]*\z/u';
+
     /**
      * @var list<string>
      */
@@ -140,6 +146,9 @@ final class MetafieldValidationRuleCompiler
     ): bool {
         try {
             $normalized = self::normalizeValue($type, $value);
+            if (is_string($normalized) && preg_match(self::STORABLE_TEXT_PATTERN, $normalized) !== 1) {
+                return false;
+            }
 
             return (! is_array($normalized) || MetafieldPayloadLimits::accepts($normalized))
                 && Validator::make(['value' => $normalized], self::compile($type, $isRequired, $customRules))->passes();
@@ -311,6 +320,7 @@ final class MetafieldValidationRuleCompiler
             MetafieldTypeEnum::Json => self::normalizeJsonValue($value),
             MetafieldTypeEnum::ArrayValue => self::normalizeArrayValue($value),
             MetafieldTypeEnum::Float => self::normalizeFloatValue($value),
+            MetafieldTypeEnum::Decimal => self::normalizeDecimalValue($value),
             MetafieldTypeEnum::Reference => self::normalizeReferenceValue($value),
             MetafieldTypeEnum::ReferenceList => self::normalizeArrayValue($value),
             default => $value,
@@ -320,11 +330,33 @@ final class MetafieldValidationRuleCompiler
     /** Reject numeric input that no stored float can represent or cast back. */
     private static function normalizeFloatValue(mixed $value): mixed
     {
-        if (is_numeric($value) && ! is_finite((float) $value)) {
+        if (is_numeric($value) && (! is_finite((float) $value) || ! self::isComparableNumber($value))) {
             throw new InvalidArgumentException('Float metafields require a finite number.');
         }
 
         return $value;
+    }
+
+    /** Reject decimal text that no database numeric comparison can read. */
+    private static function normalizeDecimalValue(mixed $value): mixed
+    {
+        if (is_numeric($value) && ! self::isComparableNumber($value)) {
+            throw new InvalidArgumentException('Decimal metafields require at most 1000 characters.');
+        }
+
+        return $value;
+    }
+
+    /**
+     * Determine whether numeric text stays inside the range every supported database casts to NUMERIC.
+     *
+     * At most 1000 characters and a three-digit exponent keep PostgreSQL's digit and scale limits out of reach.
+     */
+    public static function isComparableNumber(int|float|string $value): bool
+    {
+        $text = (string) $value;
+
+        return strlen($text) <= self::MAXIMUM_NUMERIC_LENGTH && preg_match('/[eE][+-]?\d{4,}/', $text) !== 1;
     }
 
     private static function normalizeReferenceValue(mixed $value): ?string
